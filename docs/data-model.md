@@ -7,16 +7,20 @@ erDiagram
     condominium ||--o{ apartment : has
     condominium ||--o{ poll : has
     condominium ||--o{ invitation : has
+    condominium ||--o{ condominium_role : has
 
     apartment ||--o{ apartment_resident : has
     apartment ||--o{ vote : receives
     apartment ||--o| app_user : eligible_voter
+    apartment ||--o{ poll_eligible_snapshot : included_in
 
     app_user ||--o{ apartment_resident : lives_in
     app_user ||--o{ refresh_token : has
+    app_user ||--o{ condominium_role : assigned
 
     poll ||--|{ poll_option : has
     poll ||--o{ vote : has
+    poll ||--o{ poll_eligible_snapshot : has
 
     poll_option ||--o{ vote : chosen_in
 
@@ -77,11 +81,13 @@ erDiagram
         uuid condominium_id FK
         varchar title
         text description
+        convocation_type convocation
         quorum_mode quorum_mode
         poll_status status
         timestamp scheduled_start
         timestamp scheduled_end
         uuid created_by_user_id FK
+        text cancellation_reason
         timestamp created_at
         timestamp updated_at
     }
@@ -104,6 +110,23 @@ erDiagram
         timestamp voted_at
     }
 
+    condominium_role {
+        uuid id PK
+        uuid condominium_id FK
+        uuid user_id FK
+        condominium_role_type role
+        timestamp granted_at
+        timestamp revoked_at
+    }
+
+    poll_eligible_snapshot {
+        uuid id PK
+        uuid poll_id FK
+        uuid apartment_id FK
+        uuid eligible_voter_id FK
+        timestamp snapshotted_at
+    }
+
     refresh_token {
         uuid id PK
         uuid user_id FK
@@ -120,6 +143,10 @@ erDiagram
 ```sql
 CREATE TYPE resident_role AS ENUM ('OWNER', 'TENANT');
 
+CREATE TYPE condominium_role_type AS ENUM ('SINDICO');
+
+CREATE TYPE convocation_type AS ENUM ('FIRST', 'SECOND');
+
 CREATE TYPE quorum_mode AS ENUM (
     'SIMPLE_MAJORITY',
     'ABSOLUTE_MAJORITY',
@@ -133,8 +160,7 @@ CREATE TYPE poll_status AS ENUM (
     'OPEN',
     'CLOSED',
     'CANCELLED',
-    'INVALIDATED',
-    'TIED'
+    'INVALIDATED'
 );
 ```
 
@@ -244,11 +270,13 @@ CREATE TYPE poll_status AS ENUM (
 | condominium_id | UUID | NOT NULL | FK → condominium(id) | Tenant |
 | title | VARCHAR(255) | NOT NULL | | Título da votação |
 | description | TEXT | NULL | | Descrição/pauta detalhada |
+| convocation | convocation_type | NOT NULL | | Primeira ou Segunda Convocação — Primeira exige quórum de presença (50% dos elegíveis) |
 | quorum_mode | quorum_mode | NOT NULL | | Modo de quórum |
 | status | poll_status | NOT NULL | DEFAULT 'DRAFT' | Estado atual |
 | scheduled_start | TIMESTAMP | NULL | | Início agendado (preenchido ao agendar) |
 | scheduled_end | TIMESTAMP | NULL | | Fim agendado (preenchido ao agendar) |
 | created_by_user_id | UUID | NOT NULL | FK → app_user(id) | Síndico criador |
+| cancellation_reason | TEXT | NULL | | Motivo obrigatório ao cancelar (preenchido apenas quando status = 'CANCELLED') |
 | created_at | TIMESTAMP | NOT NULL | DEFAULT now() | Data de criação |
 | updated_at | TIMESTAMP | NOT NULL | DEFAULT now() | Última atualização |
 
@@ -299,6 +327,52 @@ CREATE TYPE poll_status AS ENUM (
 
 ---
 
+### `condominium_role`
+
+| Coluna | Tipo | Nullable | Constraints | Descrição |
+|--------|------|----------|-------------|-----------|
+| id | UUID | NOT NULL | PK | Identificador único |
+| condominium_id | UUID | NOT NULL | FK → condominium(id) | Tenant |
+| user_id | UUID | NOT NULL | FK → app_user(id) | Usuário com papel administrativo |
+| role | condominium_role_type | NOT NULL | | Papel no condomínio (SINDICO) |
+| granted_at | TIMESTAMP | NOT NULL | DEFAULT now() | Data de concessão |
+| revoked_at | TIMESTAMP | NULL | | Data de revogação (NULL = ativo) |
+
+**Índices:**
+- `UNIQUE ON (condominium_id, user_id, role) WHERE revoked_at IS NULL` — um papel ativo por usuário por condomínio
+- `idx_condominium_role_condominium_id ON (condominium_id)` — RLS
+- `idx_condominium_role_user_id ON (user_id)` — busca por usuário
+
+**Notas:**
+- Múltiplos síndicos ativos permitidos por condomínio (a constraint é por user, não global)
+- Transferência de papel é operação de superadmin em v1 (seed/manual)
+- Todos os síndicos têm paridade total de permissões; o sistema registra qual síndico executou cada ação via `created_by_user_id` nas tabelas de domínio
+- Separada de `apartment_resident` porque papel administrativo é distinto de vínculo residencial — um síndico pode ou não ser proprietário
+
+---
+
+### `poll_eligible_snapshot`
+
+| Coluna | Tipo | Nullable | Constraints | Descrição |
+|--------|------|----------|-------------|-----------|
+| id | UUID | NOT NULL | PK | Identificador único |
+| poll_id | UUID | NOT NULL | FK → poll(id) | Votação |
+| apartment_id | UUID | NOT NULL | FK → apartment(id) | Apartamento elegível |
+| eligible_voter_id | UUID | NOT NULL | FK → app_user(id) | Votante habilitado no momento da abertura |
+| snapshotted_at | TIMESTAMP | NOT NULL | DEFAULT now() | Momento do snapshot |
+
+**Índices:**
+- `UNIQUE ON (poll_id, apartment_id)` — um apartamento por votação no snapshot
+- `idx_poll_eligible_snapshot_poll_id ON (poll_id)` — busca por votação
+
+**Notas:**
+- Tabela write-once — gerada automaticamente quando a votação transita para OPEN, nunca alterada depois
+- `eligible_voter_id` registra quem era o votante habilitado na abertura (referência para auditoria). Se esse votante é removido durante a votação, o novo `eligible_voter_id` do apartamento assume (fallback)
+- O total de registros por poll define o denominador para cálculo de quórum nos modos Absoluto e Qualificado
+- Apartamentos inadimplentes ou sem `eligible_voter_id` no momento da abertura **não são incluídos** no snapshot
+
+---
+
 ### `refresh_token`
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
@@ -330,7 +404,7 @@ Todas as tabelas com `condominium_id` terão RLS habilitado. O fluxo:
        USING (condominium_id = current_setting('app.current_tenant')::uuid);
    ```
 
-**Tabelas com RLS:** apartment, apartment_resident, invitation, poll, poll_option (via JOIN com poll), vote
+**Tabelas com RLS:** apartment, apartment_resident, condominium_role, invitation, poll, poll_option (via JOIN com poll), poll_eligible_snapshot (via JOIN com poll), vote
 
 **Tabelas sem RLS:** app_user (global), refresh_token (global)
 
@@ -348,3 +422,7 @@ Todas as tabelas com `condominium_id` terão RLS habilitado. O fluxo:
 | `condominium_id` redundante em `vote` e `apartment_resident` | Necessário para RLS funcionar sem JOINs na política |
 | Enums PostgreSQL em vez de tabelas de lookup | Conjunto fixo e pequeno de valores; performance superior e type safety |
 | `left_at` em `apartment_resident` em vez de soft delete | Mantém histórico de ocupação para auditoria sem flag genérica |
+| `condominium_role` separada de `apartment_resident` | Papel administrativo (síndico) é distinto de vínculo residencial; um síndico pode ou não ser proprietário |
+| `poll_eligible_snapshot` como tabela dedicada | Snapshot write-once garante denominador de quórum imutável e auditável; `apartment.eligible_voter_id` é mutável e não preserva histórico |
+| TIED removido de `poll_status` | Matematicamente impossível que duas opções atinjam simultaneamente um limiar >50%; empate exato é caso particular de INVALIDATED |
+| `convocation` em `poll` | Primeira/Segunda Convocação determina se há quórum mínimo de presença — conceito legal condominial brasileiro que impacta a validação de resultado |

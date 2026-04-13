@@ -12,6 +12,10 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 
 **Administrador / Síndico**
 - Criado via seed no banco de dados (sem self-service na v1)
+- Papel armazenado em tabela dedicada `condominium_role(user_id, condominium_id, role)` — não em `app_user`
+- Um condomínio pode ter **múltiplos síndicos** com as mesmas permissões
+- Um síndico pode simultaneamente ser proprietário de uma unidade no mesmo condomínio
+- Transferência de papel de síndico é operação de superadmin em v1 — sem fluxo self-service
 - Permissões restritas ao condomínio ao qual está vinculado
 - Pode: cadastrar apartamentos, enviar convites por e-mail, criar/cancelar votações, acompanhar resultados, acessar auditoria de votos
 
@@ -67,6 +71,7 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 - Por padrão, o proprietário é o votante habilitado
 - O proprietário pode delegar o direito de voto a **um** inquilino do mesmo apartamento (substitui, não acumula)
 - A delegação pode ser revertida pelo proprietário a qualquer momento
+- **Delegação e revogação são bloqueadas** enquanto o apartamento tiver votações no estado **Aberta** — previne confusão sobre quem pode votar em polls ativos
 - Se não há inquilino cadastrado, o proprietário vota diretamente
 
 ### Inadimplência
@@ -76,6 +81,7 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 - Moradores de unidades inadimplentes **continuam visualizando** pautas, votações e resultados — apenas o voto é bloqueado
 - A unidade inadimplente **não é contabilizada** no cálculo de quórum (não conta como votante habilitado)
 - Ao regularizar, o síndico remove a marcação e o direito de voto é restaurado automaticamente
+- **Alterações de inadimplência após a abertura de uma votação não afetam aquela votação** — o conjunto elegível é fixado no momento de abertura (ver Snapshot de Elegibilidade)
 
 ### Convites
 - Síndico envia convite de proprietário: define unidade + papel = proprietário
@@ -90,7 +96,7 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
   - Se há inquilino vinculado, o inquilino pode ser promovido a proprietário da unidade (decisão do síndico)
   - Se não há inquilino ou o síndico não promove, todos os acessos da unidade são desativados
   - O acesso do proprietário removido é desativado imediatamente
-- Votos já registrados por morador removido em votações abertas passam a contar como **voto nulo**
+- Votos já registrados por morador removido em votações abertas **permanecem válidos** — o conjunto elegível é fixado no momento de abertura da votação e não pode ser alterado retroativamente
 
 ### Fluxo de onboarding
 1. Síndico convida proprietário: informa e-mail + unidade
@@ -107,9 +113,9 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 ### Ciclo de vida e estados
 
 ```
-Rascunho → Agendada → Aberta → Encerrada
+Rascunho → Agendada → Aberta → Encerrada (vencedor declarado)
                ↓          ↓          ↓
-           Cancelada  Cancelada  Invalidada (quórum não atingido)
+           Cancelada  Cancelada  Invalidada (limiar não atingido ou quórum de presença insuficiente)
 ```
 
 ### Regras por estado
@@ -122,29 +128,63 @@ Rascunho → Agendada → Aberta → Encerrada
 | Cancelada  | Não                  | Sim (aviso)     | Não             |
 | Invalidada | Não                  | Sim (aviso)     | Não             |
 
+### Snapshot de Elegibilidade
+
+No momento exato em que a votação transita para **Aberta**, o sistema gera um snapshot imutável dos apartamentos elegíveis: todos os não-inadimplentes que possuem um `eligible_voter_id` definido naquele instante. Este snapshot armazena:
+
+- **`apartment_id`** — quais apartamentos podem votar
+- **`eligible_voter_id`** — quem era o votante habilitado no momento da abertura (referência para auditoria)
+
+Comportamento do snapshot:
+
+- Define o denominador para cálculo de quórum nos modos Maioria Absoluta e Qualificado
+- Determina **quais apartamentos** podem votar nesta votação — mudanças posteriores (inadimplência, remoção de morador) não alteram o snapshot
+- Se o votante habilitado do apartamento é removido durante a votação e um novo `eligible_voter_id` é atribuído, o **novo votante pode votar** pelo apartamento (fallback). A delegação/revogação é bloqueada durante polls abertos, mas a remoção de morador pode alterar o `eligible_voter_id` via ação do síndico
+- É persistido em tabela dedicada `poll_eligible_snapshot`
+
 ### Transições
 - **Rascunho → Agendada:** síndico publica definindo data/hora de início e fim
-- **Agendada → Aberta:** automático ao atingir data/hora de início
-- **Aberta → Encerrada:** automático ao atingir data/hora de fim
-- **Agendada ou Aberta → Cancelada:** síndico cancela manualmente; votos já registrados são descartados
-- **Encerrada → Invalidada:** automático se quórum não foi atingido
+- **Agendada → Aberta:** automático ao atingir `scheduled_start` **ou** síndico abre manualmente antes do horário agendado. Ao abrir, o sistema gera o snapshot de elegibilidade
+- **Aberta → Encerrada:** automático ao atingir `scheduled_end` **ou** quando todos os apartamentos do snapshot já tiverem votado
+- **Agendada ou Aberta → Cancelada:** síndico cancela manualmente e deve registrar um **motivo obrigatório**; votos já registrados são **preservados** (imutáveis) mas o resultado nunca é publicado
+- **Encerrada → Invalidada:** automático se nenhuma opção atingiu o limiar exigido pelo modo de quórum, ou se o quórum de presença não foi atingido (Primeira Convocação)
 
 ---
 
 ## 6. Domínio — Quórum
 
-O síndico define o modo de quórum ao criar a votação. São 4 modos disponíveis:
+### Convocação
 
-| Modo | Definição | Cálculo |
-|------|-----------|---------|
-| Maioria simples | Maioria entre os que efetivamente votaram | opção_vencedora > 50% dos votos computados |
-| Maioria absoluta | Maioria considerando todos os votantes habilitados do condomínio | opção_vencedora > 50% dos votantes habilitados |
-| Quórum qualificado 2/3 | 2/3 do total de votantes habilitados | opção_vencedora ≥ ⌈habilitados × 2/3⌉ |
-| Quórum qualificado 3/4 | 3/4 do total de votantes habilitados | opção_vencedora ≥ ⌈habilitados × 3/4⌉ |
+O síndico define a **convocação** ao criar a votação:
 
-**Empate:** em qualquer modo de quórum (maioria simples, absoluta ou qualificado), se houver empate entre opções, a votação é encerrada **sem resultado definido**. Nenhuma opção é declarada vencedora. O síndico é notificado e pode criar uma nova votação para o mesmo tema.
+| Convocação | Quórum de presença | Descrição |
+|---|---|---|
+| **Primeira** | 50% dos elegíveis devem votar | Para que o resultado seja válido, pelo menos metade dos apartamentos do snapshot deve ter votado. Se não atingir, a votação é INVALIDATED |
+| **Segunda** | Nenhum | Qualquer número de votos é válido. A decisão é tomada pela maioria dos que efetivamente votaram |
 
-**Quórum não atingido:** ao encerrar, o sistema marca a votação como **Invalidada** automaticamente. O síndico é notificado. Uma nova votação pode ser criada para o mesmo tema.
+### Modos de quórum
+
+O síndico define o modo de quórum ao criar a votação. O **denominador** para os modos Absoluto e Qualificado é sempre o **snapshot de elegíveis na abertura** (número de apartamentos elegíveis fixado no momento em que a votação abre).
+
+| Modo | Denominador | Limiar para vencer |
+|------|-------------|-------------------|
+| Maioria simples | Votos efetivamente computados | opção_vencedora ≥ ⌊votos_computados / 2⌋ + 1 |
+| Maioria absoluta | Snapshot elegíveis na abertura | opção_vencedora ≥ ⌊snapshot / 2⌋ + 1 |
+| Quórum qualificado 2/3 | Snapshot elegíveis na abertura | opção_vencedora ≥ ⌈snapshot × 2/3⌉ |
+| Quórum qualificado 3/4 | Snapshot elegíveis na abertura | opção_vencedora ≥ ⌈snapshot × 3/4⌉ |
+
+### Moradores que não votaram
+
+Contabilizados no denominador dos modos Absoluto e Qualificado (impactam o quórum), mas **não são contados como voto em nenhuma opção**. Não votar não é votar contra.
+
+### Resultados possíveis ao encerrar
+
+| Estado | Condição | Descrição |
+|--------|----------|-----------|
+| **CLOSED** | Uma opção atingiu o limiar | Vencedor declarado |
+| **INVALIDATED** | Nenhuma opção atingiu o limiar, **ou** quórum de presença não atingido (Primeira Convocação) | Votação invalidada. Síndico notificado, pode criar nova votação |
+
+**Nota:** empate exato (ex: 50-50) é um caso particular de INVALIDATED — nenhuma opção atingiu 50%+1, logo nenhuma vence. Não existe estado TIED separado; é matematicamente impossível que duas opções atinjam simultaneamente um limiar >50%.
 
 ---
 
@@ -196,6 +236,11 @@ Notificações push avaliadas na v2.
 - **1 votante por apartamento:** proprietário por padrão; delegação explícita ao inquilino
 - **Sem resultados parciais:** preserva a independência do voto até o encerramento
 - **Multi-tenant:** moradores podem estar vinculados a múltiplos condomínios, com seletor de contexto no frontend
+- **Snapshot de elegibilidade na abertura:** o denominador do quórum é fixado no instante em que a votação abre. Alterações de inadimplência, delegação ou remoção de morador só afetam votações futuras
+- **Voto pertence ao apartamento (usuário é testemunha):** direito de voto é da unidade condominial, não da pessoa — alinhado com o Código Civil. O usuário que votou fica registrado para auditoria
+- **Síndicos com paridade total:** todos os síndicos de um condomínio têm as mesmas permissões. Qualquer um pode agir sobre qualquer recurso. O sistema registra qual síndico executou cada ação para auditoria
+- **Delegação bloqueada durante polls abertos:** previne confusão sobre quem pode votar e elimina vetor de manipulação (delegar, votar, revogar)
+- **Convocação explícita:** cada votação define se é Primeira (com quórum de presença de 50%) ou Segunda Convocação (sem quórum de presença), alinhado com a prática condominial brasileira
 
 ---
 

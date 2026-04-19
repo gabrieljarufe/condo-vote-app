@@ -22,11 +22,11 @@ Antes de qualquer decisão técnica, é preciso entender os limites reais do pro
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Tamanho do time | | |
-| Budget mensal de infra | | |
-| Deadline v1 | | |
-| Expertise principal | | |
-| Escala v1 | | |
+| Tamanho do time | 2-3 devs | Time pequeno; decisões devem minimizar overhead operacional |
+| Budget mensal de infra | R$0 (free tier), escalando conforme necessidade | Supabase Free + Railway/Fly.io Free + Upstash Free cobrem a fase piloto. Supabase Pro (~$25/mês) quando necessário |
+| Deadline v1 | ~3 meses (Jul 2026) | Meta realista com Supabase acelerando infra e time fullstack experiente |
+| Expertise principal | Forte em Java/Spring + Angular; desafio é DevOps/infra | Supabase e PaaS (Railway) mitigam a fraqueza em DevOps. Backend e frontend não são gargalos |
+| Escala v1 | 1-5 condomínios (piloto) | Free tier suficiente. Foco em validar o produto com poucos usuários reais |
 
 ---
 
@@ -58,7 +58,7 @@ Independente de quem autentica, alguém precisa saber que "este usuário é sín
 | Opção | O que implica |
 |-------|---------------|
 | **No identity provider** | Roles como claims no JWT. O app não precisa consultar o banco para verificar permissões. Mas: trocar role exige atualizar o IdP, não só o banco |
-| **Na aplicação (tabela `condominium_role`)** | O app consulta o banco para cada verificação de permissão. Mas: controle total, alinhado com RLS, sem dependência externa |
+| **Na aplicação (tabela `condominium_admin`)** | O app consulta o banco para cada verificação de permissão. Mas: controle total, alinhado com RLS, sem dependência externa |
 | **Híbrido** | IdP sabe que o user existe e está ativo. App sabe quais papéis ele tem em cada condo. JWT tem só user_id, app resolve o resto |
 
 **1.3 — Fluxo de convite e onboarding**
@@ -74,9 +74,126 @@ O síndico envia convite por e-mail. O morador clica no link e cria conta.
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Gestão de identidade | | |
-| Onde vivem os papéis | | |
-| Fluxo de onboarding | | |
+| Gestão de identidade | **Supabase Auth (SaaS)** | Elimina ~500-800 linhas de código de auth. Rate limiting, brute-force protection, hashing, refresh rotation vêm prontos. Lock-in mitigado: (1) não usar PostgREST nem Edge Functions, (2) camada `AuthGateway` no Spring Boot abstrai validação de JWT — se migrar para Keycloak no futuro, só essa camada muda |
+| Onde vivem os papéis | **Híbrido** | JWT do Supabase contém apenas `sub` (user_id) + `email`. Papéis (síndico, owner, tenant) vivem no banco (`condominium_admin`, `apartment_resident`) e são resolvidos pelo Spring por request, baseado no tenant ativo. Motivo: papéis são por condomínio, não por user — não cabem no JWT |
+| Fluxo de onboarding | **Validação pública → signUp no Supabase → complete no Spring** | Ver detalhamento abaixo |
+
+### Detalhamento do fluxo de onboarding
+
+**Pré-condição:** síndico já criou o convite (`invitation` + token no Redis + email na fila).
+
+```
+1. Morador clica link do email
+   → Angular carrega rota /invite?token=abc123
+
+2. Angular → GET /api/invitations/validate?token=abc123 (PÚBLICO, sem auth)
+   → Spring: Redis GET invitation:token:abc123 → invitation_id
+   → Spring: SELECT invitation WHERE id=... AND status='PENDING' AND expires_at > now()
+   → Retorna: {email, condominium_name, unit_number, role}
+
+3. Morador preenche formulário
+   → Campos: nome, CPF, senha, aceite LGPD
+   → Email é read-only (veio do passo 2)
+   → CPF é obrigatório para TODOS (app_user.cpf_encrypted é NOT NULL)
+
+4. Angular → supabase.auth.signUp({email, password})
+   → Supabase cria auth.users, retorna session com access_token (JWT)
+   → Confirmação de email DESABILITADA (convite já validou o email)
+
+5. Angular → POST /api/register/complete (AUTENTICADO via JWT do passo 4)
+   → Header: Authorization: Bearer <jwt_supabase>
+   → Body: {invitation_token, name, cpf, consent_policy_version}
+
+   Spring executa em transação:
+   a. Valida JWT via JWKS do Supabase → extrai user_id (sub)
+   b. Redis GET invitation:token → invitation_id
+   c. Valida invitation (PENDING, não expirado, email confere com JWT)
+   d. Se TENANT: valida que CPF informado confere com invitation.cpf_encrypted (anti-fraude)
+   e. INSERT app_user (id = jwt.sub, name, email, cpf_encrypted=AES256(cpf))
+      — OU se app_user já existe (segundo+ convite): pula INSERT, valida que CPF confere
+   e. INSERT apartment_resident (user_id, apartment_id, role)
+   f. UPDATE apartment SET eligible_voter_user_id = user_id (se OWNER)
+   g. UPDATE invitation SET status='ACCEPTED', accepted_at=now()
+   h. INSERT audit_event
+   i. COMMIT
+   j. Redis DEL invitation:token:abc123
+
+6. Morador autenticado — JWT em memória, refresh gerenciado pelo Supabase SDK
+```
+
+### User já existente (múltiplos apartamentos)
+
+Uma mesma pessoa pode ser convidada para mais de um apartamento no mesmo condomínio (ex: proprietário de apt 101 e apt 201). Nesse caso, na segunda vez o user já tem conta no Supabase e `app_user` no banco.
+
+O frontend detecta isso no passo 4:
+
+```
+4a. Angular tenta supabase.auth.signUp({email, password})
+    → Se SUCESSO: user novo, segue para passo 5 normalmente
+    → Se ERRO "User already registered":
+       → Angular mostra tela de login (email + senha)
+       → User loga: supabase.auth.signInWithPassword({email, password})
+       → Recebe JWT → segue para passo 5
+
+5. POST /api/register/complete (mesmo endpoint, idempotente)
+   → Spring detecta que app_user já existe (SELECT por jwt.sub)
+   → Pula INSERT app_user
+   → Cria apenas apartment_resident para o novo apartamento
+   → Aceita invitation normalmente
+```
+
+O endpoint `/register/complete` é **idempotente em relação ao app_user** — funciona tanto para user novo quanto para user existente. A lógica é:
+- `app_user` existe? → usa o existente
+- `app_user` não existe? → cria
+
+**Ponto de atenção — orphan no Supabase:** se o passo 4 (signUp) funcionar mas o passo 5 (complete) falhar, existe um `auth.users` sem `app_user` correspondente. Mitigação:
+- `/register/complete` é **idempotente**: se chamado de novo com o mesmo JWT e token válido, completa o cadastro
+- Para a v1 piloto, isso é suficiente. Job de cleanup fica como melhoria futura se necessário
+
+### Validação de JWT no Spring Boot
+
+```yaml
+# application.yml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+```
+
+O Spring cacheia a chave pública do Supabase em memória. Nenhuma chamada de rede ao Supabase por request — validação é local.
+
+### Camada AuthGateway
+
+Interface que abstrai "quem é o usuário autenticado":
+
+```java
+public interface AuthGateway {
+    UUID getCurrentUserId();    // extrai do SecurityContext
+    String getCurrentEmail();   // extrai do JWT claims
+}
+```
+
+Implementação v1 lê claims do JWT do Supabase. Se migrar para Keycloak, só a implementação muda.
+
+### Refresh de tokens
+
+Gerenciado inteiramente pelo Supabase JS SDK no Angular:
+- Access token expira em ~1h (configurável no Dashboard)
+- SDK detecta expiração e usa refresh token para obter novo access token
+- Angular não precisa de interceptor manual para refresh
+- Evento `onAuthStateChange('TOKEN_REFRESHED')` disponível se necessário
+
+### Configurações no Supabase Dashboard
+
+| Configuração | Valor | Motivo |
+|-------------|-------|--------|
+| Email confirmations | OFF | Todos os users chegam via convite — email já validado |
+| JWT expiry | 3600s (1h) | Padrão do Supabase, suficiente para v1 |
+| Minimum password length | 8 | Padrão razoável para v1 |
+| Refresh token rotation | ON (padrão) | Previne reuso de refresh tokens vazados |
+| SMTP customizado | Resend (SMTP credentials) | Todos os emails do Supabase Auth (reset de senha) saem pelo mesmo domínio/remetente que os emails transacionais do app. Configurado em Auth → SMTP Settings no Dashboard |
 
 ---
 
@@ -120,10 +237,158 @@ O data model usa RLS com `SET LOCAL app.current_tenant`. Isso implica:
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Arquitetura geral | | |
-| Estrutura de packages | | |
-| Estratégia de RLS no app | | |
-| Estratégia de validação | | |
+| Arquitetura geral | **Monolito modular** | Um artefato Spring Boot com módulos bem separados (`auth/`, `poll/`, `apartment/`, `notification/`, `shared/`). Microserviços é overhead injustificável para 2-3 devs e 3 meses. A "peça de User/Email" virou módulo interno (`auth/`) — com Supabase Auth, restam apenas ~4-5 classes (AuthGateway, RegisterController, RegisterService, app_user CRUD). Não justifica serviço separado. Fronteira de módulo permite extração futura sem reescrita |
+| Estrutura de packages | **Package by feature + DDD-lite** | Cada módulo contém seu controller, service, repository, DTOs. Entities têm comportamento (não anêmicas): `poll.canBeOpened()`, `poll.isQuorumReached()`. Controllers são finos (valida → service → response). Services orquestram (chamam entity methods + repositories + outros services). Sem maquinaria formal de DDD (sem aggregate roots, domain events, bounded contexts, specification pattern). Estrutura: `auth/`, `poll/`, `apartment/`, `condominium/`, `notification/`, `shared/` |
+| Estratégia de RLS no app | **Interceptor + @Transactional** | `HandlerInterceptor` extrai `X-Tenant-Id` do header e guarda em `TenantContext` (ThreadLocal). Um `TransactionInterceptor` customizado (AOP) executa `SET LOCAL app.current_tenant = :id` no início de cada transação. Para operações **cross-tenant** (ex: listar condomínios do user), o controller não envia `X-Tenant-Id` e o interceptor não seta tenant — a query roda sem RLS filtering. Ver detalhamento abaixo |
+| Estratégia de validação | **Bean Validation + @ControllerAdvice** | DTOs de entrada usam `@Valid` com annotations (`@NotBlank`, `@Size`, `@Email`). Regras de domínio vivem no Service (ex: "mínimo 2 opções por poll", "user é síndico deste condo"). `@RestControllerAdvice` global mapeia exceções para HTTP: `ConstraintViolationException` → 400, `DataIntegrityViolationException` (voto duplicado) → 409, `ForbiddenException` (custom) → 403, `NotFoundException` (custom) → 404 |
+
+### Detalhamento: Estratégia de RLS no app
+
+```
+── Request com tenant (maioria dos endpoints) ──
+
+  Angular envia:
+    Authorization: Bearer <jwt>
+    X-Tenant-Id: <condominium_uuid>
+
+  Spring:
+    1. TenantInterceptor.preHandle()
+       → Extrai X-Tenant-Id do header
+       → Valida que é UUID válido
+       → Valida que o user autenticado pertence a esse condo
+         (SELECT 1 FROM condominium_admin WHERE user_id=? AND condominium_id=? AND revoked_at IS NULL
+          UNION
+          SELECT 1 FROM apartment_resident WHERE user_id=? AND condominium_id=? AND ended_at IS NULL)
+       → Se nenhum resultado: 403 Forbidden
+       → Guarda em TenantContext.set(condominiumId)  // ThreadLocal
+       → NÃO resolve papel (síndico/owner/tenant) — isso é responsabilidade de cada endpoint
+
+    2. @Transactional no Service method
+       → AOP intercepta, abre transação
+       → Executa: SET LOCAL app.current_tenant = :condominiumId
+       → Todas as queries subsequentes são filtradas por RLS
+       → Ao commit/rollback, SET LOCAL é automaticamente desfeito
+
+    3. TenantInterceptor.afterCompletion()
+       → TenantContext.clear()  // limpa ThreadLocal
+
+
+── Request sem tenant (cross-tenant) ──
+
+  Endpoints que NÃO operam num condo específico:
+    GET /api/me/condominiums  → lista condos do user
+    POST /api/register/complete → cadastro (ainda sem condo ativo)
+
+  Angular NÃO envia X-Tenant-Id.
+  TenantInterceptor detecta ausência → não seta tenant.
+  Transação roda sem SET LOCAL → RLS não filtra.
+  Estes endpoints usam queries explícitas com WHERE user_id = :userId.
+```
+
+### Autorização por endpoint
+
+O papel do user (síndico, owner, tenant) **não é resolvido no interceptor**. Cada endpoint verifica individualmente a permissão necessária:
+
+- **Endpoints de síndico** (criar poll, cancelar, convidar, alterar inadimplência): o service consulta `condominium_admin` para verificar se o user é síndico ativo do condo.
+- **Endpoints de morador** (votar, delegar): o service consulta `apartment_resident` e/ou `poll_eligible_snapshot`.
+- **Endpoints de leitura** (listar polls, ver resultado): acessíveis a qualquer membro do condo (o interceptor já validou pertencimento).
+
+Isso permite que um user seja **síndico e morador simultaneamente** sem conflito de papel — cada endpoint verifica exatamente o que precisa. Exemplo: o mesmo user pode criar uma votação (verifica `condominium_admin`) e votar nela (verifica `poll_eligible_snapshot`).
+
+### Estrutura de packages (DDD-lite)
+
+```
+src/main/java/com/condovote/
+├── auth/                         ← autenticação e cadastro
+│   ├── AuthGateway.java              interface (abstrair provider de auth)
+│   ├── SupabaseAuthGateway.java      implementação (extrai claims do JWT)
+│   ├── RegisterController.java       POST /register/complete (thin)
+│   ├── RegisterService.java          orquestra: valida invitation + cria user + vincula apt
+│   └── dto/
+│       └── RegisterRequest.java
+├── poll/                         ← votações
+│   ├── PollController.java           thin: valida input, chama service
+│   ├── PollService.java              orquestra: cria poll, abre, fecha, gera snapshot
+│   ├── PollRepository.java           interface Spring Data
+│   ├── Poll.java                     entity com comportamento:
+│   │                                   poll.canBeOpened()
+│   │                                   poll.isQuorumReached(snapshotCount)
+│   │                                   poll.transition(newStatus)
+│   ├── PollOption.java
+│   ├── VoteController.java
+│   ├── VoteService.java
+│   ├── Vote.java                     entity: vote.belongsToApartment(aptId)
+│   └── dto/
+├── apartment/                    ← apartamentos e moradores
+│   ├── ApartmentController.java
+│   ├── ApartmentResidentService.java
+│   ├── DelegationService.java        lógica de delegação de voto
+│   ├── Apartment.java                entity: apt.isEligible(), apt.currentOwner()
+│   ├── ApartmentResident.java        entity: resident.isActive(), resident.end(reason)
+│   └── dto/
+├── condominium/                  ← condomínios e síndicos
+│   ├── CondominiumController.java
+│   ├── CondominiumAdminService.java
+│   └── dto/
+├── invitation/                   ← convites (lifecycle próprio)
+│   ├── InvitationController.java
+│   ├── InvitationService.java        orquestra: cria, reenvia, expira, valida token
+│   ├── Invitation.java               entity: inv.accept(), inv.revoke(userId), inv.isExpired()
+│   ├── InvitationRepository.java
+│   └── dto/
+├── notification/                 ← email outbox
+│   ├── EmailNotificationService.java  enfileira emails na mesma transação
+│   ├── EmailSenderJob.java            job assíncrono: processa PENDING, retry com backoff
+│   └── dto/
+├── shared/                       ← infraestrutura transversal
+│   ├── tenant/
+│   │   ├── TenantContext.java         ThreadLocal holder
+│   │   ├── TenantInterceptor.java     HandlerInterceptor
+│   │   └── TenantTransactionAspect.java  AOP: SET LOCAL
+│   ├── exception/
+│   │   ├── GlobalExceptionHandler.java   @RestControllerAdvice
+│   │   ├── ForbiddenException.java
+│   │   └── NotFoundException.java
+│   └── config/
+│       └── SecurityConfig.java        Spring Security + JWKS
+└── CondoVoteApplication.java
+```
+
+**Princípios DDD-lite aplicados:**
+- Entities vivem dentro do módulo que as "dono" — não numa pasta `entity/` global
+- Entities têm métodos de negócio (não são apenas getters/setters)
+- Services orquestram: chamam entity methods → repositories → outros services
+- Controllers são finos: deserializa → `@Valid` → service → serializa
+- Comunicação entre módulos é direta (service chama service), sem event bus
+- DTOs de request/response nunca são a entity JPA
+
+### Endpoints de ação do síndico (não cobertos nos jobs)
+
+Ações manuais do síndico que não são automáticas (jobs):
+
+| Endpoint | Método | Requer | O que faz |
+|----------|--------|--------|-----------|
+| `/api/polls/{id}/open` | POST | Síndico | Abertura manual: SCHEDULED → OPEN. Gera snapshot, enfileira emails, audit_event `POLL_OPENED_MANUALLY` |
+| `/api/polls/{id}/cancel` | POST | Síndico | Cancelamento: SCHEDULED/OPEN → CANCELLED. Body: `{reason}`. Atualiza `cancelled_at/by/reason`, audit_event `POLL_CANCELLED`, enfileira email |
+| `/api/apartments/{id}/delegate` | POST | Proprietário | Delega voto ao inquilino. Body: `{tenant_user_id}`. Atualiza `eligible_voter_user_id`. Bloqueado se apt tem poll OPEN no snapshot |
+| `/api/apartments/{id}/delegate` | DELETE | Proprietário | Revoga delegação. Proprietário volta a ser votante. Bloqueado se apt tem poll OPEN no snapshot |
+| `/api/apartments/{id}/residents/{residentId}/promote` | POST | Síndico | Promove inquilino a proprietário. Encerra vínculo TENANT (`PROMOTED_TO_OWNER`), cria novo OWNER, atualiza `eligible_voter_user_id`. Bloqueado se apt tem poll OPEN no snapshot |
+
+### Edição de poll agendada
+
+Enquanto o poll está no estado **SCHEDULED**, **todos os campos são editáveis**: título, descrição, opções, datas (`scheduled_start`/`scheduled_end`), `quorum_mode`, `convocation`. A partir do momento em que transita para **OPEN**, nenhum campo é editável.
+
+### Verificação de elegibilidade no voto (VoteService)
+
+```
+1. Poll está OPEN? → Se não: 400
+2. apartment_id está no poll_eligible_snapshot? → Se não: 403
+3. voter_user_id == snapshot.eligible_voter_user_id? → Se não: 403
+4. Já existe vote para (poll_id, apartment_id)? → Se sim: 409
+5. INSERT vote
+```
+
+Verificação é **100% contra o snapshot**. Se o votante habilitado for removido durante a votação, o apartamento perde o voto nesta votação. O snapshot é imutável e define tanto quais apartamentos quanto quem pode votar.
 
 ---
 
@@ -158,9 +423,88 @@ O data model está definido em Markdown. Como vira schema real?
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Hosting do banco | | |
-| Ferramenta de migrations | | |
-| Setup local | | |
+| Hosting do banco | **Supabase (Postgres gerenciado)** | Decidido na Seção 1. Backup automático, patching, dashboard Studio. Free tier suficiente para piloto. Mesmo Postgres da auth, schema `public` para tabelas de domínio |
+| Ferramenta de migrations | **Flyway** | Migrations SQL versionadas (`V1__create_condominium.sql`). Controle total do SQL — necessário para criar RLS policies, enums PostgreSQL, índices parciais, triggers. Integração nativa com Spring Boot (`spring.flyway.url`). Roda tanto contra Supabase remoto quanto contra Postgres local |
+| Setup local | **Supabase CLI + Testcontainers** | Ver detalhamento abaixo |
+| Ambientes | **Local + Produção** | Staging remoto fica para quando o time crescer. Para piloto com 2-3 devs, local + prod é suficiente |
+
+### Detalhamento: Ambientes
+
+```
+┌────────────────────────────────────────────────────────────┐
+│  LOCAL (máquina do dev)                                    │
+│                                                            │
+│  Supabase CLI: supabase init + supabase start              │
+│  ├── Postgres (porta 54322) — Flyway aplica migrations     │
+│  ├── GoTrue / Auth (porta 54321) — testa signUp/signIn     │
+│  └── Studio (porta 54323) — dashboard web para inspecionar │
+│                                                            │
+│  Spring Boot: ./mvnw spring-boot:run (profile "local")     │
+│  Angular: ng serve                                         │
+│  Redis: Docker (redis:7-alpine) ou Upstash free            │
+│                                                            │
+│  Seed de dados (Flyway repeatable migration R__seed.sql):  │
+│  ├── 1 condomínio de teste                                 │
+│  ├── 1 síndico (condominium_admin + app_user)              │
+│  │   → User criado manualmente no Supabase (Dashboard ou   │
+│  │     supabase auth admin create-user). UUID copiado       │
+│  │     para o seed SQL.                                     │
+│  ├── 3-5 apartamentos                                      │
+│  └── 1 proprietário + 1 inquilino cadastrados              │
+├────────────────────────────────────────────────────────────┤
+│  TESTES AUTOMATIZADOS (CI ou local: ./mvnw test)           │
+│                                                            │
+│  Testcontainers:                                           │
+│  ├── PostgreSQL container efêmero por test suite           │
+│  ├── Flyway aplica migrations (mesmas da prod)             │
+│  ├── Testa: RLS policies, constraints, índices parciais    │
+│  └── Redis Testcontainer para testes de invitation token   │
+│                                                            │
+│  JWT mockado: SecurityContext injetado com user_id fake     │
+│  (não depende de Supabase para rodar testes)               │
+├────────────────────────────────────────────────────────────┤
+│  PRODUÇÃO (remoto)                                         │
+│                                                            │
+│  Supabase (projeto principal) — Postgres + Auth            │
+│  Spring Boot em Railway/Fly.io                             │
+│  Angular em Vercel                                         │
+│  Redis em Upstash                                          │
+└────────────────────────────────────────────────────────────┘
+```
+
+### Flyway + Supabase: como funciona
+
+Flyway conecta direto no Postgres do Supabase (connection string do Dashboard). As migrations são SQL puro:
+
+```
+src/main/resources/db/migration/
+├── V1__create_enums.sql              ← resident_role, poll_status, etc.
+├── V2__create_condominium.sql        ← tabela + RLS policy
+├── V3__create_apartment.sql          ← tabela + RLS + índice funcional UNIQUE
+├── V4__create_app_user.sql           ← tabela (sem RLS — cross-tenant)
+├── V5__create_apartment_resident.sql ← tabela + RLS + constraints
+├── V6__create_invitation.sql         ← tabela + RLS + CHECK + índice parcial
+├── V7__create_poll.sql               ← tabela + RLS + lifecycle constraints
+├── V8__create_poll_option.sql
+├── V9__create_vote.sql               ← tabela + RLS + UNIQUE (poll_id, apartment_id), imutável
+├── V10__create_poll_eligible_snapshot.sql
+├── V11__create_poll_result.sql
+├── V12__create_audit_event.sql
+├── V13__create_email_notification.sql
+└── R__seed_dev_data.sql              ← repeatable migration (só roda em profile local)
+```
+
+Cada migration inclui a RLS policy da tabela:
+
+```sql
+-- V2__create_condominium.sql
+CREATE TABLE condominium (...);
+
+ALTER TABLE condominium ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY tenant_isolation ON condominium
+    USING (id = current_setting('app.current_tenant')::uuid);
+```
 
 ---
 
@@ -193,9 +537,57 @@ O ciclo de vida do poll depende de ações automáticas: abrir na `scheduled_sta
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Mecanismo de jobs | | |
-| Frequência de polling | | |
-| Estratégia de idempotência | | |
+| Mecanismo de jobs | **Spring `@Scheduled`** | v1 roda 1 instância do Spring Boot — @Scheduled é suficiente. Se escalar para 2+ instâncias, adicionar ShedLock (lock via banco, ~30min de setup). Fila de mensagens é overkill para piloto |
+| Frequência de polling | **1 minuto** | Poll agendado para 14:00 abre entre 14:00 e 14:01. Tolerância aceitável para votação condominial. Baixo custo de CPU (~1 query leve por minuto) |
+| Estratégia de idempotência | **Status check + SELECT FOR UPDATE** | Job faz `SELECT FOR UPDATE WHERE status='SCHEDULED' AND scheduled_start <= now()`. Se já transitou, retorna 0 rows. Lock pessimista garante atomicidade mesmo sob retry |
+
+### Jobs previstos
+
+| Job | Frequência | O que faz |
+|-----|-----------|-----------|
+| `PollOpenerJob` | @Scheduled(fixedRate = 60s) | `SELECT polls WHERE status='SCHEDULED' AND scheduled_start <= now()` → para cada: gera snapshot, transita para OPEN, enfileira emails "votação aberta" |
+| `PollCloserJob` | @Scheduled(fixedRate = 60s) | `SELECT polls WHERE status='OPEN' AND scheduled_end <= now()` → para cada: computa resultado, transita para CLOSED ou INVALIDATED, enfileira emails |
+| `AllVotedCheckerJob` | @Scheduled(fixedRate = 60s) | `SELECT polls WHERE status='OPEN'` → para cada: compara `COUNT(votes)` com `COUNT(snapshot)`. Se iguais, fecha antecipadamente (trigger = `AUTOMATIC_ALL_VOTED`) |
+| `InvitationExpirerJob` | @Scheduled(fixedRate = 3600s) | `UPDATE invitations SET status='EXPIRED' WHERE status='PENDING' AND expires_at < now()`. Sincroniza PG com Redis (token já expirou via TTL) |
+| `EmailSenderJob` | @Scheduled(fixedRate = 30s) | `SELECT email_notifications WHERE status='PENDING' AND scheduled_for <= now()` → envia via provider. Retry com backoff em FAILED |
+| `ReminderEnqueuerJob` | @Scheduled(cron = "0 0 * * * *") | 1x por hora: verifica polls OPEN com `scheduled_end` em < 24h e sem lembrete enviado → enfileira emails de lembrete para não-votantes |
+
+### Detalhamento: idempotência por job
+
+```
+PollOpenerJob (exemplo):
+
+  @Scheduled(fixedRate = 60_000)
+  @Transactional
+  public void openScheduledPolls() {
+      // SELECT FOR UPDATE garante que 2 execuções não abrem o mesmo poll
+      List<Poll> polls = pollRepository
+          .findScheduledReadyToOpen(now());  // status=SCHEDULED AND start <= now()
+                                              // com FOR UPDATE
+
+      for (Poll poll : polls) {
+          // 1. Gerar snapshot (write-once, UNIQUE (poll_id, apartment_id) impede duplicata)
+          snapshotService.generateForPoll(poll);
+
+          // 2. Transitar status
+          poll.transition(PollStatus.OPEN);  // entity method valida transição
+          poll.setOpenedAt(now());
+
+          // 3. Enfileirar emails (mesma transação)
+          notificationService.enqueuePollOpened(poll);
+      }
+  }
+```
+
+### Nota sobre carga
+
+A v1 piloto (1-5 condos, ~100 users) gera carga trivial:
+- Auth (login/signup) vai direto para Supabase — não toca o Spring Boot
+- Votos, cadastros, leituras: ~320 requests/4min no pico = ~1.3 TPS
+- Capacidade do Spring Boot (HikariCP 10 conn): ~2000 TPS
+- Jobs @Scheduled: 1 query leve/minuto, independente da carga de requests
+
+Para escalar além (1000+ users simultâneos): aumentar HikariCP pool, migrar para Supabase Pro, considerar ShedLock se >1 instância.
 
 ---
 
@@ -229,9 +621,82 @@ A spec define 8 tipos de notificação por e-mail na v1.
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Provider de e-mail | | |
-| Síncrono vs assíncrono | | |
-| Renderização de templates | | |
+| Provider de e-mail | **Resend** | 3K emails/mês grátis (suficiente para piloto). API moderna com SDK Java. Developer experience boa. $20/mês para 50K quando escalar. Sem overhead de setup como SES (sem sandbox, sem IAM) |
+| Síncrono vs assíncrono | **Assíncrono via transactional outbox** | Já definido no data model: `email_notification` (tabela outbox). Service enfileira na mesma transação da operação de domínio. `EmailSenderJob` (@Scheduled cada 30s) processa PENDING. Se Resend estiver fora, emails ficam na fila — sem perda. Retry com backoff para FAILED |
+| Renderização de templates | **Thymeleaf no Spring Boot** | Templates `.html` no classpath (`src/main/resources/templates/email/`), versionados no git. Spring renderiza com variáveis (poll_title, voter_name, link). Mesma engine que o Spring já integra nativamente |
+| Abstração de provider | **Interface `EmailSender` + `ResendEmailSender`** | Interface abstrai o envio; v1 tem apenas Resend. Se Resend cair ou precisar trocar, implementa outro provider sem mudar `EmailSenderJob`. Evita over-engineering de multi-provider agora |
+
+### Abstração de provider: EmailSender
+
+```java
+public interface EmailSender {
+    void send(String to, String subject, String htmlBody);
+}
+```
+
+Implementação v1: `ResendEmailSender` — chama a API do Resend. `EmailSenderJob` depende apenas da interface.
+
+Para adicionar fallback futuro:
+1. Criar `MailgunEmailSender` (ou qualquer provider)
+2. Criar `FallbackEmailSender` que tenta o primário e, se falhar, tenta o secundário
+3. Trocar o bean `@Primary` — zero mudanças no job ou nos services
+
+### Templates de e-mail (v1)
+
+```
+src/main/resources/templates/email/
+├── invitation.html           ← link de convite + nome do condo + apt
+├── poll-scheduled.html       ← nova votação publicada (título, datas)
+├── poll-opened.html          ← votação aberta (link para votar)
+├── poll-reminder-24h.html    ← lembrete para não-votantes
+├── poll-closed-result.html   ← resultado (opção vencedora, percentuais)
+├── poll-invalidated.html     ← quórum não atingido
+├── poll-cancelled.html       ← cancelada + motivo
+└── password-reset.html       ← NÃO USADO na v1 (Supabase Auth cuida)
+```
+
+> **Nota:** `password-reset.html` não é necessário na v1 — Supabase Auth tem seu próprio template de reset configurável no Dashboard. Mantido como placeholder caso migre para auth própria no futuro.
+
+> **SMTP unificado:** Supabase Auth é configurado com SMTP customizado apontando para Resend (Auth → SMTP Settings no Dashboard). Isso garante que **todos** os emails do sistema (transacionais do app + reset de senha do Supabase Auth) saem pelo mesmo domínio e remetente, evitando inconsistência e risco de spam.
+
+### Fluxo de envio
+
+```
+  Operação de domínio (ex: síndico cria poll)
+        │
+        ▼
+  PollService.create()
+        │
+        ├── INSERT poll                          ─┐
+        ├── INSERT poll_options                    │ mesma transação
+        └── notificationService.enqueue(          │
+              type=POLL_SCHEDULED,                 │
+              recipients=allResidents,             │
+              payload={poll_title, dates})         │
+            → INSERT email_notification (PENDING) ─┘
+        │
+        ▼
+  COMMIT ← atomicidade garantida: poll + emails na mesma tx
+
+        ... 30 segundos depois ...
+
+  EmailSenderJob (@Scheduled)
+        │
+        ├── SELECT FROM email_notification
+        │     WHERE status='PENDING' AND scheduled_for <= now()
+        │     ORDER BY created_at LIMIT 50
+        │
+        ├── Para cada email:
+        │     1. Thymeleaf renderiza HTML com payload
+        │     2. Resend API envia
+        │     3. Se OK: status='SENT', sent_at=now()
+        │     4. Se ERRO: attempts++, last_error=msg
+        │        Se attempts >= 3: status='FAILED'
+        │        Se bounce hard: status='BOUNCED'
+        │          → atualiza invitation.status='BOUNCED' se aplicável
+        │
+        └── Backoff: 1ª retry imediata, 2ª após 5min, 3ª após 30min
+```
 
 ---
 
@@ -265,9 +730,47 @@ O morador pode estar em múltiplos condomínios. Como o frontend comunica qual c
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Contrato de API | | |
-| Tenant context | | |
-| Token refresh | | |
+| Contrato de API | **REST + springdoc-openapi (Swagger UI)** | springdoc gera OpenAPI spec a partir dos controllers (annotations do Spring). Swagger UI em `/swagger-ui.html` para dev. Sem versionamento formal na v1 — prefixo `/api/` é suficiente. Versionar (`/v1/`) quando houver clientes externos |
+| Tenant context | **Header `X-Tenant-Id`** | Já decidido na Seção 2 (TenantInterceptor). Angular HttpInterceptor injeta o header com o condomínio ativo. Endpoints cross-tenant (ex: `GET /api/me/condominiums`) não enviam o header |
+| Token refresh | **Supabase JS SDK** | Já decidido na Seção 1. SDK gerencia refresh automático. Angular não precisa de interceptor de retry 401 — SDK resolve antes. `onAuthStateChange('TOKEN_REFRESHED')` para sincronizar estado |
+| Paginação | **Offset-based (Page/Size)** | Spring Data `Pageable` nativo. Suficiente para v1 (listas pequenas: polls, apartments, residents). Cursor-based só se necessário por performance em tabelas grandes (audit_event futuramente) |
+| Formato de resposta | **Envelope simples** | Sucesso: `{ data: {...} }` ou array direto. Erro: `{ error: "code", message: "..." }`. Sem envelope complexo (HATEOAS, JSON:API). `@ControllerAdvice` garante formato consistente de erro |
+
+### Detalhamento: HttpInterceptor Angular
+
+```typescript
+// Angular interceptor — injeta JWT + tenant em toda request para o backend
+intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
+  const session = this.supabaseService.session();
+  let headers = req.headers;
+
+  if (session?.access_token) {
+    headers = headers.set('Authorization', `Bearer ${session.access_token}`);
+  }
+
+  if (this.tenantService.activeTenantId) {
+    headers = headers.set('X-Tenant-Id', this.tenantService.activeTenantId);
+  }
+
+  return next.handle(req.clone({ headers }));
+}
+```
+
+### Seleção de tenant no frontend
+
+```
+Após login:
+  1. Angular → GET /api/me/condominiums (cross-tenant, sem X-Tenant-Id)
+     → Retorna lista de {condominium_id, name, role}
+
+  2a. Se 1 condo → auto-seleciona como tenant ativo
+  2b. Se N condos → tela de seleção ("Em qual condomínio deseja entrar?")
+
+  3. Tenant ativo armazenado em memória (TenantService)
+     → NÃO em cookie/localStorage (reseta no refresh = mais seguro)
+     → HttpInterceptor injeta X-Tenant-Id automaticamente
+     → Troca de condo: usuário volta à tela de seleção
+```
 
 ---
 
@@ -300,9 +803,102 @@ O morador pode estar em múltiplos condomínios. Como o frontend comunica qual c
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Hosting | | |
-| Pipeline de deploy | | |
-| Containerização | | |
+| Hosting backend | **Railway** | PaaS push-to-deploy. Free tier → Hobby ($5/mês). Suporta Java/Docker. Variáveis de ambiente via Dashboard. Menos controle que VPS, mas 2-3 devs sem experiência em DevOps não devem operar VPS |
+| Hosting frontend | **Vercel** | Angular com static export. Deploy automático via GitHub. CDN global. Free tier generoso |
+| Hosting Redis | **Upstash** | Redis serverless. Free tier 10K commands/dia (suficiente para invitation tokens). Pay-as-you-go depois |
+| Pipeline CI/CD | **GitHub Actions** | Workflow: push → test → build → deploy. PR checks obrigatórios em `develop` e `main`. Railway auto-deploy a partir de `main` |
+| Branching strategy | **Git Flow simplificado** | `main` (produção, protegida) ← `develop` (integração, protegida) ← `feature/*` (trabalho diário). Ver detalhamento abaixo |
+| Containerização | **Dockerfile multi-stage** | Stage 1: Maven build. Stage 2: Eclipse Temurin JRE 21 slim. Railway detecta Dockerfile automaticamente. Mesmo Dockerfile para local e prod (env vars mudam) |
+| Docker Compose local | **Sim** | `docker-compose.yml` para dev: Redis (redis:7-alpine). Supabase CLI gerencia Postgres + Auth separadamente (`supabase start`). Spring Boot roda fora do compose (`./mvnw spring-boot:run`) |
+
+### Estratégia de branches e proteções
+
+```
+main (produção)
+ ↑ PR obrigatório (merge de develop → main)
+ │   - Requer: CI verde + 1 approval
+ │   - Bloqueia: push direto, force push
+ │
+develop (integraç��o)
+ ↑ PR obrigatório (merge de feature/* → develop)
+ │   - Requer: CI verde
+ │   - Bloqueia: push direto, force push
+ │
+feature/nome-funcional-reduzido
+   └── branches de trabalho do dia-a-dia
+       Naming: feature/invitation-flow, feature/poll-lifecycle, feature/rls-setup
+```
+
+**Branch protection rules (GitHub Settings → Branches):**
+
+| Branch | Regra | Configuração |
+|--------|-------|-------------|
+| `main` | Require pull request before merging | ON — Require approvals: 1 |
+| `main` | Require status checks to pass | ON — `test` job do GitHub Actions |
+| `main` | Restrict who can push | ON — ninguém (push direto bloqueado) |
+| `main` | Do not allow force pushes | ON |
+| `main` | Do not allow deletions | ON |
+| `develop` | Require pull request before merging | ON — Require approvals: 0 (auto-merge permitido se CI verde, time pequeno) |
+| `develop` | Require status checks to pass | ON — `test` job |
+| `develop` | Do not allow force pushes | ON |
+
+**Fluxo de deploy:**
+
+```
+1. Dev cria feature/poll-lifecycle a partir de develop
+2. Dev faz commits e abre PR: feature/poll-lifecycle → develop
+3. GitHub Actions roda testes no PR
+4. CI verde → merge em develop
+5. Quando pronto para prod: PR develop → main
+6. CI verde + 1 approval → merge em main
+7. Railway detecta push em main → deploy automático
+```
+
+### Pipeline GitHub Actions
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { java-version: '21', distribution: 'temurin' }
+      - run: ./mvnw verify  # testes + Testcontainers (precisa Docker)
+    services:
+      redis:
+        image: redis:7-alpine
+  # Deploy: Railway auto-deploy no push para main (configurado no Dashboard Railway)
+```
+
+### Dockerfile (multi-stage)
+
+```dockerfile
+# Stage 1: build
+FROM eclipse-temurin:21-jdk AS build
+WORKDIR /app
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+RUN ./mvnw dependency:go-offline   # cache de dependências
+COPY src ./src
+RUN ./mvnw package -DskipTests
+
+# Stage 2: runtime
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
 
 ---
 
@@ -318,12 +914,55 @@ O morador pode estar em múltiplos condomínios. Como o frontend comunica qual c
 
 ### Decisões
 
-| Decisão | Escolha | Justificativa |
+| Decis��o | Escolha | Justificativa |
 |---------|---------|---------------|
-| Rate limiting | | |
-| Gestão de chave de criptografia | | |
-| Auditoria | | |
-| TLS termination | | |
+| Rate limiting | **Bucket4j no Spring (endpoints públicos)** | Rate limit em `/api/invitations/validate` e `/api/register/complete` (públicos ou semi-públicos). Supabase já protege seus endpoints de auth (login, signup, reset). Bucket4j armazena contadores em memória (suficiente para 1 instância v1) |
+| CORS | **Whitelist de origens** | Local: `http://localhost:4200`. Prod: `https://<domínio-final>`. Configurado em `SecurityConfig`. Sem wildcard `*` — apenas origens explícitas |
+| Gestão de chave de criptografia | **AES-256 determinístico (SIV), chave em variável de ambiente** | `CPF_ENCRYPTION_KEY` como env var no Railway (secrets). Criptografia determinística: mesmo CPF → mesmo ciphertext (necessário para UNIQUE constraint no banco e comparação no onboarding). Classe utilitária `CpfEncryptor` com `encrypt()`/`decrypt()`. Para v1, env var é suficiente. Migrar para AWS KMS ou HashiCorp Vault se/quando houver requisito de compliance |
+| Auditoria | **Tabela `audit_event` (append-only)** | Já definida no data model. Todas as ações de síndico (criar poll, cancelar, convidar, remover morador) geram um INSERT na mesma transação. Não é event sourcing — é log append-only para rastreabilidade. Campos: `event_type`, `actor_user_id`, `target_entity`, `payload` (JSONB) |
+| TLS termination | **PaaS gerencia** | Railway e Vercel emitem certificados TLS automaticamente. Zero config. Comunicação Angular (Vercel) → Spring (Railway) → Supabase é sempre HTTPS |
+| Headers de segurança | **Spring Security defaults + customização** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`. CSP básico. Configurado em `SecurityConfig` |
+
+### Detalhamento: Rate limiting com Bucket4j
+
+```
+Endpoints protegidos:
+  /api/invitations/validate   → 10 requests/minuto por IP
+  /api/register/complete      → 5 requests/minuto por IP
+
+Implementação:
+  - Bucket4j com Caffeine cache (in-memory)
+  - Filter no Spring Security chain (antes do controller)
+  - Se exceder limite: HTTP 429 Too Many Requests
+
+Nota: endpoints autenticados (ex: /api/polls) não precisam de rate limit
+explícito — o JWT já limita o acesso a users válidos. Se necessário no
+futuro, adicionar por user_id em vez de por IP.
+```
+
+### Detalhamento: Criptografia do CPF
+
+```
+CpfEncryptor (classe utilitária em shared/crypto/):
+  - Algoritmo: AES-256-SIV (determinístico + autenticado)
+    Alternativa se SIV não estiver disponível: AES-256-CBC com IV
+    derivado do conteúdo (IV = HMAC(key, cpf)[:16]) + HMAC para
+    autenticação (encrypt-then-MAC)
+  - Chave: derivada de CPF_ENCRYPTION_KEY (env var) via HKDF
+  - Determinístico: mesmo CPF → mesmo ciphertext, sempre
+    Necessário para:
+      (1) UNIQUE constraint em app_user.cpf_encrypted (anti-duplicata)
+      (2) Comparação direta no onboarding (CPF do convite vs informado)
+  - Armazenamento: app_user.cpf_encrypted = ciphertext (BYTEA)
+  - Trade-off aceito: CPFs iguais geram ciphertext igual, mas CPF é
+    único por pessoa — o UNIQUE index já expõe essa informação.
+    Sem a chave, o ciphertext permanece opaco.
+
+Rotação de chave (futura):
+  - Adicionar campo cpf_encryption_version
+  - Decrypta com chave antiga, re-encrypta com nova
+  - Batch migration offline
+```
 
 ---
 
@@ -340,34 +979,79 @@ O morador pode estar em múltiplos condomínios. Como o frontend comunica qual c
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Formato de logging | | |
-| Métricas v1 | | |
-| Alertas | | |
+| Formato de logging | **JSON estruturado (Logback + logstash-logback-encoder)** | Logs em JSON para stdout. Railway captura stdout e oferece busca/filtro no Dashboard. Campos: timestamp, level, logger, message, tenant_id (MDC), user_id (MDC), request_id. Sem arquivo de log — stdout only |
+| Métricas v1 | **Spring Boot Actuator apenas** | `/actuator/health`, `/actuator/info`, `/actuator/metrics` (JVM, HikariCP, HTTP). Sem Prometheus/Grafana na v1 — overkill para piloto. Adicionar Micrometer + Prometheus quando escalar |
+| Alertas | **UptimeRobot + email** | UptimeRobot (free tier) pinga `GET /actuator/health` a cada 5 minutos. Se falhar 2x seguidas → alerta por email para o time. Sem PagerDuty/OpsGenie na v1 |
+| Health checks | **Actuator com checks customizados** | `/actuator/health` verifica: DB (automático via Spring), Redis (custom `HealthIndicator`). Se qualquer um DOWN → status 503. Railway usa esse endpoint para readiness probe |
+| Contexto por request | **MDC (Mapped Diagnostic Context)** | `TenantInterceptor` já existe — adicionar `MDC.put("tenant_id", ...)` e `MDC.put("user_id", ...)`. Todo log dentro da request carrega o contexto. Limpa no `afterCompletion` |
+| Request tracing | **Correlation ID** | Header `X-Request-Id` (gerado pelo Angular ou pelo Spring se ausente). Propagado via MDC. Permite rastrear uma request do frontend ao log do backend |
+
+### Detalhamento: Logging estruturado
+
+```xml
+<!-- logback-spring.xml -->
+<configuration>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeMdcKeyName>tenant_id</includeMdcKeyName>
+      <includeMdcKeyName>user_id</includeMdcKeyName>
+      <includeMdcKeyName>request_id</includeMdcKeyName>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="STDOUT" />
+  </root>
+</configuration>
+```
+
+Exemplo de log JSON produzido:
+```json
+{
+  "@timestamp": "2026-07-15T14:30:22.123Z",
+  "level": "INFO",
+  "logger": "com.condovote.poll.PollService",
+  "message": "Poll created: Assembleia Ordinária 2026",
+  "tenant_id": "a1b2c3d4-...",
+  "user_id": "e5f6a7b8-...",
+  "request_id": "req-xyz-123"
+}
+```
+
+### Detalhamento: MDC no TenantInterceptor
+
+```java
+// Já existente no TenantInterceptor — adicionar MDC
+@Override
+public boolean preHandle(HttpServletRequest request, ...) {
+    String tenantId = request.getHeader("X-Tenant-Id");
+    String requestId = Optional.ofNullable(request.getHeader("X-Request-Id"))
+        .orElse(UUID.randomUUID().toString());
+
+    if (tenantId != null) {
+        TenantContext.set(tenantId);
+        MDC.put("tenant_id", tenantId);
+    }
+
+    // user_id extraído do JWT (via SecurityContext)
+    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    if (auth != null && auth.isAuthenticated()) {
+        MDC.put("user_id", auth.getName());  // sub claim = user_id
+    }
+
+    MDC.put("request_id", requestId);
+    return true;
+}
+
+@Override
+public void afterCompletion(...) {
+    TenantContext.clear();
+    MDC.clear();
+}
+```
 
 ---
 
-## Ordem de Preenchimento Recomendada
+## Status do Documento
 
-As decisões se encadeiam. A ordem sugerida para preencher este documento:
-
-```
-0. Restrições e Contexto ← preencher primeiro, define os limites de tudo
-      ↓
-1. Autenticação ← maior impacto no schema e no fluxo do sistema
-      ↓
-2. Backend Architecture ← define como o código é organizado
-      ↓
-3. Banco de Dados ← define como o schema é gerenciado
-      ↓
-4. Jobs ← depende de 2 (onde rodam) e 3 (como acessam dados)
-      ↓
-5. E-mail ← depende de 4 (síncrono ou via job)
-      ↓
-6. Frontend ↔ Backend ← depende de 1 (auth) e 2 (API shape)
-      ↓
-7. Infra e Deploy ← depende de tudo acima (o que precisa rodar)
-      ↓
-8. Segurança ← refinamento transversal
-      ↓
-9. Observabilidade ← última camada
-```
+Todas as 10 seções (0-9) estão preenchidas. O documento está pronto para servir como referência durante a fase de **Tasks** (roadmap de implementação).

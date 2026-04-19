@@ -1,0 +1,21 @@
+# Environment (secretos)
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+target/
+
+# Misc
+*.log
+*.log.*

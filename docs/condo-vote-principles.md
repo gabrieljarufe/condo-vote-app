@@ -75,6 +75,7 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 - A delegação pode ser revertida pelo proprietário a qualquer momento
 - **Delegação e revogação são bloqueadas** enquanto o apartamento tiver votações no estado **Aberta** — previne confusão sobre quem pode votar em polls ativos
 - Se não há inquilino cadastrado, o proprietário vota diretamente
+- **Invariante do `eligible_voter_user_id`:** é NULL **somente** quando o apartamento não tem nenhum resident ativo (unidade vaga). Sempre que houver pelo menos um morador ativo, o campo aponta para o votante habilitado — OWNER (sem delegação) ou TENANT (com delegação). Quando o votante habilitado é removido, o sistema recalcula: se o OWNER ainda está ativo, volta para ele; se não, só vai a NULL se a unidade ficou vazia
 
 ### Inadimplência
 - Moradores inadimplentes **não podem votar** (exigência legal — Código Civil, Art. 1.335, III)
@@ -86,11 +87,13 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 - **Alterações de inadimplência após a abertura de uma votação não afetam aquela votação** — o conjunto elegível é fixado no momento de abertura (ver Snapshot de Elegibilidade)
 
 ### Convites
-- Síndico envia convite de proprietário: define unidade + papel = proprietário
-- Síndico ou **proprietário** pode convidar o inquilino da unidade: informa e-mail + CPF do inquilino
-  - CPF é exigido para validar a identidade do inquilino (anti-fraude)
+- **Todo convite exige e-mail + CPF + unidade + papel** — tanto para proprietário quanto para inquilino
+  - O CPF é **informado pelo síndico** (ou pelo proprietário, ao convidar seu inquilino) no momento de criar o convite
+  - No cadastro, o morador informa o próprio CPF, que é **validado contra o CPF do convite** antes do registro ser concluído (anti-fraude: garante que quem aceita é a pessoa para quem o convite foi enviado)
   - Uma mesma pessoa (CPF) pode estar vinculada a múltiplas unidades no mesmo condomínio (ex: proprietário de mais de um apartamento)
   - O proprietário deve estar cadastrado antes de qualquer convite de inquilino para a unidade
+- **Convite individual:** síndico preenche formulário com e-mail + CPF + unidade + papel
+- **Convite em massa:** síndico faz upload de CSV/planilha com múltiplos convites (e-mail, CPF, torre, unidade, papel) numa única operação — necessário para onboarding inicial do condomínio, onde tipicamente há dezenas de apartamentos. Cada linha gera uma `invitation` + e-mail de convite; linhas inválidas são reportadas sem abortar as demais
 - Link de convite expira em **24 horas**. O síndico pode reenviar o convite (gera novo link, invalida o anterior)
 
 ### Remoção de morador
@@ -98,6 +101,7 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
   - Se há inquilino vinculado, o inquilino pode ser promovido a proprietário da unidade (decisão do síndico)
   - Se não há inquilino ou o síndico não promove, todos os acessos da unidade são desativados
   - O acesso do proprietário removido é desativado imediatamente
+- **Remoção do resident que é o votante habilitado é bloqueada durante polls OPEN** que incluam o apartamento no snapshot — mesma regra da delegação. O síndico deve aguardar o encerramento ou cancelar o poll antes de remover
 - Votos já registrados por morador removido em votações abertas **permanecem válidos** — o voto pertence ao apartamento, não ao usuário (usuário é apenas testemunha para fins de auditoria). O conjunto elegível é fixado no momento de abertura da votação e não pode ser alterado retroativamente. Esta regra é estrutural e vale também para transferência de titularidade.
 
 ### Transferência de titularidade
@@ -281,6 +285,19 @@ Fora do escopo v1: DPO nomeado, RIPD completo, relatórios de impacto.
 ```
 Specify → Plan → Tasks → Implement
 ```
+
+---
+
+## 13. Bootstrap Operacional de Condomínio (v1)
+
+A criação de um novo condomínio e seu primeiro síndico **não tem fluxo self-service na v1**. É uma operação manual executada por um operador da plataforma (superadmin), seguindo o runbook documentado em `docs/architecture.md` (Seção 0). O resumo do fluxo:
+
+1. Operador cria o user do síndico no Supabase Auth (Dashboard ou `supabase auth admin create-user`)
+2. Operador executa SQL transacional no Supabase Studio para criar: `condominium`, `app_user` (com CPF criptografado), `condominium_admin`
+3. Operador envia credenciais iniciais ao síndico (senha temporária gerada pelo Supabase)
+4. Síndico loga, troca a senha e começa a usar o sistema (cadastrar apartamentos, enviar convites em massa)
+
+Esta decisão é proposital: elimina complexidade de superadmin no app v1 e mantém o onboarding de condomínio sob controle explícito. Evolução para fluxo self-service ou endpoint administrativo fica para v2.
 
 ---
 

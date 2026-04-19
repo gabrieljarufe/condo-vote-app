@@ -1,0 +1,34 @@
+# Angular
+# Angular CLI
+.angular/
+
+# compiled output
+dist/
+tmp/
+out/**/*.js
+out/**/*.js.map
+out/**/*.metadata.json
+out/**/*.ngsummary.json
+
+# dependencies
+node_modules/
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# misc
+*.log
+*.log.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.local

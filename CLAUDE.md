@@ -54,7 +54,37 @@ Estas decisões parecem de implementação mas são **estruturais**. Não mude s
 
 ## Comandos
 
-Nenhum comando de build/test/lint/run existe hoje. Esta seção deve ser atualizada quando o setup inicial do projeto for feito.
+Os comandos abaixo serão populados ao longo das fases 0–3.
+
+### Backend
+```bash
+# Desenvolvimento (em fase 3)
+cd backend && ./mvnw spring-boot:run
+
+# Testes (em fase 3)
+cd backend && ./mvnw verify
+
+# Build Docker (em fase 3)
+cd backend && ./mvnw package -DskipTests && docker build -t condo-vote-backend .
+```
+
+### Frontend
+```bash
+# Desenvolvimento (em fase 4)
+cd frontend && npm install && npm start
+
+# Build produção (em fase 4)
+cd frontend && npm run build
+```
+
+### Infraestrutura
+```bash
+# Supabase local (em fase 1)
+cd infra/supabase && supabase start
+
+# Testar migrate Flyway (em fase 2)
+cd backend && ./mvnw flyway:migrate
+```
 
 
 ## Decisões arquiteturais chave (resumo rápido)

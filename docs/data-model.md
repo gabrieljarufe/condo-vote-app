@@ -223,14 +223,19 @@ CREATE TYPE poll_close_trigger AS ENUM (
 CREATE TYPE audit_event_type AS ENUM (
     'POLL_CREATED',
     'POLL_SCHEDULED',
-    'POLL_CANCELLED',
     'POLL_OPENED_MANUALLY',
+    'POLL_CLOSED',
+    'POLL_INVALIDATED',
+    'POLL_CANCELLED',
     'INVITATION_SENT',
     'INVITATION_REVOKED',
+    'INVITATION_ACCEPTED',
     'ADMIN_GRANTED',
     'ADMIN_REVOKED',
+    'APARTMENT_CREATED',
     'APARTMENT_DELINQUENCY_CHANGED',
     'APARTMENT_VOTER_CHANGED',
+    'RESIDENT_JOINED',
     'RESIDENT_REMOVED',
     'RESIDENT_PROMOTED_TO_OWNER'
 );
@@ -289,6 +294,8 @@ CREATE TYPE email_status AS ENUM (
 
 **Invariantes (validados na aplicação — não há trigger):**
 - `eligible_voter_user_id` deve ser um `apartment_resident` ativo (`ended_at IS NULL`) deste mesmo apartamento. Mudanças que violem essa regra são rejeitadas no service layer.
+- **`eligible_voter_user_id` só é NULL quando o apartamento não tem nenhum resident ativo.** Se existe OWNER ativo sem delegação, `eligible_voter_user_id = owner.user_id`. Se existe delegação, `eligible_voter_user_id = tenant_delegado.user_id`. Quando o resident que é o votante habilitado é removido, o service recalcula: se há OWNER ativo, volta para ele; se não há ninguém ativo, vai para NULL.
+- Remoção de resident que é o votante habilitado é **bloqueada durante poll OPEN** que inclua o apartamento no snapshot (análogo à regra de delegação).
 - Mudanças em `is_delinquent` ou `eligible_voter_user_id` geram entrada em `audit_event`.
 
 ---
@@ -353,7 +360,7 @@ CREATE TYPE email_status AS ENUM (
 | condominium_id | UUID | NOT NULL | FK → condominium(id) | Tenant |
 | apartment_id | UUID | NOT NULL | FK composite → apartment(id, condominium_id) | Apartamento alvo |
 | email | VARCHAR(320) | NOT NULL | | E-mail do convidado |
-| cpf_encrypted | BYTEA | NULL | | CPF criptografado (obrigatório para TENANT) |
+| cpf_encrypted | BYTEA | NOT NULL | | CPF criptografado AES-256 determinístico (obrigatório para OWNER e TENANT — informado pelo síndico na criação do convite, validado no cadastro do morador) |
 | role | resident_role | NOT NULL | | Papel: OWNER ou TENANT |
 | status | invitation_status | NOT NULL | DEFAULT 'PENDING' | Estado atual do convite |
 | expires_at | TIMESTAMP | NOT NULL | | Expiração (24h após criação) |
@@ -365,8 +372,7 @@ CREATE TYPE email_status AS ENUM (
 
 **Índices e constraints:**
 - `idx_invitation_condominium_id ON (condominium_id)` — RLS
-- `CREATE INDEX ON invitation(condominium_id, email) WHERE status = 'PENDING'` — verificação de convite pendente / reenvio
-- `CHECK (role = 'OWNER' OR cpf_encrypted IS NOT NULL)` — CPF obrigatório para TENANT
+- `CREATE UNIQUE INDEX ON invitation(condominium_id, apartment_id, email, role) WHERE status = 'PENDING'` — impede duplicata de convite pendente para mesma unidade/email/papel; força reenvio a revogar o anterior
 - `CHECK (status != 'ACCEPTED' OR accepted_at IS NOT NULL)`
 - `CHECK (status != 'REVOKED' OR revoked_at IS NOT NULL)`
 
@@ -543,20 +549,26 @@ CREATE TYPE email_status AS ENUM (
 **Eventos cobertos (v1):**
 - `POLL_CREATED` — payload: `{title, quorum_mode, convocation}`
 - `POLL_SCHEDULED` — payload: `{title, scheduled_start, scheduled_end}`
-- `POLL_CANCELLED` — payload: `{cancellation_reason}`
 - `POLL_OPENED_MANUALLY` — payload: `{scheduled_start, opened_early_by_seconds}`
+- `POLL_CLOSED` — payload: `{close_trigger, winning_option_id, total_votes_computed, quorum_denominator}` — emitido pelo `PollCloserJob` ou `AllVotedCheckerJob`; `actor_user_id` é o user técnico do job (documentar UUID reservado)
+- `POLL_INVALIDATED` — payload: `{invalidation_reason, total_votes_computed, quorum_denominator}` — emitido pelo `PollCloserJob`
+- `POLL_CANCELLED` — payload: `{cancellation_reason}`
 - `INVITATION_SENT` — payload: `{email, role, apartment_id}`
 - `INVITATION_REVOKED` — payload: `{email, apartment_id, reason}`
+- `INVITATION_ACCEPTED` — payload: `{invitation_id, email, role, apartment_id}` — emitido em `/register/complete` na mesma transação do aceite
 - `ADMIN_GRANTED` — payload: `{user_id}`
 - `ADMIN_REVOKED` — payload: `{user_id, revoked_by_user_id}`
+- `APARTMENT_CREATED` — payload: `{block, unit_number}` — para rastrear cadastro em massa e individual
 - `APARTMENT_DELINQUENCY_CHANGED` — payload: `{apartment_id, previous, current}`
-- `APARTMENT_VOTER_CHANGED` — payload: `{previous_voter_user_id, new_voter_user_id, change_source}` onde change_source ∈ `OWNER_DELEGATION | OWNER_REVOCATION | INITIAL`
+- `APARTMENT_VOTER_CHANGED` — payload: `{previous_voter_user_id, new_voter_user_id, change_source}` onde change_source ∈ `OWNER_DELEGATION | OWNER_REVOCATION | INITIAL | RESIDENT_REMOVED | PROMOTION`
+- `RESIDENT_JOINED` — payload: `{user_id, role, apartment_id, invitation_id}` — emitido no aceite de convite (par com `INVITATION_ACCEPTED`, mas do ponto de vista da ocupação do apartamento)
 - `RESIDENT_REMOVED` — payload: `{user_id, role, reason}`
 - `RESIDENT_PROMOTED_TO_OWNER` — payload: `{user_id, previous_role}`
 
 **Notas:**
 - Tabela write-only pela aplicação.
 - Cancelamento de poll, abertura manual e remoção de morador também têm autoria inline nas tabelas respectivas (hot-path); `audit_event` é a fonte unificada para timeline e relatórios.
+- **Eventos automáticos** (`POLL_CLOSED`, `POLL_INVALIDATED`): emitidos por jobs. Como `actor_user_id` é NOT NULL, usar UUID reservado `00000000-0000-0000-0000-000000000001` representando o usuário técnico "system". Documentado em `shared/constants/SystemUser.java`. Frontend de auditoria renderiza como "Sistema (automático)".
 
 ---
 

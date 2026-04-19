@@ -94,7 +94,9 @@ O síndico envia convite por e-mail. O morador clica no link e cria conta.
 3. Morador preenche formulário
    → Campos: nome, CPF, senha, aceite LGPD
    → Email é read-only (veio do passo 2)
-   → CPF é obrigatório para TODOS (app_user.cpf_encrypted é NOT NULL)
+   → CPF é obrigatório para TODOS (OWNER e TENANT). O CPF informado aqui
+     será validado contra o `invitation.cpf_encrypted` (que o síndico
+     registrou ao criar o convite) no passo 5 — anti-fraude
 
 4. Angular → supabase.auth.signUp({email, password})
    → Supabase cria auth.users, retorna session com access_token (JWT)
@@ -108,7 +110,8 @@ O síndico envia convite por e-mail. O morador clica no link e cria conta.
    a. Valida JWT via JWKS do Supabase → extrai user_id (sub)
    b. Redis GET invitation:token → invitation_id
    c. Valida invitation (PENDING, não expirado, email confere com JWT)
-   d. Se TENANT: valida que CPF informado confere com invitation.cpf_encrypted (anti-fraude)
+   d. Valida que o CPF informado confere com invitation.cpf_encrypted (anti-fraude)
+      — Regra vale para OWNER e TENANT; todo convite tem CPF
    e. INSERT app_user (id = jwt.sub, name, email, cpf_encrypted=AES256(cpf))
       — OU se app_user já existe (segundo+ convite): pula INSERT, valida que CPF confere
    e. INSERT apartment_resident (user_id, apartment_id, role)
@@ -184,6 +187,97 @@ Gerenciado inteiramente pelo Supabase JS SDK no Angular:
 - SDK detecta expiração e usa refresh token para obter novo access token
 - Angular não precisa de interceptor manual para refresh
 - Evento `onAuthStateChange('TOKEN_REFRESHED')` disponível se necessário
+
+### Bootstrap operacional v1 (novo condomínio + primeiro síndico)
+
+A criação de um novo condomínio + seu primeiro síndico é feita via **migration Flyway versionada**, não por operação ad-hoc no Studio. Motivos:
+
+- **Auditabilidade total:** cada bootstrap vira commit no git → reviewable via PR, rastreável por blame
+- **Reprodutibilidade:** o mesmo artefato aplica em local, CI (Testcontainers) e prod
+- **Consistência com o resto do schema:** Flyway já é a fonte da verdade de DDL e seed — não inventar um canal paralelo
+- **Rollback documentado:** se errar, migration compensatória (ver "Estratégia de rollback" na Seção 3)
+
+### Runbook: adicionar um novo condomínio + síndico
+
+```
+1. Operador cria o user no Supabase Auth (projeto prod)
+   - Dashboard → Auth → Users → "Invite user" (envia email de set-password)
+   - Ou CLI: supabase auth admin create-user --email sindico@condo.com
+   - Copiar o UUID gerado (será o app_user.id)
+
+2. Operador gera o ciphertext do CPF localmente
+   ./scripts/encrypt-cpf.sh 12345678901
+   → retorna BYTEA em hex: \x7a3f...
+
+   O script usa a mesma CPF_ENCRYPTION_KEY da prod
+   (lida de um cofre — 1Password/Bitwarden; nunca committar a chave).
+
+3. Operador cria o arquivo de migration no repo:
+
+   src/main/resources/db/migration/
+   └── bootstrap/
+       └── V1001__bootstrap_condo_piloto_rua_x.sql
+
+   Naming: V1001+ reservado para bootstraps de condomínio
+   (1-999 reservados para DDL do schema; evita conflito de numeração
+   se um PR de schema for mergeado enquanto o bootstrap está em review).
+
+   Conteúdo:
+   -- V1001__bootstrap_condo_piloto_rua_x.sql
+   -- Bootstrap: Condomínio Piloto, síndico: <nome>
+   -- Autorizado por: <operador>, em <data>
+
+   INSERT INTO condominium (id, name, address) VALUES
+     ('<uuid_gerado_offline>', 'Condomínio Piloto', 'Rua X, 123');
+
+   INSERT INTO app_user (
+     id, name, email, cpf_encrypted,
+     consent_accepted_at, consent_policy_version
+   ) VALUES (
+     '<uuid_do_passo_1>',
+     'Nome do Síndico',
+     'sindico@condo.com',
+     '\x7a3f...',   -- ciphertext do passo 2
+     now(), 'v1'
+   );
+
+   INSERT INTO condominium_admin (condominium_id, user_id) VALUES
+     ('<uuid_condominium>', '<uuid_do_passo_1>');
+
+   INSERT INTO audit_event (
+     condominium_id, actor_user_id, event_type,
+     entity_type, entity_id, payload
+   ) VALUES (
+     '<uuid_condominium>',
+     '00000000-0000-0000-0000-000000000001',  -- system user
+     'ADMIN_GRANTED', 'CONDOMINIUM_ADMIN', '<uuid_do_passo_1>',
+     jsonb_build_object(
+       'source', 'BOOTSTRAP_MIGRATION',
+       'migration', 'V1001',
+       'operator', '<nome_do_operador>'
+     )
+   );
+
+4. PR: feature/bootstrap-condo-piloto → develop
+   - CI roda: Flyway aplica a migration em Postgres Testcontainer
+   - Review por outro dev (revisa dados, confere UUIDs, valida CPF encrypted)
+   - Merge
+
+5. PR: develop → main
+   - Deploy em Railway → Flyway aplica V1001 em prod
+   - Spring sobe → síndico já consegue logar
+
+6. Operador comunica ao síndico: URL + credenciais iniciais
+   Síndico loga → troca senha → usa "Cadastro em massa de convites"
+```
+
+**Por que não via app/endpoint:** elimina necessidade de modelar superadmin + autorização especial + UI administrativa na v1. Para o piloto (1-5 condos em ~3 meses), uma migration por condo é trivial e dá rastreabilidade total.
+
+**Por que CPF encrypted no git é aceitável:** o ciphertext é AES-256; sem a chave (guardada em cofre + env var de prod), não é reversível. Trade-off consciente: migration fica reproduzível sem precisar de mecanismo externo de injeção de dados.
+
+**Script auxiliar `encrypt-cpf.sh`:** utilitário CLI em `/scripts/` que lê a `CPF_ENCRYPTION_KEY` de env local e imprime o ciphertext em hex. Mesma implementação que a classe `CpfEncryptor` do Spring — idealmente extraída para um pacote compartilhado ou um main class executável (`java -jar cpf-encryptor.jar <cpf>`).
+
+### Configurações no Supabase Dashboard
 
 ### Configurações no Supabase Dashboard
 
@@ -373,6 +467,7 @@ Ações manuais do síndico que não são automáticas (jobs):
 | `/api/apartments/{id}/delegate` | POST | Proprietário | Delega voto ao inquilino. Body: `{tenant_user_id}`. Atualiza `eligible_voter_user_id`. Bloqueado se apt tem poll OPEN no snapshot |
 | `/api/apartments/{id}/delegate` | DELETE | Proprietário | Revoga delegação. Proprietário volta a ser votante. Bloqueado se apt tem poll OPEN no snapshot |
 | `/api/apartments/{id}/residents/{residentId}/promote` | POST | Síndico | Promove inquilino a proprietário. Encerra vínculo TENANT (`PROMOTED_TO_OWNER`), cria novo OWNER, atualiza `eligible_voter_user_id`. Bloqueado se apt tem poll OPEN no snapshot |
+| `/api/invitations/bulk` | POST | Síndico | **Cadastro em massa de convites.** Body: CSV (ou JSON array) com linhas `{block, unit_number, email, cpf, role}`. Na mesma transação: cria/reusa apartamentos inexistentes (audit `APARTMENT_CREATED`), cria invitations (audit `INVITATION_SENT`), enfileira e-mails. Resposta: `{created: N, skipped: [{line, reason}]}` — linhas inválidas (email duplicado já PENDING, CPF inválido, etc.) são reportadas sem abortar as demais |
 
 ### Edição de poll agendada
 
@@ -505,6 +600,83 @@ ALTER TABLE condominium ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON condominium
     USING (id = current_setting('app.current_tenant')::uuid);
 ```
+
+### Convenções de numeração de migrations
+
+| Faixa | Uso |
+|-------|-----|
+| `V1` – `V999` | DDL do schema de domínio (tabelas, índices, enums, RLS, constraints) |
+| `V1001` – `V1999` | Bootstraps de condomínio (um arquivo por condomínio — ver Seção 1) |
+| `V9000+` | Migrations compensatórias (rollback via forward) |
+| `R__*.sql` | Repeatable (seed de dev, views recalculadas). Só em profile `local` |
+
+Faixas reservadas evitam que um PR de schema e um PR de bootstrap colidam na próxima versão disponível.
+
+### Estratégia de rollback de migrations
+
+Flyway Community **não suporta undo nativo** (é feature do Flyway Teams). Política adotada:
+
+- **Migrations são forward-only.** Nunca editar uma migration já aplicada em prod — mesmo que ainda não tenha saído do `develop`, se outro dev aplicou localmente, a edição gera `checksum mismatch`
+- **Correção de bug em migration = nova migration compensatória.** Ex: se `V42__add_column.sql` usou tipo errado, criar `V9042__fix_v42_column_type.sql`
+- **Migrations destrutivas** (`DROP TABLE`, `DROP COLUMN`, `ALTER ... TYPE` que perde dados) seguem ritual especial:
+  1. PR dedicado (nunca junto com feature) — facilita revert
+  2. Review por 2 devs (em vez de 1)
+  3. Backup manual do Supabase **antes** do deploy (Dashboard → Database → Backups → "Create backup")
+  4. Janela de deploy fora de horário de uso do piloto
+  5. Migration compensatória pronta no branch, para o caso de precisar reverter (não recupera dados deletados, mas restaura schema)
+- **Rollback de aplicação ≠ rollback de banco.** Se o deploy do Spring quebrar pós-migration, Railway faz rollback do container mas a migration **permanece aplicada**. O app anterior precisa continuar compatível com o schema novo — regra prática: separar mudanças de schema em duas fases quando necessário (ex: adicionar coluna nullable → deploy app que popula → PR posterior torna NOT NULL)
+- **Config Flyway:**
+  - `spring.flyway.validate-on-migrate=true` (detecta checksum mismatch)
+  - `spring.flyway.out-of-order=false` (obriga ordem estrita de versões)
+  - `spring.flyway.baseline-on-migrate=true` + `baseline-version=0` (só no primeiro deploy)
+
+### Estratégia de testes (pirâmide)
+
+Pirâmide clássica adaptada ao stack:
+
+```
+         ╱  E2E  ╲              ~10% — Playwright: jornadas críticas ponta a ponta
+        ╱─────────╲                    (onboarding, criar poll, votar, ver resultado)
+       ╱  Integr.  ╲            ~30% — @SpringBootTest + Testcontainers:
+      ╱─────────────╲                  controllers + service + DB real.
+     ╱    Unit       ╲          ~60% — JUnit 5 puro: entities com comportamento,
+    ╱─────────────────╲               services com mocks, utilitários (CpfEncryptor)
+```
+
+**Unit tests (backend):**
+- Alvo: entity methods (`poll.canBeOpened()`, `poll.isQuorumReached()`), services com dependências mockadas (Mockito), utilitários (criptografia, validação)
+- Sem Spring context — rápidos (<1s por teste)
+- Regra: toda regra de negócio documentada na spec deve ter teste unit explícito citando a regra (ex: `@DisplayName("quórum qualificado 2/3 não atinge com 60% de votos favoráveis")`)
+
+**Integration tests (backend):**
+- Alvo: fluxos de service que tocam DB, incluindo **RLS policies** (crítico — RLS quebrada vaza tenant)
+- Stack: `@SpringBootTest` + Testcontainers (Postgres + Redis) + Flyway aplicando as migrations reais
+- Teste mandatório por tabela com RLS: "usuário do tenant A não consegue ler/escrever registros do tenant B"
+- JWT mockado via `@WithMockJwtUser` (custom annotation) — não depende do Supabase
+- Também cobrem: jobs `@Scheduled` (chamar o método diretamente), transactional outbox, idempotência
+
+**E2E (frontend + backend):**
+- Alvo: 5-10 jornadas críticas. Não cobrir tudo — custo alto, manutenção cara
+- Stack: Playwright contra ambiente local (Supabase CLI + Spring + Angular)
+- Jornadas v1:
+  1. Síndico aceita bootstrap → entra no app → cadastro em massa de convites
+  2. Morador recebe email → aceita convite → loga
+  3. Síndico cria poll (DRAFT → SCHEDULED) → abre manualmente
+  4. Morador vota em poll OPEN
+  5. Poll fecha automaticamente → todos veem resultado
+  6. Poll invalidado por quórum não atingido (Primeira Convocação)
+  7. Proprietário delega voto ao inquilino → inquilino vota
+  8. Síndico cancela poll com motivo
+
+**Frontend unit/component (Angular):**
+- Jest + Angular Testing Library: componentes críticos (formulários de voto, telas de criação de poll)
+- Não perseguir cobertura alta — priorizar componentes com lógica
+
+**Cobertura:** sem meta numérica global. Meta qualitativa: **100% das regras de negócio da spec têm pelo menos 1 teste unit ou integration explícito**. Jacoco gera relatório no CI para visibilidade, sem gate de merge.
+
+**CI:**
+- PR abre → GitHub Actions roda `./mvnw verify` (unit + integration com Testcontainers)
+- E2E roda em cron noturno (caro pra rodar em cada PR no piloto); pode ser promovido a gate quando o time crescer
 
 ---
 

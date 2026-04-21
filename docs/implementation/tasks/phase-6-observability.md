@@ -15,7 +15,7 @@
 - [ ] Adicionar `trace_id` via MDC (filter na entrada de cada request)
 - [ ] Log de eventos chave: início/fim de job, abertura/fechamento de poll (quando existirem), erros de autenticação
 
-**Aceite:** log em prod chega no Railway dashboard como JSON; campo CPF em mensagem de log nunca aparece em claro.
+**Aceite:** log em prod chega no Coolify dashboard como JSON; campo CPF em mensagem de log nunca aparece em claro.
 
 ---
 
@@ -23,10 +23,10 @@
 - [ ] `application-prod.yml`: expor `health`, `info`, `metrics` (já incluso por padrão) — mais nada
 - [ ] `management.endpoint.health.show-details=when-authorized` + basic auth com credencial em env var
 - [ ] `info`: adicionar `git-commit`, `build-time` via `build-info` do Spring Boot Maven Plugin
-- [ ] Configurar **UptimeRobot** (free tier) monitorando `https://<railway-domain>/actuator/health` a cada 5 min
+- [ ] Configurar **UptimeRobot** (free tier) monitorando `https://api.condovote.com.br/actuator/health` a cada 5 min
 - [ ] Alert: e-mail pessoal do dono quando status down por 2+ checks
 
-**Aceite:** UptimeRobot mostra 100% uptime após 24h; alerta simulado (parando o Railway service) chega por e-mail.
+**Aceite:** UptimeRobot mostra 100% uptime após 24h; alerta simulado (parando o container no Coolify) chega por e-mail.
 
 ---
 
@@ -44,11 +44,11 @@
 
 ## Verificação final (after-all-phases)
 - [ ] Operador cria condomínio teste via runbook
-- [ ] Síndico loga no frontend Vercel
+- [ ] Síndico loga no frontend Cloudflare Pages (`https://app.condovote.com.br`)
 - [ ] Frontend chama `/api/me/condominiums` → retorna condo
 - [ ] Seleciona condo → headers `X-Tenant-Id` começam a ser enviados
 - [ ] RLS isola corretamente (verificar com 2 condos distintos)
 - [ ] JWT expirado → 401 estruturado
-- [ ] Log estruturado com `trace_id` aparece no Railway
+- [ ] Log estruturado com `trace_id` aparece no Coolify
 
 Com todos os itens acima ✅, a plataforma está pronta para **Fase 7 — primeira feature de domínio** (Convites e Onboarding), que será planejada em seu próprio `tasks/` dedicado.

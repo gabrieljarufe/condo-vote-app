@@ -1,6 +1,6 @@
 # Fase 4 — Walking Skeleton Frontend
 
-**Objetivo:** Angular deployado na Vercel; login via Supabase; chamada ao backend com JWT + X-Tenant-Id funcionando.
+**Objetivo:** Angular deployado no Cloudflare Pages; login via Supabase; chamada ao backend com JWT + X-Tenant-Id funcionando.
 
 **Pré-requisitos:** Fase 3 (backend deployado, endpoint `/api/me/condominiums` responde).
 
@@ -10,7 +10,7 @@
 - [ ] `cd frontend && ng new . --standalone --routing --style=scss --ssr=false`
 - [ ] Instalar `@supabase/supabase-js`
 - [ ] `src/environments/environment.ts` e `environment.prod.ts` com `supabaseUrl`, `supabaseAnonKey`, `apiUrl`
-- [ ] Configurar build para ler variáveis Vercel (`NG_APP_*`) via `file-replacements` ou runtime config
+- [ ] Configurar build para ler variáveis Cloudflare Pages (`NG_APP_*`) via `file-replacements` ou runtime config
 
 **Aceite:** `ng serve` sobe em localhost:4200.
 
@@ -56,11 +56,14 @@
 
 ---
 
-## T4.5 — Deploy Vercel
-- [ ] Build command: `cd frontend && npm ci && npm run build -- --configuration=production`
-- [ ] Output directory: `frontend/dist/frontend/browser`
-- [ ] Env vars no Dashboard Vercel: `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL`
-- [ ] Atualizar backend (`CORS_ALLOWED_ORIGINS`) com URL Vercel de produção
-- [ ] Validar rewrite/fallback para SPA (todas rotas → `index.html`) — Vercel detecta Angular automaticamente ou configurar `vercel.json`
+## T4.5 — Deploy Cloudflare Pages
+- [ ] Projeto Pages já criado em T1.4h; confirmar build config no dashboard:
+  - Build command: `cd frontend && npm ci && npm run build -- --configuration=production`
+  - Build output directory: `frontend/dist/frontend/browser`
+  - Root directory: `/` (ou `frontend/` se preferir contexto limitado)
+- [ ] Env vars no Dashboard Cloudflare Pages (Production + Preview): `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL=https://api.condovote.com.br`
+- [ ] SPA fallback: criar `frontend/public/_redirects` com a linha `/*  /index.html  200` (Cloudflare Pages lê esse arquivo automaticamente)
+- [ ] Confirmar que backend tem `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br` (setado em T3.8)
+- [ ] Custom domain `app.condovote.com.br` já configurado em T1.4h
 
-**Aceite:** produção: usuário real abre URL Vercel, faz login, vê lista de condos vinda do Railway. Ponta-a-ponta.
+**Aceite:** produção: usuário real abre `https://app.condovote.com.br`, faz login, vê lista de condos vinda de `https://api.condovote.com.br`. Ponta-a-ponta.

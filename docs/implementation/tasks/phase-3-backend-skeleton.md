@@ -1,6 +1,6 @@
 # Fase 3 — Walking Skeleton Backend
 
-**Objetivo:** Spring Boot mínimo validando JWT Supabase, 1 endpoint cross-tenant + 1 placeholder RLS-scoped, deployado no Railway.
+**Objetivo:** Spring Boot mínimo validando JWT Supabase, 1 endpoint cross-tenant + 1 placeholder RLS-scoped, deployado no Oracle Cloud via Coolify.
 
 **Pré-requisitos:** Fase 2 (migrations aplicáveis local e remoto).
 
@@ -24,7 +24,7 @@
   - [ ] `NimbusJwtDecoder` com cache de chaves (`cache-duration = PT1H`)
   - [ ] `SecurityFilterChain`: `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**` públicas; `/api/**` exige JWT
   - [ ] Headers: X-Content-Type-Options nosniff, X-Frame-Options DENY, HSTS 1y
-  - [ ] CORS: whitelist de `${app.cors.allowed-origins}` — `localhost:4200` local, URL Vercel em prod
+  - [ ] CORS: whitelist de `${app.cors.allowed-origins}` — `http://localhost:4200` local, `https://app.condovote.com.br` em prod
   - [ ] CSRF desabilitado para APIs stateless
 
 **Aceite:** curl sem token em `/api/me/condominiums` retorna 401; curl em `/actuator/health` retorna 200.
@@ -91,14 +91,15 @@
 
 ---
 
-## T3.8 — Deploy Railway
-- [ ] Configurar todas as env vars no Railway (do `.env.example`)
-- [ ] Confirmar que Railway detecta o Dockerfile e builda
-- [ ] Merge em `main` dispara deploy automático
-- [ ] Configurar custom domain ou usar o `<app>.up.railway.app` padrão
-- [ ] Atualizar `CORS_ALLOWED_ORIGINS` do backend com URL Vercel (será preenchida na Fase 4)
+## T3.8 — Deploy Coolify
+- [ ] Configurar todas as env vars no Coolify (do `.env.example`) como Secrets criptografados
+- [ ] Confirmar que Coolify detecta o Dockerfile e builda (build pack Dockerfile, root `backend/`)
+- [ ] Merge em `main` dispara deploy automático via webhook (configurado em T1.4i)
+- [ ] Opção alternativa documentada: em vez de Coolify buildar, puxar imagem do GHCR (`ghcr.io/<owner>/condo-vote-backend:latest`) após workflow do Actions publicar (Fase 5)
+- [ ] Ativar custom domain `api.condovote.com.br` no Coolify (cert Cloudflare Origin CA já instalado em T1.4i)
+- [ ] Setar `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br` no Coolify
 
-**Aceite:** `curl https://<railway-domain>/actuator/health` retorna 200 com `{"status":"UP"}`.
+**Aceite:** `curl https://api.condovote.com.br/actuator/health` retorna 200 com `{"status":"UP"}`.
 
 ---
 
@@ -106,7 +107,7 @@
 - [ ] Criar user de teste no Supabase Auth Dashboard
 - [ ] Inserir manualmente `app_user` + `condominium_admin` para esse user (ou rodar o runbook da Fase 6 se já existir)
 - [ ] Obter JWT: `curl https://<supabase>/auth/v1/token?grant_type=password -H "apikey: <anon>" -d '{"email":"...","password":"..."}'`
-- [ ] `curl -H "Authorization: Bearer <jwt>" https://<railway>/api/me/condominiums` → retorna o condo
+- [ ] `curl -H "Authorization: Bearer <jwt>" https://api.condovote.com.br/api/me/condominiums` → retorna o condo
 - [ ] Sem JWT → 401; JWT adulterado → 401
 
-**Aceite:** fluxo completo validado em prod Railway + Supabase.
+**Aceite:** fluxo completo validado em prod Oracle/Coolify + Cloudflare + Supabase.

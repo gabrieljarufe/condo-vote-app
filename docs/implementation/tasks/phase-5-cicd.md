@@ -35,8 +35,9 @@
 - [ ] Ativar status checks obrigatórios (adiados na Fase 0):
   - `main`: exige `test` + `frontend-test`
   - `develop`: exige `test` + `frontend-test`
-- [ ] Confirmar Railway auto-deploy no push para `main` (já configurado na Fase 3)
-- [ ] Confirmar Vercel auto-deploy no push para `main` + preview em PRs
+- [ ] Confirmar Coolify auto-deploy no push para `main` via webhook (já configurado na Fase 3)
+- [ ] Job `publish-image` no workflow: login no GHCR via `GHCR_TOKEN`, `docker/build-push-action@v5` tag `ghcr.io/<owner>/condo-vote-backend:<sha>` + `:latest` (dispara só em push para `main`)
+- [ ] Confirmar Cloudflare Pages auto-deploy no push para `main` + preview em PRs
 - [ ] Documentar fluxo de release em `README.md` seção "Deploy"
 
-**Aceite:** ciclo completo: `feature/*` → PR para `develop` → CI verde → merge → PR `develop` → `main` → 1 approval + CI → merge → deploy automático Railway + Vercel.
+**Aceite:** ciclo completo: `feature/*` → PR para `develop` → CI verde → merge → PR `develop` → `main` → 1 approval + CI → merge → deploy automático Coolify (via webhook + imagem em GHCR) + Cloudflare Pages.

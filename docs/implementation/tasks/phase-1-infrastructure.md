@@ -20,7 +20,7 @@
 
 ## T1.2 — Upstash Redis
 - [x] Criar Redis database (free tier, região alinhada com Supabase `us-east-2` / Oracle `us-ashburn-1`)
-- [x] Capturar `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`
+- [x] Capturar `REDIS_URL` (formato Redis protocol: `rediss://:password@host:port`) — Upstash suporta Redis protocol além da REST API
 - [x] Testar conexão local com `redis-cli` ou `nc`
 
 **Aceite:** `SET test 1 && GET test` funciona remotamente.
@@ -41,16 +41,16 @@
 ## T1.4 — Oracle Cloud + Coolify + Cloudflare DNS/Pages + GHCR
 
 ### T1.4a — Oracle Cloud tenancy
-- [ ] Criar conta Oracle Cloud; escolher região **`us-ashburn-1`** (ARM A1 tem boa disponibilidade; co-localização com Supabase `us-east-2`)
-- [ ] Validar billing (cartão obrigatório mesmo no Always Free — cobrado $0 se ficar dentro do free)
-- [ ] Ativar billing alerts em $1 para detectar qualquer drift
+- [x] Criar conta Oracle Cloud; escolher região **`us-ashburn-1`** (ARM A1 tem boa disponibilidade; co-localização com Supabase `us-east-2`)
+- [x] Validar billing (cartão obrigatório mesmo no Always Free — cobrado $0 se ficar dentro do free)
+- [x] Ativar billing alerts em $1 para detectar qualquer drift
 
 ### T1.4b — Provisionar VM ARM Ampere A1
 - [ ] Compute → Instances → Create Instance
 - [ ] Shape: **VM.Standard.A1.Flex** — 2 OCPU / 8GB RAM (pode subir depois até 4/24 sem custo)
 - [ ] Image: Ubuntu 22.04 Minimal
-- [ ] Se "Out of capacity": reexecutar via CLI/Terraform com retry (ondas de capacidade). Plano B: 2× VM.Standard.E2.1.Micro AMD (1GB cada)
-- [ ] Gerar SSH keypair, guardar `.pem` no cofre pessoal
+- [ ] ⚠️ "Out of capacity" nos 3 ADs de us-ashburn-1 — tentar novamente em horários diferentes (madrugada BR). VCN `condo-vote-vcn` + public subnet já criadas. SSH keypair gerado e salvo no Bitwarden.
+- [x] Gerar SSH keypair, guardar `.pem` no cofre pessoal
 - [ ] Anotar **IP público** da VM
 
 ### T1.4c — VCN + Security List
@@ -64,19 +64,21 @@
 - [ ] Configurar domínio do próprio Coolify (`coolify.condovote.com.br` como subdomínio interno, ou usar IP por enquanto)
 
 ### T1.4e — Cloudflare (DNS autoritativo)
-- [ ] Registrar conta Cloudflare (free)
-- [ ] Add site → `condovote.com.br` → plano Free
-- [ ] Atualizar **nameservers no registrar do domínio** para os NS da Cloudflare
-- [ ] Aguardar propagação (`dig NS condovote.com.br` mostra NS Cloudflare)
-- [ ] SSL/TLS → mode **Full (strict)**
-- [ ] SSL/TLS → Origin Server → Create Certificate → `*.condovote.com.br`, `condovote.com.br`, validade 15 anos → **salvar cert + key** para colar no Coolify depois
+- [x] Registrar conta Cloudflare (free)
+- [x] Add site → `condovote.com.br` → plano Free
+- [x] Atualizar **nameservers no registrar do domínio** para os NS da Cloudflare
+- [x] Aguardar propagação (`dig NS condovote.com.br` mostra NS Cloudflare)
+- [x] SSL/TLS → mode **Full (strict)**
+- [x] SSL/TLS → Origin Server → Create Certificate → `*.condovote.com.br`, `condovote.com.br`, validade 15 anos → **salvar cert + key** para colar no Coolify depois
 
 ### T1.4f — Registros DNS
-- [ ] `api.condovote.com.br` → A record apontando para IP público da VM Oracle, **Proxy ON (laranja)**
-- [ ] `app.condovote.com.br` → CNAME para `<projeto>.pages.dev` (criado em T1.4h), **Proxy ON (laranja)**
+- [ ] `api.condovote.com.br` → A record apontando para IP público da VM Oracle, **Proxy ON (laranja)** — aguarda T1.4b
+- [ ] `app.condovote.com.br` → CNAME para `<projeto>.pages.dev` (criado em T1.4h), **Proxy ON (laranja)** — aguarda T1.4h
+- [x] `condovote.com.br` → A record `192.0.2.1`, **Proxy ON** (placeholder para redirect rule)
+- [x] `www.condovote.com.br` → CNAME para `condovote.com.br`, **Proxy ON**
 
 ### T1.4g — Redirect Rules (apex + www)
-- [ ] Rules → Redirect Rules → Create:
+- [x] Rules → Redirect Rules → Create:
   - Se hostname = `condovote.com.br` OR `www.condovote.com.br` → 301 para `https://app.condovote.com.br$1` (preserve path + query)
 
 ### T1.4h — Cloudflare Pages (frontend)
@@ -95,22 +97,22 @@
 - [ ] Installing SSL cert custom: Caddy → upload Cloudflare Origin CA cert + key (capturados em T1.4e)
 
 ### T1.4j — GHCR (GitHub Container Registry)
-- [ ] No GitHub: Settings → Developer settings → Personal access tokens → Generate (classic)
-- [ ] Escopos: `write:packages`, `read:packages`, `repo` (se repo privado)
-- [ ] Guardar token em cofre pessoal
-- [ ] No repo: Settings → Secrets and variables → Actions → New repository secret: `GHCR_TOKEN` = valor do PAT
+- [x] No GitHub: Settings → Developer settings → Personal access tokens → Generate (classic)
+- [x] Escopos: `write:packages`, `read:packages` (repo público — `repo` não necessário)
+- [x] Guardar token em cofre pessoal (Bitwarden)
+- [x] No repo: Settings → Secrets and variables → Actions → New repository secret: `GHCR_TOKEN` = valor do PAT
 
 **Aceite:** VM Oracle no ar com Coolify acessível; Cloudflare autoritativo com `api.` e `app.` apontados; Pages projeto criado conectado ao repo; Coolify conectado ao repo com Origin CA instalado; `GHCR_TOKEN` disponível nos Actions secrets.
 
 ---
 
 ## T1.5 — Supabase CLI local
-- [ ] Instalar Supabase CLI (homebrew: `brew install supabase/tap/supabase`)
-- [ ] `supabase init` dentro de `infra/supabase/` — commitar `config.toml`
-- [ ] `supabase start` roda sem erro (exige Docker rodando)
-- [ ] Documentar no README os comandos `supabase start` / `supabase stop` / `supabase status`
+- [x] Instalar Supabase CLI (homebrew: `brew install supabase/tap/supabase`) — v2.90.0
+- [x] `supabase init` dentro de `infra/supabase/` — `config.toml` gerado em `infra/supabase/supabase/config.toml`
+- [x] `supabase start` roda sem erro (Docker 29.3.1) — Studio em `http://127.0.0.1:54323`
+- [x] Documentar no README os comandos `supabase start` / `supabase stop` / `supabase status`
 
-**Aceite:** Supabase Studio local abre em `http://localhost:54323` e mostra Postgres local vazio.
+**Aceite:** Supabase Studio local abre em `http://127.0.0.1:54323` e mostra Postgres local vazio. ✅
 
 ---
 
@@ -118,9 +120,10 @@
 - [x] Completar `.env.example` na raiz com todas as variáveis:
   - Backend: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `CPF_ENCRYPTION_KEY`, `CORS_ALLOWED_ORIGINS`
   - Frontend: `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL`
-- [ ] Gerar `CPF_ENCRYPTION_KEY` de 32 bytes base64: `openssl rand -base64 32`
-- [ ] Armazenar chave em cofre pessoal (1Password/Bitwarden) — é a única chave capaz de descriptografar CPFs
-- [ ] Injetar variáveis no Dashboard Coolify (backend, Secrets criptografados em repouso) e Cloudflare Pages (frontend)
+- [x] Criar `.env.local` com valores locais (Supabase local, Redis local, `localhost` URLs) — gitignored
+- [x] Gerar `CPF_ENCRYPTION_KEY` de 32 bytes base64: `openssl rand -base64 32`
+- [x] Armazenar chave em cofre pessoal (Bitwarden) — é a única chave capaz de descriptografar CPFs
+- [ ] Injetar variáveis no Dashboard Coolify (backend, Secrets criptografados em repouso) e Cloudflare Pages (frontend) — aguarda T1.4d e T1.4h
 - [ ] GitHub Actions Secrets só o necessário (se CI precisar tocar Supabase — provavelmente não na v1)
 
 **Aceite:** `.env.example` commitado; chave real nunca no repo; todas as variáveis populadas nos respectivos dashboards.

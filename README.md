@@ -1,6 +1,6 @@
 # Condo Vote
 
-Sistema de votação condominial com foco em conformidade com o Código Civil brasileiro, LGPD e quórums definidos por lei.
+Sistema de votação condominial com foco em conformidade com o Código Civil brasileiro, LGPD e quóruns definidos por lei.
 
 ## Stack
 
@@ -8,64 +8,57 @@ Sistema de votação condominial com foco em conformidade com o Código Civil br
 |--------|----------|
 | Backend | Java 21 + Spring Boot |
 | Frontend | Angular |
-| Banco | PostgreSQL (Supabase) |
+| Banco | PostgreSQL (Supabase) + Flyway |
 | Auth | Supabase Auth |
 | Redis | Upstash |
 | E-mail | Resend |
 | CI/CD | GitHub Actions |
-| Hosting | Railway (backend) + Vercel (frontend) |
+| Hosting backend | Oracle Cloud `us-ashburn-1` + Coolify |
+| Hosting frontend | Cloudflare Pages |
+| DNS / edge | Cloudflare |
 
 ## Pré-requisitos
 
 - Java 21
 - Node.js 20+
-- Docker e Docker Compose
-- Supabase CLI (`npm install -g supabase`)
+- Docker Desktop
+- Supabase CLI (`brew install supabase/tap/supabase`)
 - Maven 3.9+
 
-## Documentação
-
-### Local (Em desenvolvimento)
+## Infraestrutura local
 
 ```bash
 # Criar arquivo .env a partir do .env.example
 cp .env.example .env
+# Edite .env com os valores locais (nunca commite este arquivo)
 
-# Iniciar Supabase local
+# Subir Supabase local (Postgres + Auth + Studio)
 cd infra/supabase && supabase start
 
-# Backend (Em desenvolvimento)
+# Verificar status dos serviços
+cd infra/supabase && supabase status
+
+# Parar Supabase local
+cd infra/supabase && supabase stop
+```
+
+Após `supabase start`, o Studio estará em `http://127.0.0.1:54323` e o banco local em `postgresql://postgres:postgres@127.0.0.1:54322/postgres`.
+
+## Desenvolvimento
+
+```bash
+# Backend (Fase 3)
 cd backend && ./mvnw spring-boot:run
 
-# Frontend
+# Frontend (Fase 4)
 cd frontend && npm install && npm start
 ```
 
 ## Variáveis de Ambiente
 
-### Supabase
-- `SUPABASE_URL` - URL do projeto Supabase
-- `SUPABASE_ANON_KEY` - Chave anônima
-- `SUPABASE_SERVICE_ROLE_KEY` - Chave de serviço (apenas backend)
-- `JWT_SECRET` - Segredo para validação JWT
+Ver `.env.example` para a lista completa. Valores locais ficam em `.env` (gitignored); valores de produção ficam no Dashboard Coolify (backend) e Cloudflare Pages (frontend).
 
-### Banco
-- `DATABASE_URL` - Connection string PostgreSQL
-
-### Redis
-- `UPSTASH_REDIS_REST_URL` - URL REST do Upstash
-- `UPSTASH_REDIS_REST_TOKEN` - Token de acesso
-
-### E-mail
-- `RESEND_API_KEY` - API key do Resend
-- `RESEND_FROM_ADDRESS` - Endereço de remetente
-
-### Criptografia
-- `CPF_ENCRYPTION_KEY` - Chave AES-256-GCM (32 bytes base64)
-
-Ver `.env.example` para a lista completa.
-
-## Links
+## Documentação
 
 - [Arquitetura](docs/architecture.md)
 - [Data Model](docs/data-model.md)

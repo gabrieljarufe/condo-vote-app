@@ -431,7 +431,7 @@ CREATE TYPE email_status AS ENUM (
 - Polls nunca são deletados (retenção de 5 anos — ver spec §11). `poll_option` tem CASCADE vestigial.
 - Abertura/fechamento e cancelamento têm autoria explícita inline para hot-path queries; `audit_event` registra adicionalmente para timeline geral.
 - `previous_poll_id` é FK fraca (sem cascade), opcional. Quando uma Segunda Convocação é criada após uma Primeira INVALIDATED, o síndico pode (mas não precisa) referenciar.
-- **Quórum de presença (Primeira Convocação):** quando `convocation = FIRST`, o `PollCloserJob` verifica se `total_votes_computed >= ⌊quorum_denominator / 2⌋ + 1` antes de declarar resultado válido. Se não atingir, o poll é INVALIDATED com reason `PRESENCE_QUORUM_NOT_REACHED`. Segunda Convocação não tem quórum de presença. Esta regra é enforçada no service layer (não há CHECK constraint ligando `convocation_type` ao quórum de presença).
+- **Quórum de presença (Primeira Convocação):** quando `convocation = FIRST`, o `PollCloserJob` verifica se `total_votes_computed >= CEIL(quorum_denominator / 2.0)` antes de declarar resultado válido. Se não atingir, o poll é INVALIDATED com reason `PRESENCE_QUORUM_NOT_REACHED`. Segunda Convocação não tem quórum de presença. Esta regra é enforçada no service layer — não há CHECK constraint vinculando `convocation_type` à contagem de votos.
 - **Todos os campos editáveis enquanto SCHEDULED:** título, descrição, opções, datas, `quorum_mode`, `convocation`. A partir de OPEN, nenhum campo é editável.
 
 ---
@@ -474,8 +474,7 @@ CREATE TYPE email_status AS ENUM (
 - `idx_vote_voter_user_id ON (voter_user_id)` — auditoria por usuário
 
 **Regras:**
-- Imutável após registro — sem UPDATE/DELETE pela aplicação.
-- Voto pertence ao apartamento; remoção do morador-votante **não invalida** o voto (alinhado com a spec §4 e Código Civil).
+- Imutável após registro. Sem UPDATE/DELETE pela aplicação. Voto pertence ao apartamento; remoção do morador não invalida (não existe coluna `is_nullified` — qualquer menção em outros docs está desatualizada).
 
 ---
 
@@ -497,7 +496,7 @@ CREATE TYPE email_status AS ENUM (
 
 **Notas:**
 - Write-once. Gerado na transição `SCHEDULED → OPEN`. Nunca alterado.
-- Apartamentos inadimplentes ou sem `eligible_voter_user_id` na abertura **não são incluídos**.
+- **Critério de inclusão:** apartamento (a) existe no momento da abertura, (b) `is_delinquent = false`, (c) `eligible_voter_user_id IS NOT NULL`. Inadimplentes ou sem votante habilitado **não são incluídos**.
 - Define o denominador para quórum (modos Absoluto e Qualificado) e o quórum de presença (Primeira Convocação).
 - **O snapshot é lei:** tanto `apartment_id` quanto `eligible_voter_user_id` são usados na verificação de voto. Se o votante habilitado for removido durante a votação, o apartamento perde o direito de voto nesta votação. Não há fallback para novo votante.
 
@@ -568,7 +567,16 @@ CREATE TYPE email_status AS ENUM (
 **Notas:**
 - Tabela write-only pela aplicação.
 - Cancelamento de poll, abertura manual e remoção de morador também têm autoria inline nas tabelas respectivas (hot-path); `audit_event` é a fonte unificada para timeline e relatórios.
+- **Restrição LGPD:** campo `payload` **nunca** deve armazenar CPF, senha ou PII sensível. Registrar apenas IDs, roles, timestamps e dados operacionais.
 - **Eventos automáticos** (`POLL_CLOSED`, `POLL_INVALIDATED`): emitidos por jobs. Como `actor_user_id` é NOT NULL, usar UUID reservado `00000000-0000-0000-0000-000000000001` representando o usuário técnico "system". Documentado em `shared/constants/SystemUser.java`. Frontend de auditoria renderiza como "Sistema (automático)".
+
+---
+
+## System User (phantom entry)
+
+UUID `00000000-0000-0000-0000-000000000001` é reservado para `audit_event.actor_user_id` em ações automáticas executadas por jobs (`PollCloserJob`, `AllVotedCheckerJob`, `RetentionPrunerJob`). **Não tem entrada real em `app_user`**. Auditoria no frontend renderiza como "Sistema (automático)". Constante Java: `shared/constants/SystemUser.java`.
+
+Evolução v2: criar entrada real em `app_user` se queries RLS demandarem JOIN explícito.
 
 ---
 
@@ -638,6 +646,15 @@ CREATE POLICY tenant_isolation ON <table>
 
 **Tabelas sem RLS:** `condominium` (acesso cross-tenant por superadmin); `app_user` (cross-tenant — perfil do user independe de condomínio); `email_notification` (cross-tenant — notificações são por user, não por condo)
 
+**Jobs e RLS:** jobs (`PollCloserJob`, `AllVotedCheckerJob`, etc.) rodam **cross-tenant** — o `TenantTransactionAspect` não seta `app.current_tenant` para estes métodos (não têm `X-Tenant-Id` no contexto). Eles fazem INSERT/UPDATE direto com `condominium_id` explícito no body. `audit_event.actor_user_id = '00000000-0000-0000-0000-000000000001'` (System User) para eventos automáticos.
+
+**Índice para pré-validação de operações bloqueáveis:**
+```sql
+CREATE INDEX idx_poll_open_by_condo ON poll (condominium_id, status)
+WHERE status IN ('OPEN', 'SCHEDULED');
+```
+Acelera queries em `DelegationService`, `PromotionService` e `RemovalService` que verificam se há poll ativo antes de permitir a operação.
+
 **Composite FKs como defesa adicional:**
 - `vote (poll_id, condominium_id) → poll (id, condominium_id)`
 - `vote (apartment_id, condominium_id) → apartment (id, condominium_id)`
@@ -688,7 +705,8 @@ Tokens efêmeros de convite vivem no Redis para evitar I/O no PostgreSQL e expir
 | `eligible_voter_user_id` em `apartment` | Acesso direto sem JOIN; integridade garantida no service layer |
 | `block` nullable em `apartment` | Nem todo condomínio tem torres |
 | `is_delinquent` em `apartment` | Inadimplência é da unidade (Código Civil) |
-| Voto sobrevive à remoção do morador | Voto pertence ao apartamento, usuário é testemunha. Removido `is_nullified` |
+| Voto imutável; remoção do morador não invalida — não existe coluna `is_nullified` | Voto pertence ao apartamento, usuário é testemunha (Código Civil). |
+| AES-256-SIV (não GCM) para CPF | Determinismo é requisito da `UNIQUE(cpf_encrypted)` + validação de convite. SIV é autenticado; fallback CBC+IV derivado se biblioteca SIV indisponível. |
 | `condominium_id` redundante | Necessário para RLS sem JOINs |
 | Composite UNIQUE `(id, condominium_id)` | Habilita composite FKs que impedem mismatch de tenant |
 | Composite FKs em vote/snapshot/resident/invitation | Defesa em profundidade contra bugs cross-tenant |

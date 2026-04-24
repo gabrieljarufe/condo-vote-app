@@ -4,6 +4,8 @@
 
 **Pré-requisitos:** Fase 3 (testes existem), Fase 4 (frontend builda).
 
+> **⚠️ Ordem crítica dentro da Fase 5:** T5.1 e T5.2 **antes** de T5.3. Ativar status checks obrigatórios (T5.3) com jobs inexistentes ou não-verdes trava a branch permanentemente.
+
 ---
 
 ## T5.1 — Workflow CI backend
@@ -14,6 +16,7 @@
   - [ ] Service container: `redis:7-alpine` (caso algum IT use)
   - [ ] Step: `cd backend && ./mvnw verify` — inclui Testcontainers (Docker disponível em `ubuntu-latest`)
   - [ ] Upload de surefire-reports em caso de falha (debug fácil)
+  - [ ] **JWKS em CI:** Testcontainers sobe Postgres real; JWKS do Supabase **não** é testado em IT (sem acesso externo no CI). Mockar `JwtDecoder` com `@TestConfiguration` ou usar `spring.security.oauth2.resourceserver.jwt.jwk-set-uri` apontando para WireMock local em testes de integração.
 
 **Aceite:** PR com teste quebrado é bloqueado; PR verde tem ✅ no check `test`.
 
@@ -36,9 +39,27 @@
   - `main`: exige `test` + `frontend-test`
   - `develop`: exige `test` + `frontend-test`
 - [ ] Confirmar Coolify auto-deploy no push para `main` via webhook (já configurado na Fase 3)
-- [ ] Job `publish-image` no workflow: login no GHCR via `GHCR_TOKEN`, `docker/build-push-action@v5` tag `ghcr.io/<owner>/condo-vote-backend:<sha>` + `:latest` (dispara só em push para `main`)
+- [ ] Job `publish-image` no workflow (dispara só em push para `main`):
+  ```yaml
+  - name: Login to GHCR
+    uses: docker/login-action@v3
+    with:
+      registry: ghcr.io
+      username: ${{ github.actor }}
+      password: ${{ secrets.GHCR_TOKEN }}
+  - name: Build and push
+    uses: docker/build-push-action@v5
+    with:
+      context: ./backend
+      push: true
+      tags: |
+        ghcr.io/${{ github.repository_owner }}/condo-vote-backend:${{ github.sha }}
+        ghcr.io/${{ github.repository_owner }}/condo-vote-backend:latest
+  ```
 - [x] Cloudflare Pages via GitHub Actions (workflow `.github/workflows/cloudflare-pages.yml`) — deploy só em push para `main` ou manualmente via workflow_dispatch
   > **Nota:** auto-deploy nativo do Cloudflare foi desabilitado (Branch Control: Production OFF, Preview None) para evitar double deploy.
 - [ ] Documentar fluxo de release em `README.md` seção "Deploy"
+
+> **Dois workflows distintos:** `ci.yml` é exclusivo do backend (test + publish-image). `cloudflare-pages.yml` é exclusivo do frontend. Não duplicar lógica entre eles.
 
 **Aceite:** ciclo completo: `feature/*` → PR para `develop` → CI verde → merge → PR `develop` → `main` → 1 approval + CI → merge → deploy automático Coolify (via webhook + imagem em GHCR) + deploy Cloudflare Pages via GitHub Actions.

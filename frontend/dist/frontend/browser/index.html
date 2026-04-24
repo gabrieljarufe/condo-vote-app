@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 
-<html lang="pt-BR"><head>
+<html class="light" lang="pt-BR"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Condo Vote - Assembleias e Votações Online</title>
+<title>Condo Vote - Assembleias Virtuais Seguras</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
@@ -14,53 +14,53 @@
             theme: {
                 extend: {
                     "colors": {
-                        "primary": "#000000",
-                        "surface-bright": "#f7f9fb",
-                        "secondary-container": "#316bf3",
-                        "inverse-surface": "#2d3133",
-                        "on-background": "#191c1e",
-                        "on-primary-fixed": "#131b2e",
-                        "surface-container-low": "#f2f4f6",
-                        "on-tertiary-fixed-variant": "#38485d",
-                        "on-primary-container": "#7c839b",
-                        "surface-container-lowest": "#ffffff",
-                        "background": "#f7f9fb",
-                        "on-error": "#ffffff",
-                        "outline": "#76777d",
-                        "primary-fixed-dim": "#bec6e0",
-                        "error": "#ba1a1a",
-                        "primary-fixed": "#dae2fd",
-                        "surface-container-high": "#e6e8ea",
-                        "on-secondary": "#ffffff",
-                        "on-primary-fixed-variant": "#3f465c",
-                        "on-primary": "#ffffff",
-                        "surface-container-highest": "#e0e3e5",
-                        "surface-variant": "#e0e3e5",
-                        "secondary-fixed-dim": "#b4c5ff",
-                        "on-secondary-fixed-variant": "#003ea8",
                         "surface-tint": "#565e74",
-                        "primary-container": "#131b2e",
+                        "surface-container-low": "#f2f4f6",
+                        "inverse-surface": "#2d3133",
+                        "on-tertiary-fixed-variant": "#38485d",
                         "surface": "#f7f9fb",
                         "on-secondary-fixed": "#00174b",
-                        "inverse-on-surface": "#eff1f3",
-                        "on-secondary-container": "#fefcff",
-                        "error-container": "#ffdad6",
-                        "inverse-primary": "#bec6e0",
-                        "tertiary-container": "#0b1c30",
-                        "secondary": "#0051d5",
-                        "outline-variant": "#c6c6cd",
-                        "tertiary": "#000000",
-                        "tertiary-fixed": "#d3e4fe",
-                        "on-surface-variant": "#45464d",
-                        "on-tertiary": "#ffffff",
-                        "on-surface": "#191c1e",
-                        "on-error-container": "#93000a",
+                        "primary-container": "#131b2e",
                         "surface-dim": "#d8dadc",
-                        "on-tertiary-container": "#75859d",
+                        "secondary-container": "#316bf3",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#dae2fd",
+                        "on-surface": "#191c1e",
+                        "primary-fixed-dim": "#bec6e0",
+                        "outline-variant": "#c6c6cd",
+                        "on-background": "#191c1e",
+                        "background": "#f7f9fb",
+                        "on-surface-variant": "#45464d",
+                        "surface-container": "#eceef0",
+                        "on-tertiary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "secondary": "#0051d5",
                         "secondary-fixed": "#dbe1ff",
                         "on-tertiary-fixed": "#0b1c30",
-                        "surface-container": "#eceef0",
-                        "tertiary-fixed-dim": "#b7c8e1"
+                        "on-primary-fixed-variant": "#3f465c",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#0b1c30",
+                        "on-primary-container": "#7c839b",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-secondary-container": "#fefcff",
+                        "surface-variant": "#e0e3e5",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-primary": "#bec6e0",
+                        "primary": "#000000",
+                        "on-primary-fixed": "#131b2e",
+                        "surface-bright": "#f7f9fb",
+                        "on-tertiary-container": "#75859d",
+                        "tertiary": "#000000",
+                        "outline": "#76777d",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#d3e4fe",
+                        "inverse-on-surface": "#eff1f3",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e6e8ea",
+                        "surface-container-highest": "#e0e3e5",
+                        "error-container": "#ffdad6"
                     },
                     "borderRadius": {
                         "DEFAULT": "0.125rem",
@@ -69,300 +69,291 @@
                         "full": "0.75rem"
                     },
                     "spacing": {
-                        "gutter": "24px",
                         "margin": "32px",
-                        "lg": "48px",
-                        "base": "8px",
+                        "xs": "4px",
                         "xl": "80px",
                         "md": "24px",
+                        "base": "8px",
+                        "gutter": "24px",
                         "sm": "12px",
-                        "xs": "4px"
+                        "lg": "48px"
                     },
                     "fontFamily": {
-                        "display-lg": ["Inter"],
                         "label-md": ["Inter"],
                         "body-md": ["Inter"],
-                        "body-lg": ["Inter"],
-                        "headline-lg": ["Inter"],
                         "caption": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
                         "headline-md": ["Inter"]
                     },
                     "fontSize": {
-                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
                         "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
                         "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
-                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
                         "caption": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
-                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}]
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                        "quote": ["24px", {"lineHeight": "36px", "fontWeight": "500", "fontStyle": "italic"}]
                     }
                 },
             },
         }
     </script>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
     </style>
 </head>
-<body class="bg-surface text-on-surface">
-<!-- Header / TopAppBar -->
-<header class="fixed top-0 w-full z-50 border-b border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md shadow-sm dark:shadow-none">
-<nav class="flex justify-between items-center h-16 px-8 max-w-[1120px] mx-auto font-inter antialiased text-sm font-medium">
+<body class="bg-background text-on-surface">
+<header class="fixed top-0 w-full z-50 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 h-16">
+<div class="flex justify-between items-center max-w-7xl mx-auto px-4 md:px-8 h-full">
 <div class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">Condo Vote</div>
-<div class="hidden md:flex items-center gap-8">
-<a class="text-slate-900 dark:text-white border-b-2 border-slate-900 dark:border-white pb-1" href="#">Início</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#beneficios">Benefícios</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#funcionalidades">Funcionalidades</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#como-funciona">Como funciona</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors" href="#faq">FAQ</a>
-</div>
-<div class="flex items-center gap-4">
-<button class="px-4 py-2 text-slate-900 dark:text-slate-100 font-medium transition-all duration-200 ease-in-out hover:bg-slate-50 dark:hover:bg-slate-800 rounded-sm">Entrar</button>
-<button class="px-4 py-2 bg-secondary text-white rounded-lg font-medium transition-all hover:bg-secondary/90">Solicitar Demo</button>
-</div>
+<nav class="hidden md:flex items-center space-x-8">
+<a class="text-blue-700 dark:text-blue-400 border-b-2 border-blue-700 pb-1 font-label-md text-label-md" href="#">Início</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 font-label-md text-label-md transition-all duration-200" href="#">Funcionalidades</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 font-label-md text-label-md transition-all duration-200" href="#">Legalidade</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 font-label-md text-label-md transition-all duration-200" href="#">Sobre Nós</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 font-label-md text-label-md transition-all duration-200" href="#">Contato</a>
 </nav>
+<div class="flex items-center space-x-4">
+<button class="text-slate-600 dark:text-slate-400 font-label-md text-label-md cursor-pointer active:scale-95 px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 rounded transition-all">Entrar</button>
+<button class="bg-secondary text-white font-label-md text-label-md px-6 py-2 rounded-lg cursor-pointer active:scale-95 transition-all shadow-sm">Agendar Demo</button>
+</div>
+</div>
 </header>
 <main class="pt-16">
-<!-- Hero Section -->
-<section class="relative overflow-hidden bg-white py-24 md:py-32">
-<div class="max-w-[1120px] mx-auto px-8 flex flex-col md:flex-row items-center gap-16">
-<div class="flex-1 text-left">
-<h1 class="font-display-lg text-display-lg text-on-background mb-6">Votações online seguras para o seu condomínio</h1>
-<p class="font-body-lg text-body-lg text-on-surface-variant mb-10 max-w-xl">Transparência, rigor jurídico e praticidade para síndicos e moradores.</p>
+<section class="relative bg-white border-b border-slate-100 overflow-hidden">
+<div class="max-w-7xl mx-auto px-4 md:px-8 py-20 lg:py-32 grid lg:grid-cols-2 gap-16 items-center">
+<div class="z-10">
+<div class="inline-flex items-center px-3 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed-variant text-caption font-label-md mb-6">
+<span class="material-symbols-outlined mr-2 text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+                        100% Conforme à Lei 14.309/22
+                    </div>
+<h1 class="font-display-lg text-display-lg text-primary mb-6 leading-tight">
+                        Assembleias virtuais com <span class="text-secondary">segurança jurídica</span> absoluta.
+                    </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-10 max-w-lg">
+                        Transforme a gestão do seu condomínio com votações online auditáveis, seguras e fáceis de usar para todos os moradores.
+                    </p>
 <div class="flex flex-col sm:flex-row gap-4">
-<button class="px-8 py-4 bg-secondary text-white font-label-md text-label-md rounded-lg shadow-sm hover:shadow-md transition-all">Testar Grátis</button>
-<button class="px-8 py-4 border border-outline-variant text-on-surface font-label-md text-label-md rounded-lg hover:bg-surface-container transition-all">Ver Vídeo</button>
+<button class="bg-secondary text-white px-8 py-4 rounded font-label-md text-label-md flex items-center justify-center gap-2 hover:brightness-110 transition-all">
+                            Começar agora <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="border border-outline px-8 py-4 rounded font-label-md text-label-md hover:bg-surface-container-low transition-all">
+                            Ver demonstração
+                        </button>
 </div>
 </div>
-<div class="flex-1 w-full relative">
-<div class="absolute -inset-4 bg-secondary-container/10 blur-3xl rounded-full"></div>
-<img alt="Modern smartphone displaying a clean and intuitive voting app interface for condo residents." class="relative rounded-xl border border-outline-variant shadow-xl w-full object-cover aspect-[4/3]" data-alt="A high-quality, professional photo of a modern smartphone displaying a clean and intuitive voting app interface for condo residents. The app shows options for a building assembly vote, with clear buttons and a 'Vote' call to action. The background is a bright, modern apartment interior, slightly blurred. Professional photography, soft lighting, 4k resolution." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBVOsEBQVxh054jxDEGYMMsKV9RTdooDDCIuinOaKshP4jpQcp_wK4Z8vKaZArZTH2PHPrqqC4bRnziRu813XiOM9h3WUwGlXmdD4enBqmA4QcAtf6R83b8G7qTdsMLZB4zD2WkPHJAbiJpy0sdhf-kw46-aeoeutigWlA9ylmM8UGDAH9xIku2kmAbH0DLfc4Wm9IeU8wRMXgPSKrn8tMkZWfQXSeGcWmyFwAdYUw290R__2WkFDpBJB-AT1cQPPb28qISrI9NThen"/>
+<div class="relative hidden lg:block">
+<div class="absolute -top-12 -left-12 w-64 h-64 bg-secondary-fixed opacity-20 rounded-full blur-3xl"></div>
+<div class="relative bg-white p-4 rounded-xl border border-slate-200 shadow-xl overflow-hidden">
+<img alt="Interface Dashboard" class="rounded-lg shadow-sm w-full h-auto" data-alt="Professional UI dashboard showing real-time condominium voting statistics with clean bar charts and progress indicators in a corporate style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAESvM_oejBUH6eu5dc_a1gaKG_lXTrzXcFjr5MhUDvq9NGBqQDZzEpHdqU2BdMTRIVPcyFYSYs9abXM6cJcAFZlkbL9MoMNKHC-KbxMSdPjrmLoPf_dHXOwDE0rCAP0Qn17x0e3gPr9_lG1fi6_imlHX2_GMalxvngO7RCVAHSG_UvDQ0G-gT27F5lSJGwHZUYlVobAoKFtLPSXpOGkQ4-7gfHMszw2dHibSg7BSNctPnLFuieUNOl6Jqm9-XRdkNemGcmqxCZeh4k"/>
+</div>
 </div>
 </div>
 </section>
-<!-- Benefícios Section -->
-<section class="bg-surface-container py-24" id="beneficios">
-<div class="max-w-[1120px] mx-auto px-8">
+<section class="py-24 bg-surface">
+<div class="max-w-7xl mx-auto px-4 md:px-8">
 <div class="text-center mb-16">
-<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">Por que escolher o Condo Vote?</h2>
-<p class="text-on-surface-variant font-body-md text-body-md">A solução definitiva para assembleias digitais com validade jurídica.</p>
+<h2 class="font-headline-lg text-headline-lg text-primary mb-4">Soluções para uma gestão moderna</h2>
+<p class="text-on-surface-variant font-body-md text-body-md max-w-2xl mx-auto">Nossa tecnologia garante que cada voto seja legítimo, transparente e incontestável perante a lei brasileira.</p>
 </div>
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter">
-<!-- Card 1 -->
-<div class="bg-white border border-outline-variant p-md rounded-lg flex flex-col items-start gap-4 hover:border-secondary transition-colors">
-<div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+<div class="bg-white p-8 rounded-lg border border-slate-200 hover:shadow-md transition-all">
+<div class="w-12 h-12 bg-secondary-fixed text-secondary flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-2xl">groups</span>
 </div>
-<h3 class="font-headline-md text-label-md font-bold">Quórum Configurável</h3>
-<p class="text-caption font-caption text-on-surface-variant">Maioria, Absoluta, 2/3, 3/4. Configure conforme o regimento do seu condomínio.</p>
+<h3 class="font-headline-md text-headline-md text-primary mb-3 text-lg">Quórum Facilitado</h3>
+<p class="text-on-surface-variant font-body-md text-body-md">Aumente a participação dos moradores permitindo votos de qualquer lugar através de dispositivos móveis.</p>
 </div>
-<!-- Card 2 -->
-<div class="bg-white border border-outline-variant p-md rounded-lg flex flex-col items-start gap-4 hover:border-secondary transition-colors">
-<div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+<div class="bg-white p-8 rounded-lg border border-slate-200 hover:shadow-md transition-all">
+<div class="w-12 h-12 bg-secondary-fixed text-secondary flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-2xl">visibility</span>
 </div>
-<h3 class="font-headline-md text-label-md font-bold">Transparência Total</h3>
-<p class="text-caption font-caption text-on-surface-variant">Snapshot imutável e auditoria completa de cada voto realizado na plataforma.</p>
+<h3 class="font-headline-md text-headline-md text-primary mb-3 text-lg">Transparência</h3>
+<p class="text-on-surface-variant font-body-md text-body-md">Painel de auditoria em tempo real para síndicos e conselho fiscal acompanharem a integridade do processo.</p>
 </div>
-<!-- Card 3 -->
-<div class="bg-white border border-outline-variant p-md rounded-lg flex flex-col items-start gap-4 hover:border-secondary transition-colors">
-<div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined" data-icon="smartphone">smartphone</span>
+<div class="bg-white p-8 rounded-lg border border-slate-200 hover:shadow-md transition-all">
+<div class="w-12 h-12 bg-secondary-fixed text-secondary flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-2xl">bolt</span>
 </div>
-<h3 class="font-headline-md text-label-md font-bold">Facilidade</h3>
-<p class="text-caption font-caption text-on-surface-variant">Vote pelo celular com notificações automáticas e lembretes de prazos.</p>
+<h3 class="font-headline-md text-headline-md text-primary mb-3 text-lg">Facilidade</h3>
+<p class="text-on-surface-variant font-body-md text-body-md">Interface intuitiva projetada para todas as idades, reduzindo drasticamente o suporte técnico.</p>
 </div>
-<!-- Card 4 -->
-<div class="bg-white border border-outline-variant p-md rounded-lg flex flex-col items-start gap-4 hover:border-secondary transition-colors">
-<div class="w-12 h-12 rounded-full bg-secondary-fixed flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined" data-icon="gavel">gavel</span>
+<div class="bg-white p-8 rounded-lg border border-slate-200 hover:shadow-md transition-all">
+<div class="w-12 h-12 bg-secondary-fixed text-secondary flex items-center justify-center rounded-lg mb-6">
+<span class="material-symbols-outlined text-2xl">gavel</span>
 </div>
-<h3 class="font-headline-md text-label-md font-bold">Conformidade Legal</h3>
-<p class="text-caption font-caption text-on-surface-variant">Alinhado ao Código Civil e gestão automática de inadimplência.</p>
+<h3 class="font-headline-md text-headline-md text-primary mb-3 text-lg">Conformidade</h3>
+<p class="text-on-surface-variant font-body-md text-body-md">Geração automática de atas e listas de presença válidas para registro em cartório.</p>
 </div>
 </div>
 </div>
 </section>
-<!-- Features Bento Grid -->
-<section class="py-24 bg-white" id="funcionalidades">
-<div class="max-w-[1120px] mx-auto px-8">
-<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
-<div class="md:col-span-2 bg-surface-bright border border-outline-variant p-lg rounded-xl flex flex-col justify-between">
-<div>
-<span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed-variant text-caption rounded-full inline-block mb-4">Gestão Avançada</span>
-<h3 class="font-headline-lg text-headline-lg mb-4">Múltiplos síndicos e administradores</h3>
-<p class="text-on-surface-variant font-body-md text-body-md mb-8">Gerencie permissões de forma granular, permitindo que conselheiros e administradoras colaborem na criação de pautas.</p>
+<section class="py-24 bg-white">
+<div class="max-w-7xl mx-auto px-4 md:px-8">
+<div class="grid lg:grid-cols-2 gap-16 items-center">
+<div class="order-2 lg:order-1 grid grid-cols-2 gap-4">
+<div class="bg-surface-container p-4 rounded-xl">
+<img alt="Apartment Building" class="rounded-lg h-48 w-full object-cover" data-alt="High-end modern luxury residential apartment building complex at sunset with glowing windows and professional landscaping" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtKnT48jIcVmbU8NHUu4Zgpi4BEMJ5CG086gqKgrnq28PPaLE1w4HhBtf_hrHi7Zmnn5xqZYCg2HuZdxBzNlKM_KFfNGo8sBXNoVbfmyLI4ka6YBwo-aHtkw1S9XQhq-p4nK0vkBTgwo_B0vBZ8mhnoj5i3k4VLDsjWny9LbCswv4s_sIU9wT-hpOSMm5-giiydXnbxVRCm-MaXeKV4XtzR_AcHL6Fp_b-S4IA0blOqBeX8a0FC7kbdXFKVoTDkEmzQfILnc5O58HL"/>
 </div>
-<div class="flex gap-4 items-center">
-<span class="flex items-center gap-2 text-on-primary-container"><span class="material-symbols-outlined" data-icon="check_circle">check_circle</span> Permissões por perfil</span>
-<span class="flex items-center gap-2 text-on-primary-container"><span class="material-symbols-outlined" data-icon="check_circle">check_circle</span> Log de atividades</span>
+<div class="bg-surface-container p-4 rounded-xl mt-8">
+<img alt="Office Meeting" class="rounded-lg h-48 w-full object-cover" data-alt="Corporate professional board meeting in a clean glass-walled office space with people discussing governance documents" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKOOEsLZdhPtmY77cgJ0z0Opl1Wp31_ww1xXEvRN0CehFQaK45N9LH8nfVaeLIYxZ634UuNvon1_5g1BdmSbgRAV-oql5dk5QFCRYiOgPGRLDdGUbFYHL4kbmYXtwgvtp2WUAcP9QKw3hqaSRYQZ1C8vdTcLKHRAZ8EefAOlWDNTKnAn3P0INghurfyLXxuzK7fkN8C6WUiC5kdmCwDoGyNxtFbPnaZi0plYuDH9qSYknBQrryWf3kmBSNUAY4yh768NxHu6_1WXe6"/>
 </div>
 </div>
-<div class="bg-tertiary-container text-white p-lg rounded-xl flex flex-col justify-center text-center">
-<span class="material-symbols-outlined text-4xl mb-4" data-icon="assignment_ind">assignment_ind</span>
-<h3 class="font-headline-md text-headline-md mb-2">Delegação de Voto</h3>
-<p class="text-on-tertiary-container text-caption">Transferência segura de poder de voto do proprietário para o inquilino em tempo real.</p>
-</div>
-<div class="bg-surface-container-low border border-outline-variant p-lg rounded-xl flex flex-col items-start gap-4">
-<span class="material-symbols-outlined text-secondary" data-icon="history">history</span>
-<h4 class="font-bold">Snapshot de Elegibilidade</h4>
-<p class="text-caption text-on-surface-variant">Captura o estado financeiro do condômino no exato momento da abertura da votação.</p>
-</div>
-<div class="bg-surface-container-low border border-outline-variant p-lg rounded-xl flex flex-col items-start gap-4">
-<span class="material-symbols-outlined text-secondary" data-icon="mail">mail</span>
-<h4 class="font-bold">Notificações por e-mail</h4>
-<p class="text-caption text-on-surface-variant">Lembretes automáticos e comunicados oficiais enviados diretamente para a caixa de entrada.</p>
-</div>
-<div class="bg-surface-container-low border border-outline-variant p-lg rounded-xl flex flex-col items-start gap-4">
-<span class="material-symbols-outlined text-secondary" data-icon="bar_chart">bar_chart</span>
-<h4 class="font-bold">Resultados em tempo real</h4>
-<p class="text-caption text-on-surface-variant">Acompanhe as parciais com gráficos intuitivos e percentuais detalhados de quórum.</p>
+<div class="order-1 lg:order-2">
+<h2 class="font-headline-lg text-headline-lg text-primary mb-6">Ideal para Administradoras e Múltiplos Síndicos</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-8">
+                            Nossa plataforma foi desenhada para quem gerencia múltiplos condomínios simultaneamente. Centralize todas as assembleias em um único dashboard institucional.
+                        </p>
+<ul class="space-y-4">
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface">Gestão centralizada de múltiplos CNPJs</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface">Relatórios consolidados de participação</span>
+</li>
+<li class="flex items-start gap-3">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-md text-body-md text-on-surface">Suporte jurídico especializado para pautas complexas</span>
+</li>
+</ul>
 </div>
 </div>
 </div>
 </section>
-<!-- Como funciona -->
-<section class="py-24 bg-surface-container-lowest overflow-hidden" id="como-funciona">
-<div class="max-w-[1120px] mx-auto px-8">
+<section class="py-24 bg-surface-container-low">
+<div class="max-w-7xl mx-auto px-4 md:px-8">
 <div class="text-center mb-16">
-<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">Processo simplificado em 3 passos</h2>
+<h2 class="font-headline-lg text-headline-lg text-primary">Processo Simples em 3 Passos</h2>
 </div>
-<div class="flex flex-col md:flex-row gap-12 relative">
-<div class="hidden md:block absolute top-1/2 left-0 w-full h-0.5 bg-outline-variant -z-10"></div>
-<!-- Passo 1 -->
-<div class="flex-1 flex flex-col items-center text-center gap-6 bg-surface-container-lowest p-6">
-<div class="w-16 h-16 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-xl relative z-10 shadow-lg">1</div>
-<h3 class="font-headline-md text-label-md font-bold uppercase tracking-wider text-secondary">Síndico Cria</h3>
-<p class="text-on-surface-variant font-body-md text-body-md">Cadastre as pautas, defina o quórum e o período da assembleia digital.</p>
+<div class="grid md:grid-cols-3 gap-12">
+<div class="relative text-center">
+<div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center font-display-lg text-headline-lg mx-auto mb-6">1</div>
+<h4 class="font-headline-md text-headline-md text-primary mb-4">Configuração</h4>
+<p class="text-on-surface-variant font-body-md text-body-md px-4">Importe a lista de moradores e defina a pauta da assembleia com facilidade.</p>
 </div>
-<!-- Passo 2 -->
-<div class="flex-1 flex flex-col items-center text-center gap-6 bg-surface-container-lowest p-6">
-<div class="w-16 h-16 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-xl relative z-10 shadow-lg">2</div>
-<h3 class="font-headline-md text-label-md font-bold uppercase tracking-wider text-secondary">Moradores Votam</h3>
-<p class="text-on-surface-variant font-body-md text-body-md">Acesso via link seguro. Votação rápida com autenticação em dois fatores.</p>
+<div class="relative text-center">
+<div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center font-display-lg text-headline-lg mx-auto mb-6">2</div>
+<h4 class="font-headline-md text-headline-md text-primary mb-4">Votação</h4>
+<p class="text-on-surface-variant font-body-md text-body-md px-4">Os moradores votam de forma segura via link exclusivo com criptografia ponta a ponta.</p>
 </div>
-<!-- Passo 3 -->
-<div class="flex-1 flex flex-col items-center text-center gap-6 bg-surface-container-lowest p-6">
-<div class="w-16 h-16 rounded-full bg-secondary text-white flex items-center justify-center font-bold text-xl relative z-10 shadow-lg">3</div>
-<h3 class="font-headline-md text-label-md font-bold uppercase tracking-wider text-secondary">Resultado Automático</h3>
-<p class="text-on-surface-variant font-body-md text-body-md">O sistema encerra a votação e gera o relatório detalhado para a ata.</p>
+<div class="relative text-center">
+<div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center font-display-lg text-headline-lg mx-auto mb-6">3</div>
+<h4 class="font-headline-md text-headline-md text-primary mb-4">Fechamento</h4>
+<p class="text-on-surface-variant font-body-md text-body-md px-4">Ata gerada instantaneamente, pronta para ser assinada digitalmente e registrada.</p>
 </div>
 </div>
 </div>
 </section>
-<!-- Social Proof -->
-<section class="py-24 bg-primary text-white">
-<div class="max-w-[1120px] mx-auto px-8">
-<div class="flex flex-col md:flex-row items-center gap-16">
-<div class="flex-1">
-<div class="flex gap-1 mb-6 text-secondary-fixed">
-<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
-<span class="material-symbols-outlined" data-icon="star" data-weight="fill" style="font-variation-settings: 'FILL' 1;">star</span>
+<section class="py-24 bg-white overflow-hidden">
+<div class="max-w-7xl mx-auto px-4 md:px-8">
+<div class="bg-surface-container-low rounded-3xl p-8 md:p-16 relative">
+<div class="absolute top-0 right-0 p-8 text-secondary opacity-10">
+<span class="material-symbols-outlined text-[120px] leading-none">format_quote</span>
 </div>
-<blockquote class="font-display-lg text-headline-lg leading-tight mb-8">
+<div class="flex flex-col md:flex-row items-center gap-12 relative z-10">
+<div class="flex-shrink-0">
+<div class="w-32 h-32 md:w-48 md:h-48 rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+<img alt="Carlos Silva" class="w-full h-full object-cover" data-alt="Professional headshot of a confident Brazilian man in his late 40s, wearing a business casual shirt, smiling warmly, with a blurred office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_jVRdTlelrwTyAXO4TOQXx3ZM4fq-4PVthg9lX3wF9wbPEbWozSdLXNGIA6qrsT6l8AcN1_2N9NQL8J5Mu-AUrtdH4kTTMTRQm7HZfdd3SxA7OWNN_ikgYaxIcwNm4SVu3_AFBDQ5gCqpKKa6nLJ6g3jIZlL9JT-ssASNyfcxxy9njLk4yut5CXlD3t8el_C48NeerY49VyjcHt7M0ZxgMtBkW5hzY9Jk8oYpVVn4guTbHxhkmHQRzEPea-Uy3eNIV-MKiZFzC1tM"/>
+</div>
+</div>
+<div class="flex-1 text-center md:text-left">
+<p class="font-quote text-quote text-primary mb-8 leading-relaxed">
                             "O Condo Vote trouxe a transparência que faltava nas nossas assembleias. O engajamento dos moradores triplicou desde que começamos a usar."
-                        </blockquote>
-<div class="flex items-center gap-4">
-<div class="w-12 h-12 rounded-full overflow-hidden border-2 border-secondary">
-<img alt="Carlos Silva" class="w-full h-full object-cover" data-alt="portrait of a mature professional man with short salt and pepper hair and a confident smile, warm studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0EBTwOKtjFzNFHrNNar52njJtCq7hpWRauxILZ5jh6tibotoa7gtvQVEFMawUFOoY8vFLASczz_L7ppOLkbqCdTULKIDTZVrQK_WKAQei9Wp0XUq36tRniZ-W8aYeKHOjIrfCh30DLKt2l7H_9Mq62JhDh01oSqCd5AaJLAiujLzjLtmzLllOhqdbJNZQmMLVQGx5vDmyXHjoHhW-KGXhqSYbDCb4j-yC69riGPMZLlncZW7x_Mn2AGNY6jnkvnHfclCARGayUROv"/>
-</div>
+                        </p>
 <div>
-<p class="font-bold">Carlos Silva</p>
-<p class="text-caption text-on-primary-container">Síndico Profissional - Residencial Vista Alegre</p>
+<h4 class="font-headline-md text-headline-md text-primary mb-1">Carlos Silva</h4>
+<p class="text-secondary font-label-md text-label-md">Síndico Profissional - Residencial Vista Alegre</p>
 </div>
 </div>
 </div>
-<div class="flex-1 hidden md:block">
-<div class="bg-white/5 backdrop-blur-sm p-lg border border-white/10 rounded-xl">
-<div class="flex justify-between items-center mb-6">
-<h5 class="font-bold">Status da Votação Atual</h5>
-<span class="px-3 py-1 bg-green-500/20 text-green-400 text-caption rounded-full">Quorum Alcançado</span>
 </div>
+</div>
+</section>
+<section class="py-24 bg-white border-t border-slate-100">
+<div class="max-w-3xl mx-auto px-4 md:px-8">
+<h2 class="font-headline-lg text-headline-lg text-primary text-center mb-16">Dúvidas Frequentes</h2>
 <div class="space-y-4">
-<div>
-<div class="flex justify-between text-caption mb-1"><span>Reforma da Fachada</span><span>84%</span></div>
-<div class="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-<div class="h-full bg-secondary w-[84%]"></div>
+<div class="border border-slate-200 rounded-lg p-6">
+<h4 class="font-headline-md text-primary text-lg mb-2 flex justify-between items-center">
+                            A votação online é legalmente válida?
+                            <span class="material-symbols-outlined">expand_more</span>
+</h4>
+<p class="text-on-surface-variant font-body-md text-body-md">Sim, desde 2022 a Lei 14.309 autoriza assembleias virtuais em condomínios de forma permanente, desde que respeitados os requisitos de transparência e auditoria que nossa plataforma oferece.</p>
 </div>
+<div class="border border-slate-200 rounded-lg p-6">
+<h4 class="font-headline-md text-primary text-lg mb-2 flex justify-between items-center">
+                            Como é feita a identificação do morador?
+                            <span class="material-symbols-outlined">expand_more</span>
+</h4>
+<p class="text-on-surface-variant font-body-md text-body-md">Utilizamos autenticação multifator e links criptografados individuais vinculados à unidade e ao CPF do proprietário ou procurador cadastrado.</p>
 </div>
-<div>
-<div class="flex justify-between text-caption mb-1"><span>Novo Playground</span><span>62%</span></div>
-<div class="h-2 w-full bg-white/10 rounded-full overflow-hidden">
-<div class="h-full bg-secondary w-[62%]"></div>
+<div class="border border-slate-200 rounded-lg p-6">
+<h4 class="font-headline-md text-primary text-lg mb-2 flex justify-between items-center">
+                            O sistema gera a ata automaticamente?
+                            <span class="material-symbols-outlined">expand_more</span>
+</h4>
+<p class="text-on-surface-variant font-body-md text-body-md">Sim, ao final do período de votação o sistema consolida os resultados e gera uma ata em PDF seguindo os padrões exigidos pelos cartórios de registro civil.</p>
 </div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- FAQ Section -->
-<section class="py-24 bg-surface" id="faq">
-<div class="max-w-[1120px] mx-auto px-8">
-<div class="text-center mb-16">
-<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">Dúvidas Frequentes</h2>
-</div>
-<div class="max-w-3xl mx-auto space-y-4">
-<details class="bg-white border border-outline-variant rounded-lg group overflow-hidden">
-<summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-surface-container transition-colors list-none">
-<span class="font-bold text-on-surface">A votação online é segura?</span>
-<span class="material-symbols-outlined transition-transform group-open:rotate-180" data-icon="expand_more">expand_more</span>
-</summary>
-<div class="px-6 pb-6 text-on-surface-variant font-body-md text-body-md border-t border-outline-variant pt-4">
-                            Sim. Utilizamos criptografia de ponta a ponta e autenticação robusta para garantir que cada voto seja único e rastreável, mantendo o sigilo quando necessário.
-                        </div>
-</details>
-<details class="bg-white border border-outline-variant rounded-lg group overflow-hidden">
-<summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-surface-container transition-colors list-none">
-<span class="font-bold text-on-surface">Possui validade jurídica?</span>
-<span class="material-symbols-outlined transition-transform group-open:rotate-180" data-icon="expand_more">expand_more</span>
-</summary>
-<div class="px-6 pb-6 text-on-surface-variant font-body-md text-body-md border-t border-outline-variant pt-4">
-                            Sim, o Condo Vote está em total conformidade com as alterações recentes no Código Civil Brasileiro que permitem assembleias virtuais e votações eletrônicas em condomínios.
-                        </div>
-</details>
-<details class="bg-white border border-outline-variant rounded-lg group overflow-hidden">
-<summary class="flex justify-between items-center p-6 cursor-pointer hover:bg-surface-container transition-colors list-none">
-<span class="font-bold text-on-surface">O sistema barra inadimplentes?</span>
-<span class="material-symbols-outlined transition-transform group-open:rotate-180" data-icon="expand_more">expand_more</span>
-</summary>
-<div class="px-6 pb-6 text-on-surface-variant font-body-md text-body-md border-t border-outline-variant pt-4">
-                            Sim. O sistema integra com o cadastro financeiro do condomínio para garantir que apenas condôminos em dia com suas obrigações possam exercer o direito de voto.
-                        </div>
-</details>
-</div>
-</div>
-</section>
-<!-- Final CTA -->
-<section class="py-24 bg-secondary-container text-white">
-<div class="max-w-[1120px] mx-auto px-8 text-center">
-<h2 class="font-display-lg text-display-lg mb-8">Pronto para modernizar seu condomínio?</h2>
-<p class="text-on-secondary-container font-body-lg text-body-lg mb-12 max-w-2xl mx-auto">Junte-se a centenas de síndicos que já transformaram suas assembleias em processos rápidos e democráticos.</p>
-<div class="flex flex-col sm:flex-row justify-center gap-4">
-<button class="px-10 py-5 bg-white text-secondary font-bold rounded-lg shadow-xl hover:scale-105 transition-transform">Solicitar Orçamento Grátis</button>
-<button class="px-10 py-5 border border-white/40 text-white font-bold rounded-lg hover:bg-white/10 transition-all">Falar com Especialista</button>
 </div>
 </div>
 </section>
 </main>
-<!-- Footer -->
-<footer class="w-full border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-<div class="flex flex-col md:flex-row justify-between items-center py-12 px-8 max-w-[1120px] mx-auto gap-4 font-inter text-xs leading-relaxed text-slate-900 dark:text-slate-100">
-<div class="flex flex-col items-center md:items-start gap-2">
-<div class="text-lg font-bold text-slate-900 dark:text-white">Condo Vote</div>
-<p class="text-slate-500 dark:text-slate-400 opacity-80">© 2024 Condo Vote. Transparência e rigor jurídico para o seu condomínio.</p>
+<footer class="bg-slate-50 dark:bg-slate-950 w-full border-t border-slate-200 dark:border-slate-800">
+<div class="max-w-7xl mx-auto px-4 py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+<div class="col-span-1 lg:col-span-1">
+<span class="text-lg font-black text-slate-900 dark:text-white mb-6 block">Condo Vote</span>
+<p class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Segurança jurídica para assembleias virtuais. A plataforma preferida por síndicos profissionais em todo o Brasil.
+                </p>
+<div class="flex gap-4 mt-6">
+<a class="text-slate-400 hover:text-secondary transition-colors" href="#"><span class="material-symbols-outlined">public</span></a>
+<a class="text-slate-400 hover:text-secondary transition-colors" href="#"><span class="material-symbols-outlined">share</span></a>
+<a class="text-slate-400 hover:text-secondary transition-colors" href="#"><span class="material-symbols-outlined">mail</span></a>
 </div>
-<div class="flex gap-6">
-<a class="text-slate-500 dark:text-slate-400 hover:underline transition-all" href="#">Termos de Uso</a>
-<a class="text-slate-500 dark:text-slate-400 hover:underline transition-all" href="#">Privacidade</a>
-<a class="text-slate-500 dark:text-slate-400 hover:underline transition-all" href="#">Compliance</a>
-<a class="text-slate-500 dark:text-slate-400 hover:underline transition-all" href="#">Contato</a>
 </div>
+<div>
+<h4 class="font-label-md text-primary dark:text-white mb-6">Navegação</h4>
+<ul class="space-y-4">
+<li><a class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors underline-offset-4 hover:underline" href="#">Termos de Uso</a></li>
+<li><a class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors underline-offset-4 hover:underline" href="#">Política de Privacidade</a></li>
+<li><a class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors underline-offset-4 hover:underline" href="#">Compliance</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-md text-primary dark:text-white mb-6">Suporte</h4>
+<ul class="space-y-4">
+<li><a class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors underline-offset-4 hover:underline" href="#">Suporte Técnico</a></li>
+<li><a class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors underline-offset-4 hover:underline" href="#">Blog</a></li>
+<li><a class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-300 transition-colors underline-offset-4 hover:underline" href="#">FAQ</a></li>
+</ul>
+</div>
+<div>
+<h4 class="font-label-md text-primary dark:text-white mb-6">Contato</h4>
+<p class="font-sans text-xs md:text-sm text-slate-500 dark:text-slate-400 mb-4">
+                    vendas@condovote.com.br<br/>
+                    0800 123 4567
+                </p>
+<div class="bg-white dark:bg-slate-900 p-4 rounded border border-slate-200 dark:border-slate-800">
+<p class="text-xs text-slate-400 mb-2">Inscreva-se em nossa newsletter</p>
+<div class="flex gap-2">
+<input class="flex-1 bg-surface-container-low border-none text-xs rounded px-2 py-1 focus:ring-1 focus:ring-secondary" placeholder="E-mail" type="email"/>
+<button class="bg-secondary text-white text-xs px-3 py-1 rounded">Ok</button>
+</div>
+</div>
+</div>
+</div>
+<div class="border-t border-slate-200 dark:border-slate-800 py-8 px-4 text-center">
+<p class="font-sans text-xs text-slate-500 dark:text-slate-400">
+                © 2024 Condo Vote. Todos os direitos reservados. Segurança jurídica para assembleias virtuais.
+            </p>
 </div>
 </footer>
 </body></html>

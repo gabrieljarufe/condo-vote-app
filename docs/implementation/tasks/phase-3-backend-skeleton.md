@@ -7,14 +7,24 @@
 ---
 
 ## T3.1 — Projeto Spring Boot
-- [ ] Gerar via Spring Initializr: Java 21, Spring Boot 3.x, Maven
-- [ ] Dependências: `spring-boot-starter-web`, `-data-jpa`, `-security`, `-oauth2-resource-server`, `-actuator`, `-validation`, `-thymeleaf`, `flyway-core`, `flyway-database-postgresql`, `postgresql`, `jedis`/`lettuce-core`, `springdoc-openapi-starter-webmvc-ui`
-- [ ] Package base: `com.condovote`
-- [ ] Estrutura inicial de packages (vazias): `auth/`, `shared/config/`, `shared/tenant/`, `shared/exception/`
-- [ ] `application.yml` + `application-local.yml` + `application-prod.yml` com datasource, JWKS URL, HikariCP pool size 10
-- [ ] `CondoVoteApplication.java` sobe em localhost:8080
 
-**Aceite:** `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` sobe sem erro.
+> **⚠️ T3.1 é pré-requisito bloqueante da Fase 2.** Embora numerada como Fase 3, é a primeira coisa a fazer após Fase 1. Apenas o scaffolding mínimo (T3.1a) é necessário antes da Fase 2 — as classes de segurança/tenant/etc. (T3.2–T3.6) ficam para depois das migrations.
+
+### T3.1a — Scaffolding mínimo (pré-requisito da Fase 2)
+- [ ] Gerar via Spring Initializr: Java 21, Spring Boot 3.x, Maven
+- [ ] Package base: `com.condovote`
+- [ ] `application.yml` + `application-local.yml` + `application-prod.yml` com datasource e Flyway config mínima
+- [ ] `CondoVoteApplication.java` sobe em localhost:8080
+- [ ] Estrutura de packages vazias: `auth/`, `shared/config/`, `shared/tenant/`, `shared/exception/`
+
+**Aceite de T3.1a:** `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` sobe sem erro (com ou sem banco). Fase 2 pode começar.
+
+### T3.1b — Dependências e profiles completos
+- [ ] Adicionar dependências: `spring-boot-starter-web`, `-data-jpa`, `-security`, `-oauth2-resource-server`, `-actuator`, `-validation`, `-thymeleaf`, `flyway-core`, `flyway-database-postgresql`, `postgresql`, `jedis`/`lettuce-core`, `springdoc-openapi-starter-webmvc-ui`
+- [ ] Completar `application-local.yml` com Flyway locations (incluindo `classpath:db/seed`), HikariCP pool size 10
+- [ ] `application-prod.yml` com datasource prod, sem seed
+
+**Aceite:** `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` sobe com banco conectado e migrations aplicadas.
 
 ---
 
@@ -84,7 +94,7 @@
 - [ ] `backend/Dockerfile` conforme `docs/architecture.md` §7:
   - Stage 1: `eclipse-temurin:21-jdk` → `./mvnw dependency:go-offline` + `package -DskipTests`
   - Stage 2: `eclipse-temurin:21-jre` → copia jar, EXPOSE 8080, ENTRYPOINT java -jar
-- [ ] `backend/.dockerignore` exclui `target/`, `.idea`, `*.md`, `.env*`
+- [ ] `backend/.dockerignore`: `target/`, `.idea`, `*.md`, `.env*`, `.git/`, `Dockerfile`, `*.iml`
 - [ ] Build local: `docker build -t condovote-backend ./backend` funciona
 
 **Aceite:** container sobe com `docker run -e DATABASE_URL=... -p 8080:8080 condovote-backend` e responde em `/actuator/health`.
@@ -93,7 +103,7 @@
 
 ## T3.8 — Deploy Coolify
 - [x] Configurar todas as env vars no Coolify (do `.env.example`) como Secrets criptografados
-- [x] Confirmar que Coolify detecta o Dockerfile e builda (build pack Dockerfile, root `backend/`)
+- [ ] Confirmar que Coolify detecta o **Dockerfile recém-commitado** e builda (build pack Dockerfile, root `backend/`). Secrets já injetados em T1.6.
 - [x] Merge em `main` dispara deploy automático via webhook (configurado em T1.4i)
 - [x] Opção alternativa documentada: em vez de Coolify buildar, puxar imagem do GHCR (`ghcr.io/<owner>/condo-vote-backend:latest`) após workflow do Actions publicar (Fase 5)
 - [x] Let's Encrypt automático — não requer configuração manual de certificate
@@ -111,3 +121,11 @@
 - [ ] Sem JWT → 401; JWT adulterado → 401
 
 **Aceite:** fluxo completo validado em prod Oracle/Coolify + Cloudflare + Supabase.
+
+---
+
+## T3.10 — Atualizar comandos do CLAUDE.md
+- [ ] Atualizar seção `CLAUDE.md → Comandos → Backend` com comandos reais:
+  - `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
+  - `./mvnw verify`
+  - `docker build -t condo-vote-backend ./backend`

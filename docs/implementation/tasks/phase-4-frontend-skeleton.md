@@ -7,7 +7,7 @@
 ---
 
 ## T4.1 — Projeto Angular
-- [ ] `cd frontend && ng new . --standalone --routing --style=scss --ssr=false`
+- [ ] `cd frontend && ng new . --standalone --routing --style=scss --ssr=false` — **standalone components + signals** (conforme `architecture.md §6`)
 - [ ] Instalar `@supabase/supabase-js`
 - [ ] `src/environments/environment.ts` e `environment.prod.ts` com `supabaseUrl`, `supabaseAnonKey`, `apiUrl`
 - [ ] Configurar build para ler variáveis Cloudflare Pages (`NG_APP_*`) via `file-replacements` ou runtime config
@@ -36,6 +36,7 @@
   - [ ] Sempre injeta `Authorization: Bearer <access_token>`
   - [ ] Injeta `X-Tenant-Id` se `TenantService.activeCondominiumId()` estiver setado
   - [ ] Exclui `X-Tenant-Id` para paths `/api/me/**` e `/api/register/**`
+  - [ ] **Não implementar retry manual de 401** — Supabase JS SDK já faz refresh automático. Se receber 401, deixar passar para o guard redirecionar para `/login`.
 - [ ] `src/app/core/tenant.service.ts`: signal `activeCondominiumId`, persistido em `localStorage`
 - [ ] Registrar interceptor em `app.config.ts`
 
@@ -65,5 +66,6 @@
 - [ ] SPA fallback: criar `frontend/public/_redirects` com a linha `/*  /index.html  200` (Cloudflare Pages lê esse arquivo automaticamente)
 - [ ] Confirmar que backend tem `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br` (setado em T3.8)
 - [ ] Custom domain `app.condovote.com.br` já configurado em T1.4h
+- [ ] Validar que `frontend/public/_redirects` existe e é copiado para `dist/frontend/browser/` no build. Testar rota deep-link `https://app.condovote.com.br/login?redirect=/dashboard` retorna a SPA (não 404).
 
 **Aceite:** produção: usuário real abre `https://app.condovote.com.br`, faz login, vê lista de condos vinda de `https://api.condovote.com.br`. Ponta-a-ponta.

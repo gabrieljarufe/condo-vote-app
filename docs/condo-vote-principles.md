@@ -104,6 +104,18 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 - **Remoção do resident que é o votante habilitado é bloqueada durante polls OPEN** que incluam o apartamento no snapshot — mesma regra da delegação. O síndico deve aguardar o encerramento ou cancelar o poll antes de remover
 - Votos já registrados por morador removido em votações abertas **permanecem válidos** — o voto pertence ao apartamento, não ao usuário (usuário é apenas testemunha para fins de auditoria). O conjunto elegível é fixado no momento de abertura da votação e não pode ser alterado retroativamente. Esta regra é estrutural e vale também para transferência de titularidade.
 
+### Promoção de inquilino a proprietário
+
+**Promoção** é a operação de elevar um TENANT existente a OWNER quando o antigo proprietário sai. É uma operação atômica:
+1. Encerrar vínculo TENANT com `end_reason = PROMOTED_TO_OWNER`
+2. Criar novo vínculo OWNER para o mesmo user
+3. Atualizar `eligible_voter_user_id` do apartamento
+4. Gerar `audit_event RESIDENT_PROMOTED_TO_OWNER`
+
+**Bloqueios:** promoção é bloqueada se o apartamento tiver poll OPEN no snapshot (mesma regra de delegação). Se ainda houver um OWNER ativo no apartamento, promoção é rejeitada (não pode ter dois OWNERs).
+
+---
+
 ### Transferência de titularidade
 
 Trocas de proprietário por venda, herança, doação ou compra pelo inquilino são tratadas na v1 via o fluxo existente de **remoção + convite/promoção**:
@@ -153,6 +165,8 @@ No momento exato em que a votação transita para **Aberta**, o sistema gera um 
 - **`apartment_id`** — quais apartamentos podem votar
 - **`eligible_voter_id`** — quem é o votante habilitado no momento da abertura. **Usado na verificação de voto** (não apenas para auditoria)
 
+**Critério de inclusão no snapshot:** apartamentos que (a) existem no momento da abertura, (b) `is_delinquent = false`, (c) `eligible_voter_user_id IS NOT NULL`.
+
 Comportamento do snapshot:
 
 - Define o denominador para cálculo de quórum nos modos Maioria Absoluta e Qualificado
@@ -178,8 +192,10 @@ O síndico define a **convocação** ao criar a votação:
 
 | Convocação | Quórum de presença | Descrição |
 |---|---|---|
-| **Primeira** | 50% dos elegíveis devem votar | Para que o resultado seja válido, pelo menos metade dos apartamentos do snapshot deve ter votado. Se não atingir, a votação é INVALIDATED |
+| **Primeira** | 50% dos elegíveis devem votar (arredondamento para cima quando fracionário — 10 elegíveis ⇒ ≥5 votos; 11 elegíveis ⇒ ≥6 votos) | Para que o resultado seja válido, pelo menos metade dos apartamentos do snapshot deve ter votado. Se não atingir, a votação é INVALIDATED com reason `PRESENCE_QUORUM_NOT_REACHED` |
 | **Segunda** | Nenhum | Qualquer número de votos é válido. A decisão é tomada pela maioria dos que efetivamente votaram |
+
+**Fórmula do quórum de presença (Primeira Convocação):** `votos_computados >= CEIL(snapshot_size / 2.0)`
 
 ### Modos de quórum
 
@@ -273,7 +289,8 @@ O app coleta dados pessoais (CPF, e-mail, comportamento de voto) e está sujeito
 | Finalidade | CPF coletado somente para verificar unicidade de vínculo; não exibido a outros moradores |
 | Direito de exclusão | Conta pode ser desativada (login bloqueado), mas os dados são **retidos** integralmente para fins de auditoria condominial. Anonimização e deleção total ficam para v2 sob avaliação caso a caso. |
 | Retenção | Dados de votação retidos por 5 anos (alinhado com prazo de prescrição condominial). Histórico de auditoria (`audit_event`) e votos preservados pelo mesmo período. |
-| Segurança | Senhas gerenciadas pelo Supabase Auth, CPF armazenado criptografado AES-256 determinístico em repouso |
+| Segurança | Senhas gerenciadas pelo Supabase Auth, CPF armazenado criptografado **AES-256-SIV** (determinístico + autenticado) em repouso |
+| Retenção | Dados de votação (`audit_event`, `vote`, `poll_result`) retidos por **5 anos** (prazo de prescrição condominial). `email_notification` com status SENT/BOUNCED: 90 dias após `sent_at`. Jobs de limpeza são placeholder no-op em v1 — ativados em v2 quando volume justificar. |
 
 Fora do escopo v1: DPO nomeado, RIPD completo, relatórios de impacto.
 
@@ -290,14 +307,15 @@ Specify → Plan → Tasks → Implement
 
 ## 13. Bootstrap Operacional de Condomínio (v1)
 
-A criação de um novo condomínio e seu primeiro síndico **não tem fluxo self-service na v1**. É uma operação manual executada por um operador da plataforma (superadmin), seguindo o runbook documentado em `docs/architecture.md` (Seção 0). O resumo do fluxo:
+A criação de um novo condomínio e seu primeiro síndico **não tem fluxo self-service na v1**. É uma operação de um operador da plataforma (superadmin), versionada via **migration Flyway** — não SQL ad-hoc no Studio. O fluxo:
 
-1. Operador cria o user do síndico no Supabase Auth (Dashboard ou `supabase auth admin create-user`)
-2. Operador executa SQL transacional no Supabase Studio para criar: `condominium`, `app_user` (com CPF criptografado), `condominium_admin`
-3. Operador envia credenciais iniciais ao síndico (senha temporária gerada pelo Supabase)
-4. Síndico loga, troca a senha e começa a usar o sistema (cadastrar apartamentos, enviar convites em massa)
+1. Operador cria o user do síndico no Supabase Auth (Dashboard ou `supabase auth admin create-user`). Copiar o UUID gerado.
+2. Operador gera o ciphertext do CPF localmente com `scripts/encrypt-cpf.sh <cpf>` (usa `CPF_ENCRYPTION_KEY` do cofre — nunca committar a chave).
+3. Operador cria `backend/src/main/resources/db/migration/bootstrap/V1001__bootstrap_<condo>.sql` com os INSERTs de `condominium`, `app_user` e `condominium_admin`. Naming `V1001+` reservado para bootstraps (evita conflito com migrations DDL V1–V999).
+4. PR `feature/bootstrap-<condo-slug>` → develop → main. CI aplica migration via Flyway em Testcontainer; merge em main → Coolify redeploya → Flyway aplica em prod.
+5. Operador envia credenciais ao síndico; síndico loga e começa a usar o sistema.
 
-Esta decisão é proposital: elimina complexidade de superadmin no app v1 e mantém o onboarding de condomínio sob controle explícito. Evolução para fluxo self-service ou endpoint administrativo fica para v2.
+Esta decisão garante auditabilidade total (commit git, revisável via PR) e reprodutibilidade (mesma migration em local, CI e prod). Evolução para fluxo self-service fica para v2. Ver runbook detalhado em `docs/runbooks/bootstrap-condominio.md` (Fase 6) e `docs/architecture.md §1`.
 
 ---
 

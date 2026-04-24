@@ -7,15 +7,22 @@
 ---
 
 ## T6.1 — Logging JSON estruturado
+
+### T6.1a — Logback JSON + pattern local
 - [ ] Adicionar `logstash-logback-encoder` no `backend/pom.xml`
 - [ ] `backend/src/main/resources/logback-spring.xml`:
   - [ ] Profile `prod`: appender console com `LogstashEncoder`, campos custom (`service=condovote-backend`, `environment`)
   - [ ] Profile `local`: pattern humano legível (texto colorido)
-  - [ ] Filtro de campos sensíveis: máscara `password`, `token`, `cpf`, `secret`, `authorization`, `key` (MDC filter ou custom converter)
-- [ ] Adicionar `trace_id` via MDC (filter na entrada de cada request)
-- [ ] Log de eventos chave: início/fim de job, abertura/fechamento de poll (quando existirem), erros de autenticação
 
-**Aceite:** log em prod chega no Coolify dashboard como JSON; campo CPF em mensagem de log nunca aparece em claro.
+### T6.1b — SensitiveDataMaskingConverter + teste
+- [ ] `SensitiveDataMaskingConverter` (Logback custom converter): `cpf` → mostra últimos 3 dígitos; `password`/`token`/`authorization` → vazio; `key`/`secret` → primeiros 6 chars + `...`
+- [ ] Teste dedicado: dado log com CPF, output não contém CPF em claro
+
+### T6.1c — MDC integration
+- [ ] `TenantInterceptor` adiciona `tenant_id`, `user_id`, `request_id` (X-Request-Id ou UUID gerado) em MDC; limpa no `afterCompletion`
+- [ ] Logs estruturados em prod incluem estes campos
+
+**Aceite:** log em prod chega no Coolify dashboard como JSON; campo CPF nunca aparece em claro; `tenant_id` e `request_id` presentes em todos os logs de request.
 
 ---
 
@@ -30,15 +37,29 @@
 
 ---
 
-## T6.3 — Runbook de bootstrap de condomínio
-- [ ] `docs/runbooks/bootstrap-condominio.md` com passo-a-passo conforme `docs/architecture.md` §0:
-  - [ ] Passo 1: criar user no Supabase Auth (`supabase auth admin create-user --email ... --password ...` ou via Dashboard)
-  - [ ] Passo 2: script SQL transacional (template com placeholders `<condo_name>`, `<user_id>`, `<cpf_encrypted>`) — insere `condominium`, `app_user`, `condominium_admin`
-  - [ ] Passo 3: como criptografar CPF manualmente (script auxiliar ou Supabase Edge Function temporária — **ou** documentar que CPF do síndico pode ser inserido sem criptografia se campo opcional, **revisitar**: atualmente é NOT NULL e criptografado)
-  - [ ] Passo 4: enviar credenciais ao síndico por canal seguro
-- [ ] Testar runbook executando contra Supabase local primeiro, depois contra staging/produção
+## T6.3 — Runbook de bootstrap de condomínio (fluxo Flyway V1001+)
 
-**Aceite:** operador segue o runbook de ponta-a-ponta e o síndico criado loga com sucesso, vê seu condomínio e consegue chamar endpoint autenticado.
+### T6.3a — Script `scripts/encrypt-cpf.sh`
+- [ ] Criar `scripts/encrypt-cpf.sh` como wrapper CLI em torno de `CpfEncryptor` (ex: `java -cp backend/target/condo-vote-backend.jar com.condovote.shared.crypto.CpfEncryptorCli $1`). Lê `CPF_ENCRYPTION_KEY` da env local; imprime ciphertext em hex para uso no SQL de bootstrap. **Implementado apenas após T5.1 (backend buildável).**
+
+### T6.3 — Runbook
+- [ ] `docs/runbooks/bootstrap-condominio.md` com passo-a-passo conforme `docs/architecture.md §1`:
+  - [ ] Passo 1: criar user no Supabase Auth (Dashboard ou CLI). Copiar UUID gerado.
+  - [ ] Passo 2: gerar ciphertext do CPF com `scripts/encrypt-cpf.sh <cpf>` (lê `CPF_ENCRYPTION_KEY` do cofre)
+  - [ ] Passo 3: criar `backend/src/main/resources/db/migration/bootstrap/V1001__bootstrap_<condo>.sql` com template preenchido (INSERTs de `condominium`, `app_user`, `condominium_admin`, `audit_event`)
+  - [ ] Passo 4: PR `feature/bootstrap-<condo-slug>` → develop → main. CI valida migration; Flyway aplica em prod no redeploy.
+  - [ ] Passo 5: enviar credenciais ao síndico por canal seguro
+- [ ] Testar runbook executando contra Supabase local primeiro (CI Testcontainers)
+
+**Aceite:** operador segue o runbook; migration V1001+ aplica sem erro em local e prod; síndico loga, vê seu condomínio e chama endpoint autenticado.
+
+---
+
+## T6.4 — Backup manual semanal Supabase
+- [ ] Agendar backup manual semanal no Dashboard Supabase (Database → Backups → "Create backup") até migração para Supabase Pro (que tem PITR automático)
+- [ ] Documentar procedimento em `docs/runbooks/backup-restore.md`
+
+**Aceite:** primeiro backup manual executado com sucesso.
 
 ---
 

@@ -9,8 +9,13 @@
 ---
 
 ## T2.1 — Setup Flyway no Spring
+
+> **⚠️ Pré-requisito bloqueante:** T3.1a (Spring Initializr) precisa ter rodado primeiro. Gera `backend/pom.xml`, `backend/mvnw`, `backend/src/main/resources/application*.yml`, `CondoVoteApplication.java`. Sem isto, esta task não executa.
+
 - [ ] Adicionar dependência `flyway-core` + `flyway-database-postgresql` no `backend/pom.xml`
-- [ ] `application.yml`: `spring.flyway.enabled=true`, `locations=classpath:db/migration`, `baseline-on-migrate=true`
+- [ ] `application.yml` (default, prod): `spring.flyway.enabled=true`, `locations=classpath:db/migration`, `baseline-on-migrate=true`
+- [ ] `application-local.yml`: adicionar `classpath:db/seed` em `spring.flyway.locations` para ativar `R__seed_dev.sql`. **Jamais** adicionar em `application-prod.yml`.
+- [ ] `spring.jpa.properties.hibernate.jdbc.time_zone=UTC` — todos os timestamps armazenados em UTC; UI converte para timezone local.
 - [ ] Criar diretório `backend/src/main/resources/db/migration/`
 - [ ] **Decisão registrada:** Flyway roda no startup do Spring na v1 (migrado para CI-driven quando time ≥ 3 devs)
 
@@ -43,6 +48,7 @@
 - [ ] `V4__apartment_and_residents.sql`:
   - [ ] `apartment` com UNIQUE `(condominium_id, COALESCE(block, ''), unit_number)` e UNIQUE `(id, condominium_id)`
   - [ ] `apartment_resident` com partial unique index `(apartment_id) WHERE role = 'OWNER' AND ended_at IS NULL`
+  - [ ] Usar `TIMESTAMPTZ` (não `TIMESTAMP`) em `joined_at`, `ended_at` e em **todas** as colunas de data/hora em todas as migrations — regra global: todos os timestamps são `TIMESTAMPTZ` armazenados em UTC.
   - [ ] CHECK constraints de coerência de encerramento
   - [ ] Índices: `idx_apartment_condominium_id`, `idx_apartment_resident_condominium_id`, `idx_apartment_resident_user_id`
 
@@ -84,8 +90,9 @@
   - `CREATE POLICY tenant_isolation ON <table> USING (condominium_id = current_setting('app.current_tenant')::uuid)`
 - [ ] Tabelas: `apartment`, `apartment_resident`, `condominium_admin`, `invitation`, `poll`, `poll_eligible_snapshot`, `vote`, `poll_result`, `audit_event`
 - [ ] `poll_option` herda filtro via JOIN com `poll` (sem RLS direta)
+- [ ] Documentar no arquivo da migration (comentário SQL) o comportamento quando `app.current_tenant` não está setado — esperado: query retorna 0 linhas (a policy `current_setting('app.current_tenant')::uuid` falha com erro se a variável não existe; usar `current_setting('app.current_tenant', true)` com default para evitar erro ou tratar no service).
 
-**Aceite:** psql autenticado como role app executa `SET LOCAL app.current_tenant = '<uuid>'` e vê só dados do tenant.
+**Aceite:** psql autenticado como role app executa `SET LOCAL app.current_tenant = '<uuid>'` e vê só dados do tenant; sem SET LOCAL → retorna 0 linhas.
 
 ---
 
@@ -103,15 +110,25 @@
 ---
 
 ## T2.12 — Seed repeatable para dev local
-- [ ] `R__seed_dev.sql` (repeatable migration) — só roda quando profile `local`
-- [ ] Guardado por `WHERE current_setting('app.seed_dev', true) = 'true'` OU configurado só no `application-local.yml` via `spring.flyway.locations` incluindo `classpath:db/seed`
-- [ ] Popula: 1 condomínio teste, 1 `app_user` síndico (UUID fixo), 1 `condominium_admin`, 3 apartamentos, 0 residents (serão criados via fluxo de convite)
+- [ ] Arquivo: `backend/src/main/resources/db/seed/R__seed_dev.sql` — separado do diretório `db/migration`
+- [ ] Picked-up pelo Flyway **somente** quando `spring.flyway.locations` inclui `classpath:db/seed` (configurado em `application-local.yml`; nunca em `application-prod.yml`)
+- [ ] Popula: 1 condomínio teste, 1 `app_user` síndico com **UUID fixo** (o mesmo UUID deve existir em `auth.users` do Supabase local)
+- [ ] Documentar em `infra/supabase/supabase/seed.sql` (arquivo oficial do Supabase CLI): INSERT em `auth.users` para criar o user do síndico seed com UUID fixo:
+  ```sql
+  INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, role)
+  VALUES ('<uuid-fixo>', 'sindico@local.dev', crypt('password', gen_salt('bf')), now(), 'authenticated')
+  ON CONFLICT (id) DO NOTHING;
+  ```
+  O Supabase CLI executa `seed.sql` automaticamente após `supabase start`.
 
 **Aceite:** após `./mvnw spring-boot:run` com profile `local`, Studio mostra dados seed; em profile `prod` seed não roda.
 
 ---
 
 ## T2.13 — Teste de integração RLS
+
+> **Pré-requisito:** Docker Desktop instalado e rodando (requerido pelo Testcontainers).
+
 - [ ] `backend/src/test/java/com/condovote/shared/tenant/RlsIsolationIT.java`
 - [ ] Usa `@Testcontainers` com `PostgreSQLContainer:16`
 - [ ] Setup: Flyway aplica todas as migrations

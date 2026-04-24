@@ -71,7 +71,7 @@ Diretriz orientadora: **cada fase termina com algo que roda e pode ser demonstra
 - **Local:** `.env.example` no repo, `.env` no `.gitignore`
 - **CI:** GitHub Actions Secrets para valores de teste (se necessário Testcontainers)
 - **Prod:** variáveis no Dashboard Coolify (backend) + Cloudflare Pages (frontend)
-- Gerar `CPF_ENCRYPTION_KEY` (32 bytes base64) — chave AES-256-GCM determinística. Armazenar em cofre pessoal (Bitwarden) + injetar no Coolify
+- Gerar `CPF_ENCRYPTION_KEY` (32 bytes base64) — chave **AES-256-SIV** determinística. Armazenar em cofre pessoal (Bitwarden) + injetar no Coolify
 
 **Critério de saída:** todas as contas provisionadas; README tem a lista de variáveis de ambiente necessárias; `supabase start` local funciona.
 
@@ -82,7 +82,8 @@ Diretriz orientadora: **cada fase termina com algo que roda e pode ser demonstra
 **Objetivo:** banco com schema completo de v1, RLS ligada, rodando local (Supabase CLI) e em prod (Supabase remoto) via Flyway.
 
 ### 2.1 Setup do Flyway
-- Decidir se Flyway roda **fora** do Spring (CLI dedicado em CI) ou **dentro** no startup. Recomendação: **dentro do Spring** para v1 (simplifica), migrado para CI-driven quando time crescer. Sinalizar essa decisão ao usuário.
+- **Decisão fechada:** Flyway roda dentro do Spring no startup (v1). Migrado para CI-driven quando time ≥ 3 devs.
+- **Pré-requisito bloqueante:** T3.1a (scaffolding Spring Boot) deve existir antes — gera `pom.xml`, `mvnw`, `application.yml`, `CondoVoteApplication.java`. Sem ele, Flyway não pode ser configurado. T3.1a é o primeiro passo real da Fase 2.
 - Criar `backend/src/main/resources/db/migration/` com estrutura
 
 ### 2.2 Migrations incrementais (uma por agrupamento lógico)
@@ -221,7 +222,10 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 - Logging JSON estruturado (Logback + `logstash-logback-encoder`) — conforme §9
 - Actuator: `/actuator/health`, `/actuator/info`, `/actuator/metrics` (expostos só internamente ou com auth básico)
 - UptimeRobot monitorando `/actuator/health` (free tier)
-- **Runbook de bootstrap** em `docs/runbooks/bootstrap-condominio.md` conforme §0 de architecture.md: script SQL transacional de criar condomínio + síndico + app_user, com placeholders. Testar executando contra Supabase staging/local.
+- **Verificação de DKIM/SPF do Resend** para `condovote.com.br` no Cloudflare DNS (TXT records do Resend dashboard). Sem isso, emails caem em spam.
+- **SMTP customizado Supabase Auth via Resend** (Auth → SMTP Settings no Dashboard): emails de reset de senha saem do mesmo domínio/remetente que os emails transacionais.
+- **Runbook de bootstrap** em `docs/runbooks/bootstrap-condominio.md` conforme `architecture.md §1`: migration Flyway V1001+ com template de `condominium` + `app_user` + `condominium_admin`. Script auxiliar `scripts/encrypt-cpf.sh` para gerar ciphertext.
+- **Risco CPF_ENCRYPTION_KEY:** perda = CPFs irrecuperáveis. Guardar cópia offline (papel em cofre físico) + backup em Bitwarden + documentação de rotação no runbook.
 
 **Critério de saída:** operador consegue criar um condomínio novo seguindo o runbook. Logs em prod chegam estruturados. Monitor básico ativo.
 
@@ -286,3 +290,4 @@ Se tudo passa, a plataforma está pronta para receber features de domínio.
 | Flyway rodando no startup falha em prod | Sempre rodar localmente contra snapshot da prod antes de merge em `main`; baseline em repositórios existentes |
 | Secrets vazam em logs | Logback filtra campos `password`, `token`, `key`, `cpf` — configurar já na Fase 6 |
 | Desalinhamento entre `docs/` e código | Regra: mudança de comportamento → spec primeiro, código depois (CLAUDE.md) |
+| **CPF_ENCRYPTION_KEY perdida** | CPFs irrecuperáveis. Mitigação: backup em Bitwarden + papel em cofre físico + documentação de rotação no runbook (`docs/runbooks/secrets.md`). |

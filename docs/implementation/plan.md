@@ -19,7 +19,7 @@ Diretriz orientadora: **cada fase termina com algo que roda e pode ser demonstra
 2. **Walking skeleton ponta-a-ponta primeiro.** Login real + 1 endpoint protegido + 1 tela Angular antes de qualquer feature de votação.
 3. **RLS desde o primeiro schema.** Não adicionar RLS "depois" — migrations V1 já criam policies. Erros de isolamento em produção são catastróficos.
 4. **Convenções antes de volume.** Exception handler global, padrão de DTO, TenantInterceptor, CpfEncryptor existem antes da 3ª feature para não virarem débito.
-5. **Respeitar o que a arquitetura já decidiu.** Railway + Vercel + Upstash + Supabase + Flyway + Bucket4j + Resend — não re-avaliar.
+5. **Respeitar o que a arquitetura já decidiu.** Oracle Cloud + Coolify + Cloudflare DNS/Pages + Upstash + Supabase + Flyway + Bucket4j + Resend + GHCR — não re-avaliar.
 
 ---
 
@@ -50,16 +50,19 @@ Diretriz orientadora: **cada fase termina com algo que roda e pode ser demonstra
 - Criar usuário superadmin no Dashboard (para rodar o runbook de bootstrap de condomínio — Seção 0 do architecture.md)
 
 ### 1.2 Upstash Redis
-- Criar database Redis (free tier, região alinhada com Railway)
+- Criar database Redis (free tier, região alinhada com Supabase `us-east-2` / Oracle `us-ashburn-1`)
 - Anotar: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` (ou conexão Redis tradicional se Spring usar Lettuce)
 
 ### 1.3 Resend (e-mail)
 - Criar conta, verificar domínio de envio (pode ser domínio temporário na v1)
 - Anotar: `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`
 
-### 1.4 Railway + Vercel
-- Railway: criar projeto vazio, conectar repo. Ainda sem deploy (falta Dockerfile)
-- Vercel: criar projeto vazio, conectar repo, pasta root `frontend/`. Build command placeholder
+### 1.4 Oracle Cloud + Coolify + Cloudflare DNS/Pages
+- **Oracle Cloud:** criar tenancy em `us-ashburn-1`; provisionar VM ARM Ampere A1 Flex Always Free (retry em "Out of capacity"); VCN + Security List (22/80/443); instalar Coolify (`curl install.sh | sudo bash`)
+- **Cloudflare DNS:** adicionar zona `condovote.com.br`; apontar NS no registrar; Let's Encrypt automático para `*.condovote.com.br`; registros DNS: `api.` → A record para IP da VM Oracle (proxied), `app.` → CNAME `<projeto>.pages.dev` (proxied); Redirect Rules: apex/www → `https://app.condovote.com.br`
+- **Cloudflare Pages:** criar projeto conectado ao repo, root directory `frontend/`, custom domain `app.condovote.com.br`, build command e env vars ficam em Fase 4
+- **Coolify:** conectar ao repo GitHub (sem deploy ainda — Dockerfile vem na Fase 3); Let's Encrypt automático configurado
+- **GHCR:** criar Personal Access Token com escopo `write:packages` e guardar como secret `GHCR_TOKEN` no repo GitHub (consumido pelo workflow em Fase 5)
 
 ### 1.5 Supabase CLI local
 - Instalar `supabase` CLI localmente (documentar no README)
@@ -69,8 +72,8 @@ Diretriz orientadora: **cada fase termina com algo que roda e pode ser demonstra
 ### 1.6 Gerenciamento de secrets
 - **Local:** `.env.example` no repo, `.env` no `.gitignore`
 - **CI:** GitHub Actions Secrets para valores de teste (se necessário Testcontainers)
-- **Prod:** variáveis no Dashboard Railway + Vercel
-- Gerar `CPF_ENCRYPTION_KEY` (32 bytes base64) — chave AES-256-GCM determinística. Armazenar em cofre pessoal + injetar em Railway
+- **Prod:** variáveis no Dashboard Coolify (backend, Secrets criptografados) + Cloudflare Pages (frontend)
+- Gerar `CPF_ENCRYPTION_KEY` (32 bytes base64) — chave AES-256-GCM determinística. Armazenar em cofre pessoal + injetar em Coolify
 
 **Critério de saída:** todas as contas provisionadas; README tem a lista de variáveis de ambiente necessárias; `supabase start` local funciona.
 
@@ -116,7 +119,7 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 
 ## Fase 3 — Walking Skeleton Backend (2–3 dias)
 
-**Objetivo:** Spring Boot mínimo, validando JWT Supabase, com 1 endpoint protegido cross-tenant, deployado no Railway.
+**Objetivo:** Spring Boot mínimo, validando JWT Supabase, com 1 endpoint protegido cross-tenant, deployado no Oracle Cloud via Coolify.
 
 ### 3.1 Projeto Spring Boot
 - Spring Initializr: Java 21, Spring Boot 3.x, dependências: Web, Data JPA, Security, Flyway, PostgreSQL Driver, Actuator, Validation, OAuth2 Resource Server (para JWKS), Thymeleaf
@@ -130,7 +133,7 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 - Cache local de chaves (`NimbusJwtDecoder` com `cache-duration`)
 - Todas as rotas `/api/**` exigem JWT válido; `/actuator/health`, `/v3/api-docs`, `/swagger-ui/**` públicas
 - Headers de segurança: `X-Content-Type-Options`, `X-Frame-Options: DENY`, HSTS
-- CORS com whitelist: `http://localhost:4200`, URL Vercel de prod
+- CORS com whitelist: `http://localhost:4200`, `https://app.condovote.com.br`
 
 ### 3.3 AuthGateway (`auth/AuthGateway.java`)
 - Interface que abstrai extração de claims do JWT — protege contra lock-in Supabase
@@ -150,11 +153,12 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
   - `ForbiddenException`, `NotFoundException` (custom) → 403 / 404
   - `Exception` fallback → 500 com log mas sem stacktrace para o cliente
 
-### 3.6 Dockerfile + Railway
+### 3.6 Dockerfile + Coolify
 - `backend/Dockerfile` multi-stage conforme `docs/architecture.md` §7
-- Push em `main` → Railway detecta, builda, deploya
-- Configurar vars no Railway: DATABASE_URL, SUPABASE_URL, JWT secret, REDIS_URL, RESEND_API_KEY, CPF_ENCRYPTION_KEY
-- Validar health check `/actuator/health` retornando 200 no domínio Railway
+- Push em `main` → webhook Coolify dispara redeploy (builda do Dockerfile ou puxa imagem do GHCR)
+- Configurar vars no Coolify: DATABASE_URL, SUPABASE_URL, SUPABASE_JWKS_URL, REDIS_URL, RESEND_API_KEY, CPF_ENCRYPTION_KEY, CORS_ALLOWED_ORIGINS
+- Ativar custom domain `api.condovote.com.br` no Coolify (Let's Encrypt automático)
+- Validar health check retornando 200: `curl https://api.condovote.com.br/actuator/health`
 
 ### 3.7 Smoke test
 - Criar um usuário pelo Supabase Dashboard
@@ -167,12 +171,12 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 
 ## Fase 4 — Walking Skeleton Frontend (2 dias)
 
-**Objetivo:** Angular deployado na Vercel, login via Supabase, chamada ao backend com JWT + X-Tenant-Id.
+**Objetivo:** Angular deployado no Cloudflare Pages, login via Supabase, chamada ao backend com JWT + X-Tenant-Id.
 
 ### 4.1 Projeto Angular
 - Angular CLI: `ng new frontend --standalone --routing --style=scss`
 - Instalar `@supabase/supabase-js`
-- `src/environments/` com `environment.ts` (local) e `environment.prod.ts` (Vercel)
+- `src/environments/` com `environment.ts` (local) e `environment.prod.ts` (Cloudflare Pages)
 
 ### 4.2 Supabase Auth no cliente
 - Service `AuthService`: `signIn(email, password)`, `signOut()`, `getSession()`
@@ -189,12 +193,14 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 - Seletor de condomínio ativo (para usuários multi-condo — spec §10)
 - Placeholder de dashboard
 
-### 4.5 Deploy Vercel
+### 4.5 Deploy Cloudflare Pages
 - Build command: `ng build --configuration=production`
-- Output: `dist/frontend/browser`
-- Env vars: `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL`
+- Output directory: `dist/frontend/browser`
+- Env vars no dashboard Pages: `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL=https://api.condovote.com.br`
+- SPA fallback: criar `frontend/public/_redirects` com `/*  /index.html  200`
+- Custom domain `app.condovote.com.br` (já apontado na Fase 1)
 
-**Critério de saída:** usuário real loga no frontend Vercel, vê sua lista (vazia) de condos vinda do backend Railway. Ponta-a-ponta validado.
+**Critério de saída:** usuário real loga em `https://app.condovote.com.br`, vê sua lista (vazia) de condos vinda do backend em `https://api.condovote.com.br`. Ponta-a-ponta validado.
 
 ---
 
@@ -205,7 +211,7 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 - Job `test`: checkout, setup Java 21 Temurin, `./mvnw verify` com Testcontainers (Docker disponível no runner)
 - Job `frontend-test` (opcional na v1): `npm ci && npm run test -- --watch=false --browsers=ChromeHeadless` e `npm run build`
 - Proteção de branches configurada para exigir jobs verdes
-- Railway auto-deploy de `main`; Vercel auto-deploy de `main` (preview em PRs, bonus)
+- Coolify auto-deploy de `main` via webhook + push de imagem para GHCR (tags `<sha>` + `latest`); Cloudflare Pages auto-deploy de `main` (preview em PRs, bonus)
 
 **Critério de saída:** PR com erro de teste é bloqueado; PR verde faz merge e deploya automaticamente.
 
@@ -217,7 +223,7 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 
 - Logging JSON estruturado (Logback + `logstash-logback-encoder`) — conforme §9
 - Actuator: `/actuator/health`, `/actuator/info`, `/actuator/metrics` (expostos só internamente ou com auth básico)
-- UptimeRobot monitorando `/actuator/health` (free tier)
+- UptimeRobot monitorando `https://api.condovote.com.br/actuator/health` (free tier)
 - **Runbook de bootstrap** em `docs/runbooks/bootstrap-condominio.md` conforme §0 de architecture.md: script SQL transacional de criar condomínio + síndico + app_user, com placeholders. Testar executando contra Supabase staging/local.
 
 **Critério de saída:** operador consegue criar um condomínio novo seguindo o runbook. Logs em prod chegam estruturados. Monitor básico ativo.
@@ -263,12 +269,12 @@ A razão de parar aqui: este plano é sobre **fundações**, não domínio. Com 
 
 1. Operador cria condomínio de teste via runbook SQL no Supabase Studio
 2. Operador cria user síndico no Supabase Auth Dashboard e vincula em `condominium_admin`
-3. Síndico faz login no Vercel com email + senha
+3. Síndico faz login em `https://app.condovote.com.br` com email + senha
 4. Frontend chama `GET /api/me/condominiums` → retorna o condomínio de teste
 5. Síndico seleciona o condomínio → frontend começa a enviar `X-Tenant-Id`
 6. Chamada a um endpoint RLS-scoped retorna dados do tenant correto; trocar header → 403 ou lista vazia
 7. Forçar um erro (ex: JWT expirado) → resposta 401 estruturada no formato do GlobalExceptionHandler
-8. Verificar log estruturado no Railway com `trace_id` da request
+8. Verificar log estruturado no Coolify (dashboard ou `docker logs`) com `trace_id` da request
 
 Se tudo passa, a plataforma está pronta para receber features de domínio.
 

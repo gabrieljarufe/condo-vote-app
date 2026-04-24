@@ -3,6 +3,10 @@
 .env.local
 .env.*.local
 
+# Docs privados com informações sensíveis (IPs, OCIDs, credenciais, etc.)
+docs/runbooks/
+docs/private/
+
 # IDE
 .vscode/
 .idea/

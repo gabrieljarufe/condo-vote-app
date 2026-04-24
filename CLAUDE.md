@@ -16,7 +16,7 @@ Toda a documentação é escrita em **português** — mantenha o idioma ao edit
 |---------|-----------|
 | `docs/condo-vote-principles.md` | Spec de produto. Fonte da verdade para **regras de negócio, atores, ciclo de vida de votações, quórum, LGPD** |
 | `docs/data-model.md` | ERD, enums PostgreSQL, tabelas, índices e política de RLS. Fonte para **schema do banco** |
-| `docs/architecture.md` | Decisões arquiteturais — **todas as 10 seções preenchidas**: auth (Supabase), backend (monolito modular DDD-lite), banco (Supabase Postgres + Flyway), jobs (@Scheduled), e-mail (Resend + outbox), frontend↔backend (REST + springdoc), infra (Railway + Vercel + Upstash + GitHub Actions), segurança (Bucket4j, AES-256-GCM, audit_event), observabilidade (JSON logging + Actuator + UptimeRobot) |
+| `docs/architecture.md` | Decisões arquiteturais — **todas as 10 seções preenchidas**: auth (Supabase), backend (monolito modular DDD-lite), banco (Supabase Postgres + Flyway), jobs (@Scheduled), e-mail (Resend + outbox), frontend↔backend (REST + springdoc), infra (Oracle Cloud + Coolify + Cloudflare DNS/Pages + Upstash + GHCR + GitHub Actions), segurança (Bucket4j, AES-256-GCM, audit_event), observabilidade (JSON logging + Actuator + UptimeRobot) |
 
 Ao responder perguntas sobre o domínio, **leia a spec** antes de deduzir — ela é detalhada e já cobriu muitos edge cases.
 
@@ -35,7 +35,7 @@ Estas decisões parecem de implementação mas são **estruturais**. Não mude s
 ## Convenções de trabalho neste repo
 
 - **Respeite as decisões arquiteturais documentadas.** `docs/architecture.md` foi preenchido interativamente com o usuário. As decisões são finais para v1 — siga-as ao implementar. Se surgir conflito entre uma decisão e a realidade da implementação, **discuta com o usuário** antes de mudar.
-- **Não invente alternativas ao que já foi decidido.** Exemplo: hosting é Railway (backend) + Vercel (frontend) + Upstash (Redis) — não proponha AWS/Render/etc. sem discussão.
+- **Não invente alternativas ao que já foi decidido.** Exemplo: hosting é Oracle Cloud `us-ashburn-1` + Coolify (backend) + Cloudflare Pages (frontend) + Cloudflare DNS + Upstash (Redis) — não proponha AWS/Render/Railway/Vercel/etc. sem discussão.
 - **Transferência de titularidade** (venda, herança, inquilino comprando): na v1 é tratada via **remoção + convite/promoção** pelo síndico. Fluxo formal (solicitação iniciada pelo proprietário) fica para v2. Ver `condo-vote-principles.md` seção 4 ("Transferência de titularidade") e ponto 4 em "Pontos em Aberto".
 - Ao propor mudanças em regras de negócio, **atualize a spec** — não só o código. A spec é a fonte da verdade.
 
@@ -49,8 +49,11 @@ Estas decisões parecem de implementação mas são **estruturais**. Não mude s
 | Auth | Supabase Auth | JWT validado via JWKS, AuthGateway abstrai provider |
 | Redis | Upstash | Apenas invitation tokens (24h TTL) |
 | E-mail | Resend + Thymeleaf | Transactional outbox, EmailSender interface |
-| CI/CD | GitHub Actions | test → build → deploy. Branching: main ← develop ← feature/* |
-| Hosting | Railway (backend) + Vercel (frontend) | Dockerfile multi-stage, auto-deploy a partir de main |
+| CI/CD | GitHub Actions | test → build → push imagem GHCR → webhook Coolify. Branching: main ← develop ← feature/* |
+| Hosting backend | Oracle Cloud `us-ashburn-1` (VM ARM Ampere A1 Always Free) + Coolify | Dockerfile multi-stage, push-to-deploy via webhook, Caddy + Cloudflare Origin CA |
+| Hosting frontend | Cloudflare Pages | Bandwidth ilimitado, auto-deploy do repo, SPA via `_redirects` |
+| DNS / edge | Cloudflare (free) | Zona `condovote.com.br`; `api.` (proxied) + `app.` (proxied); DDoS, TLS edge |
+| Artefato backend | GitHub Container Registry (GHCR) | Imagem por SHA + `latest`; backup de rollback independente da VM |
 
 ## Comandos
 
@@ -86,17 +89,51 @@ cd infra/supabase && supabase start
 cd backend && ./mvnw flyway:migrate
 ```
 
+### VM Oracle (acesso SSH)
+
+O acesso à VM de produção é via **Tailscale** — obrigatório estar com o cliente Tailscale ativo no Mac.
+
+```bash
+# Conectar na VM (IP Tailscale em docs/private/phase-1-state.md)
+ssh -i ~/.ssh/condo-vote/oracle.key ubuntu@<VM_TAILSCALE_IP>
+
+# Verificar regras de firewall da VM
+ssh -i ~/.ssh/condo-vote/oracle.key ubuntu@<VM_TAILSCALE_IP> "sudo iptables -L INPUT --line-numbers -n"
+
+# Atualizar Security List OCI (ex: após mudar IP Tailscale)
+oci network security-list update \
+  --security-list-id <DEFAULT_SL_OCID> \
+  --ingress-security-rules file://infra/oci/security-list-rules.json \
+  --force
+```
+
+**IPs e OCIDs:** ver `docs/private/phase-1-state.md` (gitignored)
+
+**Chave SSH:** `~/.ssh/condo-vote/oracle.key` — Bitwarden: `condo-vote-oracle-ssh-private-key`
+
+**Security List versionada em:** `infra/oci/security-list-rules.json` — editar e reaplicar via `oci-cli`. Nunca alterar diretamente no console OCI.
+
+**Tutorial completo de SSH:** `docs/runbooks/ssh-vm.md` (gitignored)
+
+### Coolify (painel de deploy)
+
+- **Acesso normal:** `https://coolify.condovote.com.br` (porta 443 → Caddy → Coolify internamente na 8000)
+- **Acesso direto (fallback):** `http://<VM_TAILSCALE_IP>:8000` via Tailscale — bypassa o Caddy, útil se o domínio estiver com problema
+- **Credenciais:** Bitwarden → `condo-vote-coolify-admin`
+- **Webhook GitHub App:** `https://coolify.condovote.com.br`
+- **Porta 8000 NÃO está aberta na OCI Security List** — acesso direto só funciona via Tailscale.
+
 
 ## Decisões arquiteturais chave (resumo rápido)
 
 Para detalhes completos, ver `docs/architecture.md`. Aqui o mínimo necessário para não errar ao implementar:
 
-- **Auth:** Supabase Auth gerencia signup/login/senhas/refresh. Spring valida JWT via JWKS (cache local). Interface `AuthGateway` abstrai extração de claims. `app_user.id` = `auth.users.id` (mesmo UUID). Confirmação de email desabilitada no Supabase.
+- **Auth:** Supabase Auth gerencia signup/login/senhas/refresh. Spring valida JWT via **JWKS** (chaves públicas assimétricas ECC P-256 em `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`, cache local 1h). **Nenhum segredo de JWT no backend** — zero `SUPABASE_JWT_SECRET`; se a VM for comprometida, atacante não consegue forjar tokens. Interface `AuthGateway` abstrai extração de claims. `app_user.id` = `auth.users.id` (mesmo UUID). Confirmação de email desabilitada no Supabase. Ver `architecture.md` §1 "Por que JWKS em vez de HS256".
 - **Onboarding:** validação pública do convite → signUp no Supabase → POST /register/complete no Spring (na mesma transação: cria app_user + apartment_resident + aceita invitation + DEL Redis token). Endpoint idempotente para user existente (múltiplos apartamentos).
 - **RLS:** `TenantInterceptor` extrai `X-Tenant-Id` do header → `TenantContext` (ThreadLocal) → AOP executa `SET LOCAL app.current_tenant` antes de cada @Transactional. Sem header = cross-tenant (queries explícitas com WHERE user_id).
 - **Jobs:** 6 jobs @Scheduled (PollOpener, PollCloser, AllVotedChecker, InvitationExpirer, EmailSender, ReminderEnqueuer). SELECT FOR UPDATE para idempotência. Sem ShedLock na v1 (1 instância).
 - **E-mail:** Transactional outbox (`email_notification` table). `EmailSender` interface → `ResendEmailSender`. Thymeleaf templates. Retry 3x com backoff.
-- **Branching:** `main` (protegida, 1 approval + CI verde) ← `develop` (CI verde) ← `feature/*`. Railway auto-deploy de main.
+- **Branching:** `main` (protegida, 1 approval + CI verde) ← `develop` (CI verde) ← `feature/*`. Coolify auto-deploy de main via webhook (backend); Cloudflare Pages auto-deploy de main (frontend).
 
 ## Como o Claude deve raciocinar
 

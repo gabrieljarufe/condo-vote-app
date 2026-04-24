@@ -12,17 +12,18 @@ Roadmap executável derivado de [`../plan.md`](../plan.md). Cada arquivo abaixo 
 
 ## Índice
 
-| Fase | Arquivo | Tasks | Duração estimada |
-|------|---------|-------|------------------|
-| 0 | [phase-0-repo-bootstrap.md](phase-0-repo-bootstrap.md) | 3 | 0,5 dia |
-| 1 | [phase-1-infrastructure.md](phase-1-infrastructure.md) | 6 | 1–2 dias |
-| 2 | [phase-2-schema-migrations.md](phase-2-schema-migrations.md) | 13 | 2–3 dias |
-| 3 | [phase-3-backend-skeleton.md](phase-3-backend-skeleton.md) | 9 | 2–3 dias |
-| 4 | [phase-4-frontend-skeleton.md](phase-4-frontend-skeleton.md) | 5 | 2 dias |
-| 5 | [phase-5-cicd.md](phase-5-cicd.md) | 3 | 0,5–1 dia |
-| 6 | [phase-6-observability.md](phase-6-observability.md) | 3 | 0,5 dia |
+| Fase | Arquivo | Tasks | Duração estimada | Status |
+|------|---------|-------|------------------|--------|
+| 0 | [phase-0-repo-bootstrap.md](phase-0-repo-bootstrap.md) | 3 | 0,5 dia | ✅ Concluída |
+| 1 | [phase-1-infrastructure.md](phase-1-infrastructure.md) | 6 | 1–2 dias | ✅ Concluída |
+| 2 | [phase-2-schema-migrations.md](phase-2-schema-migrations.md) | 13 | 2–3 dias | ⏳ Próxima (aguarda T3.1a) |
+| 3 | [phase-3-backend-skeleton.md](phase-3-backend-skeleton.md) | 10 | 2–3 dias | ⏳ T3.1a é pré-req da Fase 2 |
+| 4 | [phase-4-frontend-skeleton.md](phase-4-frontend-skeleton.md) | 5 | 2 dias | ⏳ |
+| 5 | [phase-5-cicd.md](phase-5-cicd.md) | 3 | 0,5–1 dia | ⏳ |
+| 6 | [phase-6-observability.md](phase-6-observability.md) | 4 | 0,5 dia | ⏳ |
+| 7 | [phase-7-domain-index.md](phase-7-domain-index.md) | 8 features (índice) | ~3–4 semanas | 📋 Planejada |
 
-**Total:** 42 tasks, ~8–12 dias úteis de trabalho focado.
+**Total:** 44 tasks de fundação (Fases 0–6) + 8 features de domínio indexadas (Fase 7), ~10–14 dias úteis de trabalho focado para fundação.
 
 ## Convenções
 

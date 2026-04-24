@@ -59,9 +59,9 @@ Diretriz orientadora: **cada fase termina com algo que roda e pode ser demonstra
 
 ### 1.4 Oracle Cloud + Coolify + Cloudflare DNS/Pages
 - **Oracle Cloud:** criar tenancy em `us-ashburn-1`; provisionar VM ARM Ampere A1 Flex Always Free (retry em "Out of capacity"); VCN + Security List (22/80/443); instalar Coolify (`curl install.sh | sudo bash`)
-- **Cloudflare DNS:** adicionar zona `condovote.com.br`; apontar NS no registrar; criar Cloudflare Origin CA cert (15 anos) para `*.condovote.com.br`; registros DNS: `api.` → A record para IP da VM Oracle (proxied), `app.` → CNAME `<projeto>.pages.dev` (proxied); Redirect Rules: apex/www → `https://app.condovote.com.br`
+- **Cloudflare DNS:** adicionar zona `condovote.com.br`; apontar NS no registrar; Let's Encrypt automático para `*.condovote.com.br`; registros DNS: `api.` → A record para IP da VM Oracle (proxied), `app.` → CNAME `<projeto>.pages.dev` (proxied); Redirect Rules: apex/www → `https://app.condovote.com.br`
 - **Cloudflare Pages:** criar projeto conectado ao repo, root directory `frontend/`, custom domain `app.condovote.com.br`, build command e env vars ficam em Fase 4
-- **Coolify:** conectar ao repo GitHub (sem deploy ainda — Dockerfile vem na Fase 3); instalar Cloudflare Origin CA cert no Caddy do Coolify
+- **Coolify:** conectar ao repo GitHub (sem deploy ainda — Dockerfile vem na Fase 3); Let's Encrypt automático configurado
 - **GHCR:** criar Personal Access Token com escopo `write:packages` e guardar como secret `GHCR_TOKEN` no repo GitHub (consumido pelo workflow em Fase 5)
 
 ### 1.5 Supabase CLI local
@@ -157,7 +157,7 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 - `backend/Dockerfile` multi-stage conforme `docs/architecture.md` §7
 - Push em `main` → webhook Coolify dispara redeploy (builda do Dockerfile ou puxa imagem do GHCR)
 - Configurar vars no Coolify: DATABASE_URL, SUPABASE_URL, SUPABASE_JWKS_URL, REDIS_URL, RESEND_API_KEY, CPF_ENCRYPTION_KEY, CORS_ALLOWED_ORIGINS
-- Ativar custom domain `api.condovote.com.br` no Coolify (cert Cloudflare Origin CA já instalado na Fase 1)
+- Ativar custom domain `api.condovote.com.br` no Coolify (Let's Encrypt automático)
 - Validar health check retornando 200: `curl https://api.condovote.com.br/actuator/health`
 
 ### 3.7 Smoke test

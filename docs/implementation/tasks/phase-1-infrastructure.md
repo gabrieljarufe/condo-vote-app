@@ -4,7 +4,7 @@
 
 **Pré-requisitos:** Fase 0 concluída.
 
-> **Nota:** esta fase é 95% cliques em dashboards. Task `T1.6` é a única com entregável no repo.
+> **Nota:** esta fase é 95% cliques em dashboards. Entregáveis no repo: `infra/oci/security-list-rules.json` (T1.4c) e `.env.example` (T1.6).
 
 ---
 
@@ -46,22 +46,30 @@
 - [x] Ativar billing alerts em $1 para detectar qualquer drift
 
 ### T1.4b — Provisionar VM ARM Ampere A1
-- [ ] Compute → Instances → Create Instance
-- [ ] Shape: **VM.Standard.A1.Flex** — 2 OCPU / 8GB RAM (pode subir depois até 4/24 sem custo)
-- [ ] Image: Ubuntu 22.04 Minimal
-- [ ] ⚠️ "Out of capacity" nos 3 ADs de us-ashburn-1 — tentar novamente em horários diferentes (madrugada BR). VCN `condo-vote-vcn` + public subnet já criadas. SSH keypair gerado e salvo no Bitwarden.
-- [x] Gerar SSH keypair, guardar `.pem` no cofre pessoal
-- [ ] Anotar **IP público** da VM
+- [x] Compute → Instances → Create Instance
+- [x] Shape: **VM.Standard.A1.Flex** — 2 OCPU / 8GB RAM
+- [x] Image: Ubuntu 22.04 Minimal — AD-1 (US-ASHBURN-AD-1), criada em 2026-04-23
+- [x] Gerar SSH keypair, guardar `.pem` no cofre pessoal (Bitwarden: `condo-vote-oracle-ssh-private-key`)
+- [x] IP público da VM anotado no Bitwarden e no `CLAUDE.md` (não exposto aqui)
+
+> **Nota:** acesso SSH é via Tailscale (não pelo IP público). Ver seção "VM Oracle (acesso SSH)" no `CLAUDE.md`.
 
 ### T1.4c — VCN + Security List
-- [ ] Abrir ingress na Security List padrão: porta `22` (restringir ao seu IP pessoal), `80` (HTTP), `443` (HTTPS)
-- [ ] No Ubuntu da VM, liberar firewall: `sudo iptables -I INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT && sudo netfilter-persistent save`
+- [x] Abrir ingress na Security List padrão: porta `22` (restrita ao IP Tailscale do Mac), `80` e `443` abertas para `0.0.0.0/0`
+- [x] Security List versionada em `infra/oci/security-list-rules.json` — aplicar via `oci-cli`, nunca pelo console OCI diretamente
+- [x] No Ubuntu da VM: portas 80, 443, 8000 liberadas no iptables e persistidas com `netfilter-persistent save`
+- [x] Tailscale instalado na VM e no Mac — acesso SSH sempre via IP Tailscale (IPs em `docs/private/phase-1-state.md`)
+- [x] fail2ban instalado com IP Tailscale do Mac em `ignoreip`, backend `systemd`
 
 ### T1.4d — Instalar Coolify
-- [ ] SSH na VM: `ssh -i key.pem ubuntu@<ip>`
-- [ ] Instalar: `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash`
-- [ ] Acessar `http://<ip>:8000`, criar conta admin, setar senha forte
-- [ ] Configurar domínio do próprio Coolify (`coolify.condovote.com.br` como subdomínio interno, ou usar IP por enquanto)
+- [x] SSH na VM via Tailscale (ver `docs/runbooks/ssh-vm.md`)
+- [x] Instalar: `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash` — versão 4.0.0-beta.474
+- [x] Conta admin criada (credenciais em Bitwarden: `condo-vote-coolify-admin`)
+- [x] Server type: **This Machine** — Coolify e backend rodam na mesma VM
+- [x] Configurar domínio do Coolify: `coolify.condovote.com.br` — Proxy OFF, certificado Let's Encrypt via Caddy automático
+- [x] GitHub App `condo-vote` criado no Coolify, webhook endpoint `https://coolify.condovote.com.br`, acesso restrito ao repo `condo-vote-app`
+
+> **Decisão tomada em 2026-04-23:** Coolify tem domínio próprio `coolify.condovote.com.br` com Let's Encrypt (Proxy OFF — Caddy gerencia cert diretamente). Porta 8000 não está aberta na OCI Security List — acesso admin é via Tailscale ou domínio público.
 
 ### T1.4e — Cloudflare (DNS autoritativo)
 - [x] Registrar conta Cloudflare (free)
@@ -72,29 +80,41 @@
 - [x] SSL/TLS → Origin Server → Create Certificate → `*.condovote.com.br`, `condovote.com.br`, validade 15 anos → **salvar cert + key** para colar no Coolify depois
 
 ### T1.4f — Registros DNS
-- [ ] `api.condovote.com.br` → A record apontando para IP público da VM Oracle, **Proxy ON (laranja)** — aguarda T1.4b
-- [ ] `app.condovote.com.br` → CNAME para `<projeto>.pages.dev` (criado em T1.4h), **Proxy ON (laranja)** — aguarda T1.4h
-- [x] `condovote.com.br` → A record `192.0.2.1`, **Proxy ON** (placeholder para redirect rule)
-- [x] `www.condovote.com.br` → CNAME para `condovote.com.br`, **Proxy ON**
+
+Estado atual da zona `condovote.com.br` no Cloudflare:
+
+| Tipo | Nome | Destino | Proxy | Uso |
+|---|---|---|---|---|
+| A | `api` | IP público da VM | ON | Backend Spring Boot (via Caddy/Coolify) |
+| A | `coolify` | IP público da VM | OFF | Painel Coolify (Let's Encrypt direto) |
+| A | `condovote.com.br` | `192.0.2.1` | ON | Placeholder para Redirect Rule |
+| CNAME | `app` | `condo-vote-frontend.pages.dev` | ON | Frontend Angular (Cloudflare Pages) |
+| CNAME | `www` | `condovote.com.br` | ON | Redirect para `app.` |
+| MX | `condovote.com.br` | `.` (priority 0) | — | Null MX — rejeita e-mail no apex |
+| TXT | `condovote.com.br` | `v=spf1 -all` | — | SPF — nenhum servidor autorizado no apex |
+| TXT | `_dmarc` | `v=DMARC1; p=reject;` | — | DMARC — rejeita spoofing do domínio |
+
+- [x] Todos os registros acima criados e validados
 
 ### T1.4g — Redirect Rules (apex + www)
 - [x] Rules → Redirect Rules → Create:
   - Se hostname = `condovote.com.br` OR `www.condovote.com.br` → 301 para `https://app.condovote.com.br$1` (preserve path + query)
 
 ### T1.4h — Cloudflare Pages (frontend)
-- [ ] Workers & Pages → Create Application → Pages → Connect to Git → selecionar repo
-- [ ] Project name: `condo-vote-frontend`
-- [ ] Production branch: `main`
-- [ ] Framework preset: Angular (ou None + configurar manualmente)
-- [ ] Build command: `ng build --configuration=production` (ajustar em Fase 4)
-- [ ] Build output directory: `dist/frontend/browser`
-- [ ] Root directory: `frontend/`
-- [ ] Custom domain → `app.condovote.com.br` (Cloudflare auto-valida porque já é autoritativo)
+- [x] Workers & Pages → Pages → Connect to Git → repo `condo-vote-app`
+- [x] Project name: `condo-vote-frontend`
+- [x] Production branch: `main`
+- [x] Framework preset: `None` (Angular chega na Fase 4)
+- [x] Build command: vazio (configurar em Fase 4: `cd frontend && npm ci && npm run build -- --configuration=production`)
+- [x] Build output directory: `dist/frontend/browser`
+- [x] Root directory: `frontend/`
+- [x] Custom domain `app.condovote.com.br` adicionado via Pages → Custom domains
+- [x] Env vars (Production): `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL=https://api.condovote.com.br` — aguardando valores reais do Supabase
 
 ### T1.4i — Coolify + repo
-- [ ] No Coolify: Sources → New GitHub App → autorizar no repo
-- [ ] Criar Application no Coolify apontando para o repo, branch `main`, build pack Dockerfile, root directory `backend/` — **sem fazer deploy ainda** (Dockerfile chega na Fase 3)
-- [ ] Installing SSL cert custom: Caddy → upload Cloudflare Origin CA cert + key (capturados em T1.4e)
+- [x] No Coolify: Sources → GitHub App `condo-vote` criado, autorizado apenas no repo `condo-vote-app`
+- [x] Application `condo-vote-backend` criada: repo público `https://github.com/jarufe/condo-vote-app`, branch `main`, build pack Dockerfile, base dir `/backend/`, domain `https://api.condovote.com.br` — **sem deploy** (Dockerfile chega na Fase 3)
+- [x] SSL do Coolify dashboard: Let's Encrypt via Caddy automático (domínio `coolify.condovote.com.br`, Proxy OFF)
 
 ### T1.4j — GHCR (GitHub Container Registry)
 - [x] No GitHub: Settings → Developer settings → Personal access tokens → Generate (classic)
@@ -102,7 +122,7 @@
 - [x] Guardar token em cofre pessoal (Bitwarden)
 - [x] No repo: Settings → Secrets and variables → Actions → New repository secret: `GHCR_TOKEN` = valor do PAT
 
-**Aceite:** VM Oracle no ar com Coolify acessível; Cloudflare autoritativo com `api.` e `app.` apontados; Pages projeto criado conectado ao repo; Coolify conectado ao repo com Origin CA instalado; `GHCR_TOKEN` disponível nos Actions secrets.
+**Aceite:** VM Oracle no ar com Coolify acessível; Cloudflare autoritativo com `api.` e `app.` apontados; Pages projeto criado conectado ao repo; Coolify conectado ao repo com Let's Encrypt automático; `GHCR_TOKEN` disponível nos Actions secrets.
 
 ---
 
@@ -118,12 +138,12 @@
 
 ## T1.6 — Secrets e chave de criptografia
 - [x] Completar `.env.example` na raiz com todas as variáveis:
-  - Backend: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `CPF_ENCRYPTION_KEY`, `CORS_ALLOWED_ORIGINS`
+  - Backend: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `CPF_ENCRYPTION_KEY`, `CORS_ALLOWED_ORIGINS` — **sem `SUPABASE_JWT_SECRET`**: validação via JWKS (ver `architecture.md` §1)
   - Frontend: `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL`
 - [x] Criar `.env.local` com valores locais (Supabase local, Redis local, `localhost` URLs) — gitignored
 - [x] Gerar `CPF_ENCRYPTION_KEY` de 32 bytes base64: `openssl rand -base64 32`
 - [x] Armazenar chave em cofre pessoal (Bitwarden) — é a única chave capaz de descriptografar CPFs
-- [ ] Injetar variáveis no Dashboard Coolify (backend, Secrets criptografados em repouso) e Cloudflare Pages (frontend) — aguarda T1.4d e T1.4h
-- [ ] GitHub Actions Secrets só o necessário (se CI precisar tocar Supabase — provavelmente não na v1)
+- [x] Injetar variáveis no Dashboard Coolify (backend, Secrets criptografados em repouso) e Cloudflare Pages (frontend)
+- [x] GitHub Actions Secrets não necessário na v1
 
 **Aceite:** `.env.example` commitado; chave real nunca no repo; todas as variáveis populadas nos respectivos dashboards.

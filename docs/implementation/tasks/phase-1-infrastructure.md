@@ -100,16 +100,32 @@ Estado atual da zona `condovote.com.br` no Cloudflare:
 - [x] Rules → Redirect Rules → Create:
   - Se hostname = `condovote.com.br` OR `www.condovote.com.br` → 301 para `https://app.condovote.com.br$1` (preserve path + query)
 
-### T1.4h — Cloudflare Pages (frontend)
-- [x] Workers & Pages → Pages → Connect to Git → repo `condo-vote-app`
+### T1.4h — Cloudflare Pages via GitHub Actions
+
+> **Decisão tomada em 2026-04-24:** Auto-deploy nativo do Cloudflare Pages foi desabilitado
+> via Branch Control (Production: OFF, Preview: None). Deploy agora via GitHub Actions
+> workflow `.github/workflows/cloudflare-pages.yml` — evita double deploy.
+
+- [x] Workers & Pages → Connect to Git → repo `condo-vote-app` (mantido para integrações GitHub)
+- [x] Branch control → **Production: OFF**, **Preview: None** (disable auto-deploy nativo)
 - [x] Project name: `condo-vote-frontend`
-- [x] Production branch: `main`
+- [x] Production branch: `main` (usado pelo workflow, não pelo Cloudflare)
 - [x] Framework preset: `None` (Angular chega na Fase 4)
-- [x] Build command: vazio (configurar em Fase 4: `cd frontend && npm ci && npm run build -- --configuration=production`)
+- [x] Build command: vazio (configurar em Fase 4: workflow faz build)
 - [x] Build output directory: `dist/frontend/browser`
 - [x] Root directory: `frontend/`
 - [x] Custom domain `app.condovote.com.br` adicionado via Pages → Custom domains
-- [x] Env vars (Production): `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL=https://api.condovote.com.br` — aguardando valores reais do Supabase
+- [x] Env vars (Production): `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL=https://api.condovote.com.br`
+
+- [x] `.github/workflows/cloudflare-pages.yml` criado e commitado:
+  - Trigger: `push` em `main`/`develop` com mudanças em `frontend/**`
+  - `workflow_dispatch` para deploy manual
+  - Steps: checkout → npm ci → npm run build → wrangler pages deploy
+  - Deploy para branch correspondente (`main`=production, `develop`=preview)
+
+- [x] Secrets do GitHub Actions configurados (`gh secret set`):
+  - `CLOUDFLARE_API_TOKEN`: token com permissões Edit para Pages
+  - `CLOUDFLARE_ACCOUNT_ID`: ID da conta Cloudflare
 
 ### T1.4i — Coolify + repo
 - [x] No Coolify: Sources → GitHub App `condo-vote` criado, autorizado apenas no repo `condo-vote-app`

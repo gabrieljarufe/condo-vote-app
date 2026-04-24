@@ -128,7 +128,7 @@ oci network security-list update \
 
 Para detalhes completos, ver `docs/architecture.md`. Aqui o mínimo necessário para não errar ao implementar:
 
-- **Auth:** Supabase Auth gerencia signup/login/senhas/refresh. Spring valida JWT via JWKS (cache local). Interface `AuthGateway` abstrai extração de claims. `app_user.id` = `auth.users.id` (mesmo UUID). Confirmação de email desabilitada no Supabase.
+- **Auth:** Supabase Auth gerencia signup/login/senhas/refresh. Spring valida JWT via **JWKS** (chaves públicas assimétricas ECC P-256 em `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`, cache local 1h). **Nenhum segredo de JWT no backend** — zero `SUPABASE_JWT_SECRET`; se a VM for comprometida, atacante não consegue forjar tokens. Interface `AuthGateway` abstrai extração de claims. `app_user.id` = `auth.users.id` (mesmo UUID). Confirmação de email desabilitada no Supabase. Ver `architecture.md` §1 "Por que JWKS em vez de HS256".
 - **Onboarding:** validação pública do convite → signUp no Supabase → POST /register/complete no Spring (na mesma transação: cria app_user + apartment_resident + aceita invitation + DEL Redis token). Endpoint idempotente para user existente (múltiplos apartamentos).
 - **RLS:** `TenantInterceptor` extrai `X-Tenant-Id` do header → `TenantContext` (ThreadLocal) → AOP executa `SET LOCAL app.current_tenant` antes de cada @Transactional. Sem header = cross-tenant (queries explícitas com WHERE user_id).
 - **Jobs:** 6 jobs @Scheduled (PollOpener, PollCloser, AllVotedChecker, InvitationExpirer, EmailSender, ReminderEnqueuer). SELECT FOR UPDATE para idempotência. Sem ShedLock na v1 (1 instância).

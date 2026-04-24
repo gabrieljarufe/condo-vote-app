@@ -205,6 +205,8 @@ Gerenciado inteiramente pelo Supabase JS SDK no Angular:
 - Angular não precisa de interceptor manual para refresh
 - Evento `onAuthStateChange('TOKEN_REFRESHED')` disponível se necessário
 
+**Nota:** revogação manual de refresh token via Dashboard Supabase não é síncrona com o backend — há janela de até ~1h (expiry do access token) até o app rejeitar requisições. Para revogação imediata, usar endpoint `/api/logout` no futuro (v2) que invalida a sessão local.
+
 ### Bootstrap operacional v1 (novo condomínio + primeiro síndico)
 
 A criação de um novo condomínio + seu primeiro síndico é feita via **migration Flyway versionada**, não por operação ad-hoc no Studio. Motivos:
@@ -485,6 +487,7 @@ Ações manuais do síndico que não são automáticas (jobs):
 | `/api/apartments/{id}/delegate` | DELETE | Proprietário | Revoga delegação. Proprietário volta a ser votante. Bloqueado se apt tem poll OPEN no snapshot |
 | `/api/apartments/{id}/residents/{residentId}/promote` | POST | Síndico | Promove inquilino a proprietário. Encerra vínculo TENANT (`PROMOTED_TO_OWNER`), cria novo OWNER, atualiza `eligible_voter_user_id`. Bloqueado se apt tem poll OPEN no snapshot |
 | `/api/invitations/bulk` | POST | Síndico | **Cadastro em massa de convites.** Body: CSV (ou JSON array) com linhas `{block, unit_number, email, cpf, role}`. Na mesma transação: cria/reusa apartamentos inexistentes (audit `APARTMENT_CREATED`), cria invitations (audit `INVITATION_SENT`), enfileira e-mails. Resposta: `{created: N, skipped: [{line, reason}]}` — linhas inválidas (email duplicado já PENDING, CPF inválido, etc.) são reportadas sem abortar as demais |
+| `/api/apartments/{id}/residents/{residentId}/promote` (v2 via endpoint — atualmente via remoção+convite) | — | — | **Promoção é operação atômica:** encerra vínculo TENANT com `end_reason = PROMOTED_TO_OWNER`, cria novo OWNER, recalcula `eligible_voter_user_id`. **Bloqueada** se apartamento tem poll OPEN no snapshot. **Rejeitada** se já existe OWNER ativo. Gera `audit_event RESIDENT_PROMOTED_TO_OWNER`. |
 
 ### Edição de poll agendada
 
@@ -695,6 +698,15 @@ Pirâmide clássica adaptada ao stack:
 - PR abre → GitHub Actions roda `./mvnw verify` (unit + integration com Testcontainers)
 - E2E roda em cron noturno (caro pra rodar em cada PR no piloto); pode ser promovido a gate quando o time crescer
 
+### §3.1 Redis fail-open behavior
+
+Quando Redis estiver indisponível:
+- **Validação de convite** (`GET /api/invitations/validate`): retorna `503 Service Unavailable`. O morador recebe erro e tenta novamente; o síndico pode reenviar o convite.
+- **Criação de convite** (`POST /api/invitations`): falha atomicamente — a migration do Redis (`SET invitation:token`) ocorre **na mesma unidade lógica** que o INSERT de `invitation` em PG. Se o SET Redis falhar, a transação PG é revertida. Convite não fica em estado parcial.
+- **`/register/complete`**: é idempotente — se falhar por Redis down no passo de DEL do token, o endpoint pode ser chamado novamente com o mesmo JWT e token (desde que o token ainda exista em Redis e o TTL não tenha expirado).
+
+Trade-off aceito: Redis down bloqueia novos convites/registros. Para v1 (piloto), Upstash free tem SLA > 99.9%.
+
 ---
 
 ## 4. Jobs e Automação
@@ -740,6 +752,7 @@ O ciclo de vida do poll depende de ações automáticas: abrir na `scheduled_sta
 | `InvitationExpirerJob` | @Scheduled(fixedRate = 3600s) | `UPDATE invitations SET status='EXPIRED' WHERE status='PENDING' AND expires_at < now()`. Sincroniza PG com Redis (token já expirou via TTL) |
 | `EmailSenderJob` | @Scheduled(fixedRate = 30s) | `SELECT email_notifications WHERE status='PENDING' AND scheduled_for <= now()` → envia via provider. Retry com backoff em FAILED |
 | `ReminderEnqueuerJob` | @Scheduled(cron = "0 0 * * * *") | 1x por hora: verifica polls OPEN com `scheduled_end` em < 24h e sem lembrete enviado → enfileira emails de lembrete para não-votantes |
+| `RetentionPrunerJob` | @Scheduled(cron = "0 0 3 1 * *") | Mensalmente às 3h do dia 1: `DELETE audit_event WHERE occurred_at < now() - INTERVAL '5 years'`; `DELETE email_notification WHERE status IN ('SENT','BOUNCED') AND sent_at < now() - INTERVAL '90 days'`. **v1: no-op placeholder** — ativado em v2 quando volume justificar. |
 
 ### Detalhamento: idempotência por job
 
@@ -1225,6 +1238,10 @@ Rotação de chave (futura):
   - Adicionar campo cpf_encryption_version
   - Decrypta com chave antiga, re-encrypta com nova
   - Batch migration offline
+
+Risco conhecido: AES-256-SIV determinístico permite análise de frequência se banco for comprometido
+(CPFs iguais geram ciphertext igual). Mitigação v1: RLS cross-tenant + backup Supabase criptografado
+em repouso + CPF_ENCRYPTION_KEY fora do banco. v2: avaliar application-layer sharding por condo.
 ```
 
 ---
@@ -1246,8 +1263,9 @@ Rotação de chave (futura):
 | Métricas v1 | **Spring Boot Actuator apenas** | `/actuator/health`, `/actuator/info`, `/actuator/metrics` (JVM, HikariCP, HTTP). Sem Prometheus/Grafana na v1 — overkill para piloto. Adicionar Micrometer + Prometheus quando escalar |
 | Alertas | **UptimeRobot + email** | UptimeRobot (free tier) pinga `GET https://api.condovote.com.br/actuator/health` a cada 5 minutos. Se falhar 2x seguidas → alerta por email para o time. Sem PagerDuty/OpsGenie na v1 |
 | Health checks | **Actuator com checks customizados** | `/actuator/health` verifica: DB (automático via Spring), Redis (custom `HealthIndicator`). Se qualquer um DOWN → status 503. Coolify usa esse endpoint como health check do container (restart automático em falha) |
-| Contexto por request | **MDC (Mapped Diagnostic Context)** | `TenantInterceptor` já existe — adicionar `MDC.put("tenant_id", ...)` e `MDC.put("user_id", ...)`. Todo log dentro da request carrega o contexto. Limpa no `afterCompletion` |
+| Contexto por request | **MDC (Mapped Diagnostic Context)** | `TenantInterceptor` já existe — adicionar `MDC.put("tenant_id", ...)`, `MDC.put("user_id", ...)` e `MDC.put("request_id", ...)`. Todo log dentro da request carrega o contexto. Limpa no `afterCompletion` |
 | Request tracing | **Correlation ID** | Header `X-Request-Id` (gerado pelo Angular ou pelo Spring se ausente). Propagado via MDC. Permite rastrear uma request do frontend ao log do backend |
+| Mascaramento de dados sensíveis | **`SensitiveDataMaskingConverter`** (Logback custom converter) | `cpf` → mostra últimos 3 dígitos; `password`/`token`/`authorization` → vazio; `key`/`secret` → primeiros 6 chars + `...`. Teste dedicado verifica que output de log não contém CPF em claro. |
 
 ### Detalhamento: Logging estruturado
 

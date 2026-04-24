@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estado atual do projeto
 
-Este repositório está em **fase de design, sem código**. O que existe é apenas documentação em `docs/` (e `LICENSE` + `README.md` de uma linha). Não há build, testes, lint ou comandos de runtime — não tente executar nenhum.
+Fase 0 (repo bootstrap) e Fase 1 (infraestrutura + landing estática) concluídas. Backend ainda não iniciado. Próximo passo: Fase 2 (schema + migrations) — mas **T3.1 (Spring Initializr) é pré-requisito bloqueante** (scaffolding Spring Boot deve existir antes de configurar Flyway).
 
-Metodologia adotada: **Spec-Driven Development** (Specify → Plan → Tasks → Implement). As fases **Specify** e **Plan** estão concluídas. Próximo passo: **Tasks** (roadmap de implementação com epics/features ordenados).
+Metodologia adotada: **Spec-Driven Development** (Specify → Plan → Tasks → Implement). As fases **Specify**, **Plan** e **Tasks** estão concluídas. Fase atual: **Implement** (Fases 2–6 das tasks).
 
 Toda a documentação é escrita em **português** — mantenha o idioma ao editar docs existentes ou criar novos.
 
@@ -16,7 +16,7 @@ Toda a documentação é escrita em **português** — mantenha o idioma ao edit
 |---------|-----------|
 | `docs/condo-vote-principles.md` | Spec de produto. Fonte da verdade para **regras de negócio, atores, ciclo de vida de votações, quórum, LGPD** |
 | `docs/data-model.md` | ERD, enums PostgreSQL, tabelas, índices e política de RLS. Fonte para **schema do banco** |
-| `docs/architecture.md` | Decisões arquiteturais — **todas as 10 seções preenchidas**: auth (Supabase), backend (monolito modular DDD-lite), banco (Supabase Postgres + Flyway), jobs (@Scheduled), e-mail (Resend + outbox), frontend↔backend (REST + springdoc), infra (Oracle Cloud + Coolify + Cloudflare DNS/Pages + Upstash + GHCR + GitHub Actions), segurança (Bucket4j, AES-256-GCM, audit_event), observabilidade (JSON logging + Actuator + UptimeRobot) |
+| `docs/architecture.md` | Decisões arquiteturais — **todas as 10 seções preenchidas**: auth (Supabase), backend (monolito modular DDD-lite), banco (Supabase Postgres + Flyway), jobs (@Scheduled), e-mail (Resend + outbox), frontend↔backend (REST + springdoc), infra (Oracle Cloud + Coolify + Cloudflare DNS/Pages + Upstash + GHCR + GitHub Actions), segurança (Bucket4j, AES-256-SIV, audit_event), observabilidade (JSON logging + Actuator + UptimeRobot) |
 
 Ao responder perguntas sobre o domínio, **leia a spec** antes de deduzir — ela é detalhada e já cobriu muitos edge cases.
 
@@ -27,9 +27,9 @@ Estas decisões parecem de implementação mas são **estruturais**. Não mude s
 - **Multi-tenant por RLS:** toda tabela de domínio tem `condominium_id`; queries rodam com `SET LOCAL app.current_tenant = '<uuid>'`. O `condominium_id` **redundante** em `vote` e `apartment_resident` é intencional — é necessário para a política RLS funcionar sem JOINs. Não remova.
 - **Snapshot de elegibilidade é write-once:** `poll_eligible_snapshot` é gerado na transição `SCHEDULED → OPEN` e **nunca** alterado depois. Define o denominador de quórum para os modos Absoluto e Qualificado.
 - **Voto pertence ao apartamento**, não ao usuário. `voter_user_id` é apenas testemunha para auditoria. Alinhado com o Código Civil.
-- **Votos são imutáveis** após registro. Sem UPDATE/DELETE. Remoção de morador durante poll aberto seta `is_nullified = true`, não deleta.
+- **Votos são imutáveis** após registro. Sem UPDATE/DELETE. Alinhado com Código Civil — voto pertence ao apartamento, não ao usuário. Remoção de morador **não invalida** votos já registrados em polls abertos (morador é testemunha apenas) — não existe coluna `is_nullified` neste schema.
 - **Delegação de voto é bloqueada durante polls OPEN** — previne o vetor "delegar, votar, revogar". Mesma regra deve valer para transferência de titularidade quando ela for implementada.
-- **CPF mora em `app_user`, não em `apartment_resident`** — é identificador nacional único por pessoa, independente do condomínio. Armazenado criptografado (AES-256).
+- **CPF mora em `app_user`, não em `apartment_resident`** — é identificador nacional único por pessoa, independente do condomínio. Armazenado criptografado (AES-256). Algoritmo: **AES-256-SIV** (determinístico + autenticado). Determinismo é requisito da `UNIQUE(cpf_encrypted)` — CPFs iguais produzem ciphertext igual.
 - **Síndicos têm paridade total** dentro de um condomínio; auditoria via `created_by_user_id` nas tabelas de domínio.
 
 ## Convenções de trabalho neste repo
@@ -88,6 +88,8 @@ cd infra/supabase && supabase start
 # Testar migrate Flyway (em fase 2)
 cd backend && ./mvnw flyway:migrate
 ```
+
+> **Bootstrap de condomínio:** criar migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/architecture.md §1` (Bootstrap operacional v1) + runbook em `docs/runbooks/bootstrap-condominio.md` (Fase 6).
 
 ### VM Oracle (acesso SSH)
 

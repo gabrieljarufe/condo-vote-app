@@ -2,10 +2,11 @@ name: Deploy Frontend
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'frontend/**'
       - '.github/workflows/cloudflare-pages.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -38,4 +39,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/frontend/browser --project-name=condo-vote-frontend --branch=main
+          command: pages deploy dist/frontend/browser --project-name=condo-vote-frontend --branch=${{ github.ref_name }}

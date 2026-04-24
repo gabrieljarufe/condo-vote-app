@@ -23,9 +23,9 @@ Antes de qualquer decisão técnica, é preciso entender os limites reais do pro
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
 | Tamanho do time | 2-3 devs | Time pequeno; decisões devem minimizar overhead operacional |
-| Budget mensal de infra | R$0 (free tier), escalando conforme necessidade | Supabase Free + Railway/Fly.io Free + Upstash Free cobrem a fase piloto. Supabase Pro (~$25/mês) quando necessário |
+| Budget mensal de infra | R$0 (free tier permanente), escalando conforme necessidade | Supabase Free + Oracle Cloud Always Free + Cloudflare (DNS/Pages/edge) + Upstash Free cobrem a fase piloto sem custo recorrente. Supabase Pro (~$25/mês) quando precisar de PITR |
 | Deadline v1 | ~3 meses (Jul 2026) | Meta realista com Supabase acelerando infra e time fullstack experiente |
-| Expertise principal | Forte em Java/Spring + Angular; desafio é DevOps/infra | Supabase e PaaS (Railway) mitigam a fraqueza em DevOps. Backend e frontend não são gargalos |
+| Expertise principal | Forte em Java/Spring + Angular | Coolify (self-hosted PaaS) oferece experiência push-to-deploy sobre VPS Oracle, mitigando a curva de DevOps direto |
 | Escala v1 | 1-5 condomínios (piloto) | Free tier suficiente. Foco em validar o produto com poucos usuários reais |
 
 ---
@@ -153,7 +153,24 @@ O endpoint `/register/complete` é **idempotente em relação ao app_user** — 
 - `/register/complete` é **idempotente**: se chamado de novo com o mesmo JWT e token válido, completa o cadastro
 - Para a v1 piloto, isso é suficiente. Job de cleanup fica como melhoria futura se necessário
 
-### Validação de JWT no Spring Boot
+### Por que JWKS em vez de HS256
+
+Um JWT é "confiável" porque tem uma **assinatura criptográfica**. Duas famílias de algoritmos:
+
+| | Simétrica (HS256) | Assimétrica (ES256 / RS256) — **escolhida** |
+|---|---|---|
+| Chaves | Uma chave secreta única | Par: privada (emissor) + pública (validador) |
+| Quem assina | Supabase usa a chave secreta | Supabase usa a chave **privada** |
+| Quem valida | Backend precisa da **mesma chave secreta** | Backend usa a chave **pública** |
+| Distribuição | Copiar chave para cada backend | Publicar pública em JWKS endpoint HTTPS |
+| Superfície de ataque | Vazamento do backend = forjar JWTs | Vazamento do backend ≠ forjar JWTs |
+
+**Decisão:** Supabase usa **ECC P-256 (assimétrica)**, publica as chaves públicas em `/auth/v1/.well-known/jwks.json`. Spring Boot busca as chaves via JWKS e valida JWTs localmente sem nunca ter acesso à chave privada.
+
+**Implicações práticas:**
+1. **Não existe `SUPABASE_JWT_SECRET` no backend.** Se a VM do backend for comprometida, o atacante não consegue forjar JWTs — só pode ler tokens válidos que por acaso estejam em memória no momento do ataque.
+2. **Rotação de chave é transparente.** Supabase pode girar a chave (publicar nova, aposentar antiga); Spring rebusca do JWKS via `kid` (key ID) no header do JWT. Nenhuma mudança de config no nosso lado.
+3. **Única variável de ambiente sobre JWT:** `SUPABASE_URL`. A URL do JWKS é derivada: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
 
 ```yaml
 # application.yml
@@ -162,10 +179,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+          jwk-set-uri: ${SUPABASE_URL}/auth/v1/.well-known/jwks.json
 ```
 
-O Spring cacheia a chave pública do Supabase em memória. Nenhuma chamada de rede ao Supabase por request — validação é local.
+O Spring cacheia as chaves públicas em memória (TTL 1h). Nenhuma chamada de rede ao Supabase por request — validação é **local e offline**. Só há fetch ao JWKS no startup e quando encontra um `kid` desconhecido (ex: após rotação).
 
 ### Camada AuthGateway
 
@@ -264,7 +281,7 @@ A criação de um novo condomínio + seu primeiro síndico é feita via **migrat
    - Merge
 
 5. PR: develop → main
-   - Deploy em Railway → Flyway aplica V1001 em prod
+   - Webhook Coolify detecta push em main → redeploy → Flyway aplica V1001 em prod
    - Spring sobe → síndico já consegue logar
 
 6. Operador comunica ao síndico: URL + credenciais iniciais
@@ -561,8 +578,8 @@ O data model está definido em Markdown. Como vira schema real?
 │  PRODUÇÃO (remoto)                                         │
 │                                                            │
 │  Supabase (projeto principal) — Postgres + Auth            │
-│  Spring Boot em Railway/Fly.io                             │
-│  Angular em Vercel                                         │
+│  Spring Boot em Oracle Cloud us-ashburn-1 (Coolify)        │
+│  Angular em Cloudflare Pages                               │
 │  Redis em Upstash                                          │
 └────────────────────────────────────────────────────────────┘
 ```
@@ -624,7 +641,7 @@ Flyway Community **não suporta undo nativo** (é feature do Flyway Teams). Pol�
   3. Backup manual do Supabase **antes** do deploy (Dashboard → Database → Backups → "Create backup")
   4. Janela de deploy fora de horário de uso do piloto
   5. Migration compensatória pronta no branch, para o caso de precisar reverter (não recupera dados deletados, mas restaura schema)
-- **Rollback de aplicação ≠ rollback de banco.** Se o deploy do Spring quebrar pós-migration, Railway faz rollback do container mas a migration **permanece aplicada**. O app anterior precisa continuar compatível com o schema novo — regra prática: separar mudanças de schema em duas fases quando necessário (ex: adicionar coluna nullable → deploy app que popula → PR posterior torna NOT NULL)
+- **Rollback de aplicação ≠ rollback de banco.** Se o deploy do Spring quebrar pós-migration, Coolify faz rollback do container (via UI "Deployments" ou puxando imagem do GHCR por SHA) mas a migration **permanece aplicada**. O app anterior precisa continuar compatível com o schema novo — regra prática: separar mudanças de schema em duas fases quando necessário (ex: adicionar coluna nullable → deploy app que popula → PR posterior torna NOT NULL). Ver procedimento completo em "Rollback" (Seção 7)
 - **Config Flyway:**
   - `spring.flyway.validate-on-migrate=true` (detecta checksum mismatch)
   - `spring.flyway.out-of-order=false` (obriga ordem estrita de versões)
@@ -956,8 +973,8 @@ Após login:
 |-------|-------|-------------|
 | **VPS simples (Hetzner, DigitalOcean)** | ~$5-20/mês | Baixa. Docker Compose, Nginx, Certbot |
 | **AWS (ECS/EKS + RDS)** | ~$30-100/mês | Média-alta. Mais serviços gerenciados, mais config |
-| **PaaS (Railway, Fly.io, Render)** | ~$10-30/mês | Baixa. Push-to-deploy, menos controle |
-| **Vercel (frontend) + separado (backend)** | Variável | Frontend simples, backend precisa de outro host |
+| **PaaS comercial (Railway, Fly.io, Render)** | ~$10-30/mês (trial free curto) | Baixa. Push-to-deploy, menos controle |
+| **VPS Always Free + PaaS self-hosted (Oracle Cloud + Coolify) + Cloudflare (DNS/Pages/edge)** | **R$0 permanente** | Média. Setup inicial 2-4h, depois push-to-deploy via Coolify + auto-deploy nativo do Pages |
 
 **7.2 — Como o deploy acontece?**
 
@@ -975,12 +992,14 @@ Após login:
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Hosting backend | **Railway** | PaaS push-to-deploy. Free tier → Hobby ($5/mês). Suporta Java/Docker. Variáveis de ambiente via Dashboard. Menos controle que VPS, mas 2-3 devs sem experiência em DevOps não devem operar VPS |
-| Hosting frontend | **Vercel** | Angular com static export. Deploy automático via GitHub. CDN global. Free tier generoso |
+| Hosting backend | **Oracle Cloud `us-ashburn-1` (VM ARM Ampere A1 Always Free, 2 OCPU / 8GB RAM, escalável até 4/24 sem custo) + Coolify** | R$0 permanente (Always Free, não trial). Co-localização com Supabase `us-east-2` (latência ~10-20ms). Coolify provê push-to-deploy via webhook, Caddy com TLS (Let's Encrypt automático para `api.` e `coolify.`), logs estruturados no dashboard. Mesmo modelo mental de um PaaS comercial |
+| Hosting frontend | **Cloudflare Pages** | Bandwidth ilimitado no free tier (Vercel Hobby tem cap de 100GB/mês + ToS proíbe uso comercial). Consolidação com o vendor do DNS/edge. Auto-deploy nativo do repo GitHub. SPA Angular estático via `_redirects` |
+| DNS autoritativo | **Cloudflare (free)** | Zona de `condovote.com.br` com DDoS grátis. Proxy laranja esconde IP origem da VM Oracle no subdomínio `api.`. Let's Encrypt automático para TLS Full Strict. Redirect Rules para apex/www |
+| Artefato de deploy (backend) | **GitHub Container Registry (GHCR)** | Imagem Docker publicada a cada push em `main` (tags `<sha>` + `latest`). Backup independente da VM Oracle — sobrevive a suspensão de conta Always Free ou perda do host. Coolify pode puxar do GHCR em vez de buildar localmente |
 | Hosting Redis | **Upstash** | Redis serverless. Free tier 10K commands/dia (suficiente para invitation tokens). Pay-as-you-go depois |
-| Pipeline CI/CD | **GitHub Actions** | Workflow: push → test → build → deploy. PR checks obrigatórios em `develop` e `main`. Railway auto-deploy a partir de `main` |
+| Pipeline CI/CD | **GitHub Actions** | Workflow: push → test → build → push imagem GHCR → webhook Coolify. PR checks obrigatórios em `develop` e `main`. Cloudflare Pages tem auto-deploy próprio do repo (independente do Actions) |
 | Branching strategy | **Git Flow simplificado** | `main` (produção, protegida) ← `develop` (integração, protegida) ← `feature/*` (trabalho diário). Ver detalhamento abaixo |
-| Containerização | **Dockerfile multi-stage** | Stage 1: Maven build. Stage 2: Eclipse Temurin JRE 21 slim. Railway detecta Dockerfile automaticamente. Mesmo Dockerfile para local e prod (env vars mudam) |
+| Containerização | **Dockerfile multi-stage** | Stage 1: Maven build. Stage 2: Eclipse Temurin JRE 21 slim. Coolify detecta Dockerfile automaticamente. Mesmo Dockerfile para local e prod (env vars mudam) |
 | Docker Compose local | **Sim** | `docker-compose.yml` para dev: Redis (redis:7-alpine). Supabase CLI gerencia Postgres + Auth separadamente (`supabase start`). Spring Boot roda fora do compose (`./mvnw spring-boot:run`) |
 
 ### Estratégia de branches e proteções
@@ -1023,7 +1042,9 @@ feature/nome-funcional-reduzido
 4. CI verde → merge em develop
 5. Quando pronto para prod: PR develop → main
 6. CI verde + 1 approval → merge em main
-7. Railway detecta push em main → deploy automático
+7. GitHub Actions builda imagem, publica em `ghcr.io/<owner>/condo-vote-backend:<sha>` e `:latest`
+8. Webhook Coolify recebe evento de push em `main` → redeploy do backend (puxa imagem ou buildar do Dockerfile)
+9. Cloudflare Pages detecta push em `main` → redeploy automático do frontend
 ```
 
 ### Pipeline GitHub Actions
@@ -1048,7 +1069,16 @@ jobs:
     services:
       redis:
         image: redis:7-alpine
-  # Deploy: Railway auto-deploy no push para main (configurado no Dashboard Railway)
+      - name: Build e push imagem para GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/condo-vote-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository }}/condo-vote-backend:latest
+  # Deploy backend: webhook Coolify acionado pelo push em main (configurado no Coolify)
+  # Deploy frontend: Cloudflare Pages tem auto-deploy próprio do repo (independente do Actions)
 ```
 
 ### Dockerfile (multi-stage)
@@ -1072,6 +1102,67 @@ EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
 ```
 
+### DNS e domínios (Cloudflare)
+
+Domínio de produção: **`condovote.com.br`**. Zona registrada no Cloudflare (DNS autoritativo, free tier).
+
+| Registro | Tipo | Destino | Proxy | Observação |
+|----------|------|---------|-------|-----------|
+| `api.condovote.com.br` | A | IP público da VM Oracle | **Proxied (laranja)** | TLS termina no edge Cloudflare; Caddy (Coolify) re-termina com Let's Encrypt. Esconde IP origem + DDoS grátis |
+| `app.condovote.com.br` | CNAME | `condo-vote-frontend.pages.dev` | **Proxied (laranja)** | Cloudflare Pages. TLS edge unificado |
+| `coolify.condovote.com.br` | A | IP público da VM Oracle | **DNS only (cinza)** | Painel admin Coolify. Proxy OFF → Let's Encrypt HTTP-01 direto via Caddy. Não esconde IP |
+| `condovote.com.br` (apex) | — | — | — | Redirect Rule 301 → `https://app.condovote.com.br` |
+| `www.condovote.com.br` | — | — | — | Redirect Rule 301 → `https://app.condovote.com.br` |
+
+**Certificado TLS (api.):** Let's Encrypt automático emitido pelo Caddy (Coolify) ao adicionar o domínio na aplicação. **SSL mode: Full (strict)** no Cloudflare.
+
+**Certificado Coolify (coolify.):** Let's Encrypt emitido automaticamente pelo Caddy via HTTP-01 challenge. Proxy OFF é obrigatório para o challenge funcionar.
+
+### Provisionamento Oracle Cloud + Coolify
+
+1. **Criar tenancy Oracle** na região `us-ashburn-1` (ARM Ampere A1 tem boa disponibilidade lá; `sa-saopaulo-1` historicamente sofre com "Out of capacity").
+2. **Provisionar VM ARM Ampere A1 Flex** (começa em 2 OCPU / 8GB RAM; escalável até 4/24 sem custo). Se receber "Out of capacity", reexecutar via oci-cli com retry — a Oracle libera capacidade em ondas. Como plano B: 2× VM.Standard.E2.1.Micro AMD (1GB cada, Always Free).
+3. **VCN + Security List:** abrir ingress em `22` (SSH — restrito ao IP Tailscale do operador, não IP público), `80` (HTTP), `443` (HTTPS). Egress: all. Security List versionada em `infra/oci/security-list-rules.json`. **Acesso SSH via Tailscale** (IP fixo independente de rede): instalar Tailscale na VM e na máquina do operador.
+4. **Instalar Coolify** na VM: `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash`. Dashboard na porta `8000` (atrás de auth).
+5. **Apontar `api.condovote.com.br`** para IP público da VM (ver tabela DNS acima).
+6. **Adicionar domínio `api.condovote.com.br`** na aplicação Coolify — Let's Encrypt é emitido automaticamente.
+7. **Conectar repo GitHub** no Coolify: Settings → Sources → GitHub App. Selecionar branch `main`.
+8. **Setar env vars** no Coolify (Secrets): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `CPF_ENCRYPTION_KEY`, `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br`. **Sem `SUPABASE_JWT_SECRET`**: Spring deriva a URL do JWKS a partir de `SUPABASE_URL` e valida assinaturas com chaves públicas (ver subseção "Por que JWKS em vez de HS256" abaixo).
+9. **Configurar webhook** no Coolify para auto-deploy em push para `main`.
+
+**Risco consciente:** Oracle tem histórico de encerrar contas Always Free por critérios opacos. Mitigação: (a) billing alert ativo, (b) cartão válido, (c) imagem Docker espelhada em GHCR (ver decisão acima), (d) backup diário do Supabase, (e) provisioning roteirizado (Terraform/script) para recriar a VM em outra região se necessário.
+
+### Rollback (procedimento)
+
+**Rollback nativo (sem configuração extra):**
+- **Coolify:** retém últimas ~5 imagens Docker no host. Dashboard → Deployments → versão anterior → "Redeploy". ~30s.
+- **Cloudflare Pages:** todo deploy preservado indefinidamente. Dashboard → Deployments → "Rollback to this deployment". ~10s, sem rebuild.
+- **GHCR:** imagem por SHA sempre disponível. `docker pull ghcr.io/<owner>/condo-vote-backend:<sha>` — útil se a VM Oracle cair ou se as imagens locais do Coolify não alcançarem a versão desejada.
+
+**Fluxo em caso de deploy quebrado:**
+
+```
+1. TRIAGEM (1-2 min)
+   Falha é do app (NullPointer, bug de lógica) ou do schema (migration quebrou
+   constraint, coluna removida sem two-phase)?
+   - Schema: NÃO faz rollback de container. Aplicar migração compensatória
+     V9xxx forward-fix em develop → PR → main.
+   - App: seguir.
+
+2. ROLLBACK BACKEND (30s)
+   - Coolify → Deployments → versão N-1 → Redeploy.
+   - (Alternativa) puxar imagem específica do GHCR por SHA.
+
+3. ROLLBACK FRONTEND (10s, se afetado)
+   - Cloudflare Pages → Deployments → Rollback to this deployment.
+
+4. PÓS-MORTEM
+   - audit_event + logs Coolify → causa raiz.
+   - Fix em develop → PR → main (sem hotfix direto em main).
+```
+
+**Invariante crítica (reforço de "Rollback de migrations" na Seção 4):** rollback de container **não reverte schema**. Toda mudança de schema deve ser forward-compatible com o app N-1 (estratégia two-phase para mudanças destrutivas). Rollback real de dados depende de backup manual ou Supabase PITR (disponível em Pro) — não de Coolify nem de Flyway.
+
 ---
 
 ## 8. Segurança (além de auth)
@@ -1090,9 +1181,9 @@ ENTRYPOINT ["java", "-jar", "app.jar"]
 |---------|---------|---------------|
 | Rate limiting | **Bucket4j no Spring (endpoints públicos)** | Rate limit em `/api/invitations/validate` e `/api/register/complete` (públicos ou semi-públicos). Supabase já protege seus endpoints de auth (login, signup, reset). Bucket4j armazena contadores em memória (suficiente para 1 instância v1) |
 | CORS | **Whitelist de origens** | Local: `http://localhost:4200`. Prod: `https://<domínio-final>`. Configurado em `SecurityConfig`. Sem wildcard `*` — apenas origens explícitas |
-| Gestão de chave de criptografia | **AES-256 determinístico (SIV), chave em variável de ambiente** | `CPF_ENCRYPTION_KEY` como env var no Railway (secrets). Criptografia determinística: mesmo CPF → mesmo ciphertext (necessário para UNIQUE constraint no banco e comparação no onboarding). Classe utilitária `CpfEncryptor` com `encrypt()`/`decrypt()`. Para v1, env var é suficiente. Migrar para AWS KMS ou HashiCorp Vault se/quando houver requisito de compliance |
+| Gestão de chave de criptografia | **AES-256 determinístico (SIV), chave em variável de ambiente** | `CPF_ENCRYPTION_KEY` como env var no Coolify (Secrets, criptografada em repouso). Criptografia determinística: mesmo CPF → mesmo ciphertext (necessário para UNIQUE constraint no banco e comparação no onboarding). Classe utilitária `CpfEncryptor` com `encrypt()`/`decrypt()`. Para v1, env var é suficiente. Migrar para AWS KMS ou HashiCorp Vault se/quando houver requisito de compliance |
 | Auditoria | **Tabela `audit_event` (append-only)** | Já definida no data model. Todas as ações de síndico (criar poll, cancelar, convidar, remover morador) geram um INSERT na mesma transação. Não é event sourcing — é log append-only para rastreabilidade. Campos: `event_type`, `actor_user_id`, `target_entity`, `payload` (JSONB) |
-| TLS termination | **PaaS gerencia** | Railway e Vercel emitem certificados TLS automaticamente. Zero config. Comunicação Angular (Vercel) → Spring (Railway) → Supabase é sempre HTTPS |
+| TLS termination | **Cloudflare edge + origin re-encryption** | Cloudflare termina TLS no edge (cert gerenciado). Backend: Caddy (Coolify) re-termina com Let's Encrypt → modo **Full (strict)**. Frontend: Cloudflare Pages gerencia TLS nativamente. Comunicação Angular (Pages) → Spring (Oracle/Coolify) → Supabase é sempre HTTPS ponta a ponta |
 | Headers de segurança | **Spring Security defaults + customização** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`. CSP básico. Configurado em `SecurityConfig` |
 
 ### Detalhamento: Rate limiting com Bucket4j
@@ -1151,10 +1242,10 @@ Rotação de chave (futura):
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Formato de logging | **JSON estruturado (Logback + logstash-logback-encoder)** | Logs em JSON para stdout. Railway captura stdout e oferece busca/filtro no Dashboard. Campos: timestamp, level, logger, message, tenant_id (MDC), user_id (MDC), request_id. Sem arquivo de log — stdout only |
+| Formato de logging | **JSON estruturado (Logback + logstash-logback-encoder)** | Logs em JSON para stdout. Coolify captura stdout de cada container e expõe no dashboard (+ `docker logs` via SSH na VM). Campos: timestamp, level, logger, message, tenant_id (MDC), user_id (MDC), request_id. Sem arquivo de log — stdout only |
 | Métricas v1 | **Spring Boot Actuator apenas** | `/actuator/health`, `/actuator/info`, `/actuator/metrics` (JVM, HikariCP, HTTP). Sem Prometheus/Grafana na v1 — overkill para piloto. Adicionar Micrometer + Prometheus quando escalar |
-| Alertas | **UptimeRobot + email** | UptimeRobot (free tier) pinga `GET /actuator/health` a cada 5 minutos. Se falhar 2x seguidas → alerta por email para o time. Sem PagerDuty/OpsGenie na v1 |
-| Health checks | **Actuator com checks customizados** | `/actuator/health` verifica: DB (automático via Spring), Redis (custom `HealthIndicator`). Se qualquer um DOWN → status 503. Railway usa esse endpoint para readiness probe |
+| Alertas | **UptimeRobot + email** | UptimeRobot (free tier) pinga `GET https://api.condovote.com.br/actuator/health` a cada 5 minutos. Se falhar 2x seguidas → alerta por email para o time. Sem PagerDuty/OpsGenie na v1 |
+| Health checks | **Actuator com checks customizados** | `/actuator/health` verifica: DB (automático via Spring), Redis (custom `HealthIndicator`). Se qualquer um DOWN → status 503. Coolify usa esse endpoint como health check do container (restart automático em falha) |
 | Contexto por request | **MDC (Mapped Diagnostic Context)** | `TenantInterceptor` já existe — adicionar `MDC.put("tenant_id", ...)` e `MDC.put("user_id", ...)`. Todo log dentro da request carrega o contexto. Limpa no `afterCompletion` |
 | Request tracing | **Correlation ID** | Header `X-Request-Id` (gerado pelo Angular ou pelo Spring se ausente). Propagado via MDC. Permite rastrear uma request do frontend ao log do backend |
 

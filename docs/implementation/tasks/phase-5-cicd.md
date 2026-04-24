@@ -38,6 +38,7 @@
 - [ ] Confirmar Coolify auto-deploy no push para `main` via webhook (já configurado na Fase 3)
 - [ ] Job `publish-image` no workflow: login no GHCR via `GHCR_TOKEN`, `docker/build-push-action@v5` tag `ghcr.io/<owner>/condo-vote-backend:<sha>` + `:latest` (dispara só em push para `main`)
 - [x] Cloudflare Pages via GitHub Actions (workflow `.github/workflows/cloudflare-pages.yml`) — deploy só em push para `main` ou manualmente via workflow_dispatch
+  > **Nota:** auto-deploy nativo do Cloudflare foi desabilitado (Branch Control: Production OFF, Preview None) para evitar double deploy.
 - [ ] Documentar fluxo de release em `README.md` seção "Deploy"
 
 **Aceite:** ciclo completo: `feature/*` → PR para `develop` → CI verde → merge → PR `develop` → `main` → 1 approval + CI → merge → deploy automático Coolify (via webhook + imagem em GHCR) + deploy Cloudflare Pages via GitHub Actions.

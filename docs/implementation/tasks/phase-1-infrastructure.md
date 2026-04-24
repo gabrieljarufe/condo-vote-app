@@ -37,10 +37,14 @@
 - [ ] Validar: `dig +short TXT condovote.com.br` (mostra SPF) e `dig +short TXT resend._domainkey.condovote.com.br` (mostra DKIM)
 - [ ] Aguardar status "Verified" no Resend dashboard
 
-**T1.3b — SMTP Supabase Auth via Resend:**
+**T1.3b — SMTP Supabase Auth via Resend** (depende de T1.3a):
 - [ ] Configurar SMTP customizado no Supabase Dashboard (Auth → SMTP Settings): host Resend, porta 465/587, credenciais SMTP do Resend. Garante que emails de reset de senha saem de `condovote.com.br`, não do domínio padrão do Supabase.
 
-**Aceite:** API key funciona; e-mail de teste chegou. DKIM/SPF verificados no Resend dashboard ✓ (T1.3a/b podem ser concluídas em Fase 6 se necessário).
+**Aceite T1.3 (feito):** API key funciona; e-mail de teste chegou via curl.
+
+**Aceite T1.3a/b (pendente):** DKIM + SPF com status `Verified` no Resend dashboard; `dig +short TXT resend._domainkey.condovote.com.br` retorna o registro DKIM; reset de senha do Supabase Auth chega pelo domínio `condovote.com.br`.
+
+> **Bloqueio para Fase 7:** T1.3a/b não bloqueiam Fase 2 (schema/RLS), mas devem estar `[x]` **antes** das features F2 (Onboarding) e F3 (Email outbox), que dependem de envio real de email.
 
 ---
 
@@ -124,10 +128,15 @@ Estado atual da zona `condovote.com.br` no Cloudflare:
 - [x] Env vars (Production): `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL=https://api.condovote.com.br`
 
 - [x] `.github/workflows/cloudflare-pages.yml` criado e commitado:
-  - Trigger: `push` em `main`/`develop` com mudanças em `frontend/**`
-  - `workflow_dispatch` para deploy manual
-  - Steps: checkout → npm ci → npm run build → wrangler pages deploy
-  - Deploy para branch correspondente (`main`=production, `develop`=preview)
+  - Triggers:
+    - `push` em `main`/`develop` (com mudanças em `frontend/**`) → build + deploy
+    - `pull_request` pra `main`/`develop` (com mudanças em `frontend/**`) → build only (valida compilação, sem deploy)
+    - `workflow_dispatch` para deploy manual
+  - Steps: checkout → setup-node → install → build → deploy (via `if:` só em push) → publish URL to summary
+  - Deploy para branch correspondente via `--branch=${{ github.ref_name }}`:
+    - `main` → produção (`app.condovote.com.br`)
+    - `develop` → preview (`develop.condo-vote-frontend.pages.dev`)
+  - URL do deploy aparece clicável no `$GITHUB_STEP_SUMMARY` do run do Actions
 
 - [x] Secrets do GitHub Actions configurados (`gh secret set`):
   - `CLOUDFLARE_API_TOKEN`: token com permissões Edit para Pages

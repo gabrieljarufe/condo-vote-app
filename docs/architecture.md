@@ -153,7 +153,24 @@ O endpoint `/register/complete` é **idempotente em relação ao app_user** — 
 - `/register/complete` é **idempotente**: se chamado de novo com o mesmo JWT e token válido, completa o cadastro
 - Para a v1 piloto, isso é suficiente. Job de cleanup fica como melhoria futura se necessário
 
-### Validação de JWT no Spring Boot
+### Por que JWKS em vez de HS256
+
+Um JWT é "confiável" porque tem uma **assinatura criptográfica**. Duas famílias de algoritmos:
+
+| | Simétrica (HS256) | Assimétrica (ES256 / RS256) — **escolhida** |
+|---|---|---|
+| Chaves | Uma chave secreta única | Par: privada (emissor) + pública (validador) |
+| Quem assina | Supabase usa a chave secreta | Supabase usa a chave **privada** |
+| Quem valida | Backend precisa da **mesma chave secreta** | Backend usa a chave **pública** |
+| Distribuição | Copiar chave para cada backend | Publicar pública em JWKS endpoint HTTPS |
+| Superfície de ataque | Vazamento do backend = forjar JWTs | Vazamento do backend ≠ forjar JWTs |
+
+**Decisão:** Supabase usa **ECC P-256 (assimétrica)**, publica as chaves públicas em `/auth/v1/.well-known/jwks.json`. Spring Boot busca as chaves via JWKS e valida JWTs localmente sem nunca ter acesso à chave privada.
+
+**Implicações práticas:**
+1. **Não existe `SUPABASE_JWT_SECRET` no backend.** Se a VM do backend for comprometida, o atacante não consegue forjar JWTs — só pode ler tokens válidos que por acaso estejam em memória no momento do ataque.
+2. **Rotação de chave é transparente.** Supabase pode girar a chave (publicar nova, aposentar antiga); Spring rebusca do JWKS via `kid` (key ID) no header do JWT. Nenhuma mudança de config no nosso lado.
+3. **Única variável de ambiente sobre JWT:** `SUPABASE_URL`. A URL do JWKS é derivada: `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.
 
 ```yaml
 # application.yml
@@ -162,10 +179,10 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: https://<project-ref>.supabase.co/auth/v1/.well-known/jwks.json
+          jwk-set-uri: ${SUPABASE_URL}/auth/v1/.well-known/jwks.json
 ```
 
-O Spring cacheia a chave pública do Supabase em memória. Nenhuma chamada de rede ao Supabase por request — validação é local.
+O Spring cacheia as chaves públicas em memória (TTL 1h). Nenhuma chamada de rede ao Supabase por request — validação é **local e offline**. Só há fetch ao JWKS no startup e quando encontra um `kid` desconhecido (ex: após rotação).
 
 ### Camada AuthGateway
 
@@ -975,9 +992,9 @@ Após login:
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Hosting backend | **Oracle Cloud `us-ashburn-1` (VM ARM Ampere A1 Always Free, 4 OCPU / 24GB RAM) + Coolify** | R$0 permanente (Always Free, não trial). Co-localização com Supabase `us-east-2` (latência ~10-20ms). Coolify provê push-to-deploy via webhook, Caddy com TLS automático via Cloudflare Origin CA, logs estruturados no dashboard. Mesmo modelo mental de um PaaS comercial |
+| Hosting backend | **Oracle Cloud `us-ashburn-1` (VM ARM Ampere A1 Always Free, 2 OCPU / 8GB RAM, escalável até 4/24 sem custo) + Coolify** | R$0 permanente (Always Free, não trial). Co-localização com Supabase `us-east-2` (latência ~10-20ms). Coolify provê push-to-deploy via webhook, Caddy com TLS (Let's Encrypt automático para `api.` e `coolify.`), logs estruturados no dashboard. Mesmo modelo mental de um PaaS comercial |
 | Hosting frontend | **Cloudflare Pages** | Bandwidth ilimitado no free tier (Vercel Hobby tem cap de 100GB/mês + ToS proíbe uso comercial). Consolidação com o vendor do DNS/edge. Auto-deploy nativo do repo GitHub. SPA Angular estático via `_redirects` |
-| DNS autoritativo | **Cloudflare (free)** | Zona de `condovote.com.br` com DDoS grátis. Proxy laranja esconde IP origem da VM Oracle no subdomínio `api.`. Origin CA cert (15 anos) para TLS Full Strict. Redirect Rules para apex/www |
+| DNS autoritativo | **Cloudflare (free)** | Zona de `condovote.com.br` com DDoS grátis. Proxy laranja esconde IP origem da VM Oracle no subdomínio `api.`. Let's Encrypt automático para TLS Full Strict. Redirect Rules para apex/www |
 | Artefato de deploy (backend) | **GitHub Container Registry (GHCR)** | Imagem Docker publicada a cada push em `main` (tags `<sha>` + `latest`). Backup independente da VM Oracle — sobrevive a suspensão de conta Always Free ou perda do host. Coolify pode puxar do GHCR em vez de buildar localmente |
 | Hosting Redis | **Upstash** | Redis serverless. Free tier 10K commands/dia (suficiente para invitation tokens). Pay-as-you-go depois |
 | Pipeline CI/CD | **GitHub Actions** | Workflow: push → test → build → push imagem GHCR → webhook Coolify. PR checks obrigatórios em `develop` e `main`. Cloudflare Pages tem auto-deploy próprio do repo (independente do Actions) |
@@ -1091,23 +1108,26 @@ Domínio de produção: **`condovote.com.br`**. Zona registrada no Cloudflare (D
 
 | Registro | Tipo | Destino | Proxy | Observação |
 |----------|------|---------|-------|-----------|
-| `api.condovote.com.br` | A | IP público da VM Oracle | **Proxied (laranja)** | TLS termina no edge Cloudflare; Caddy (Coolify) re-termina com Origin CA. Esconde IP origem + DDoS grátis |
-| `app.condovote.com.br` | CNAME | `<projeto>.pages.dev` | **Proxied (laranja)** | Mesmo vendor (Cloudflare Pages aceita proxy nativamente). TLS edge unificado |
+| `api.condovote.com.br` | A | IP público da VM Oracle | **Proxied (laranja)** | TLS termina no edge Cloudflare; Caddy (Coolify) re-termina com Let's Encrypt. Esconde IP origem + DDoS grátis |
+| `app.condovote.com.br` | CNAME | `condo-vote-frontend.pages.dev` | **Proxied (laranja)** | Cloudflare Pages. TLS edge unificado |
+| `coolify.condovote.com.br` | A | IP público da VM Oracle | **DNS only (cinza)** | Painel admin Coolify. Proxy OFF → Let's Encrypt HTTP-01 direto via Caddy. Não esconde IP |
 | `condovote.com.br` (apex) | — | — | — | Redirect Rule 301 → `https://app.condovote.com.br` |
 | `www.condovote.com.br` | — | — | — | Redirect Rule 301 → `https://app.condovote.com.br` |
 
-**Certificado origem (api):** Cloudflare Dashboard → SSL/TLS → Origin Server → Create Certificate (15 anos, `*.condovote.com.br` + `condovote.com.br`). Chave privada + cert instalados em Caddy dentro do Coolify. **SSL mode: Full (strict)** — valida cert origem com a chain Cloudflare.
+**Certificado TLS (api.):** Let's Encrypt automático emitido pelo Caddy (Coolify) ao adicionar o domínio na aplicação. **SSL mode: Full (strict)** no Cloudflare.
+
+**Certificado Coolify (coolify.):** Let's Encrypt emitido automaticamente pelo Caddy via HTTP-01 challenge. Proxy OFF é obrigatório para o challenge funcionar.
 
 ### Provisionamento Oracle Cloud + Coolify
 
 1. **Criar tenancy Oracle** na região `us-ashburn-1` (ARM Ampere A1 tem boa disponibilidade lá; `sa-saopaulo-1` historicamente sofre com "Out of capacity").
-2. **Provisionar VM ARM Ampere A1 Flex** (até 4 OCPU / 24GB RAM Always Free). Se receber "Out of capacity", reexecutar via CLI/Terraform com retry — a Oracle libera capacidade em ondas. Como plano B: 2× VM.Standard.E2.1.Micro AMD (1GB cada, Always Free).
-3. **VCN + Security List:** abrir ingress em `22` (SSH, restrito ao seu IP), `80` (HTTP, para Let's Encrypt HTTP-01 challenge se usado), `443` (HTTPS). Egress: all.
+2. **Provisionar VM ARM Ampere A1 Flex** (começa em 2 OCPU / 8GB RAM; escalável até 4/24 sem custo). Se receber "Out of capacity", reexecutar via oci-cli com retry — a Oracle libera capacidade em ondas. Como plano B: 2× VM.Standard.E2.1.Micro AMD (1GB cada, Always Free).
+3. **VCN + Security List:** abrir ingress em `22` (SSH — restrito ao IP Tailscale do operador, não IP público), `80` (HTTP), `443` (HTTPS). Egress: all. Security List versionada em `infra/oci/security-list-rules.json`. **Acesso SSH via Tailscale** (IP fixo independente de rede): instalar Tailscale na VM e na máquina do operador.
 4. **Instalar Coolify** na VM: `curl -fsSL https://cdn.coollabs.io/coolify/install.sh | sudo bash`. Dashboard na porta `8000` (atrás de auth).
 5. **Apontar `api.condovote.com.br`** para IP público da VM (ver tabela DNS acima).
-6. **Instalar Cloudflare Origin CA cert** no Coolify: Projeto → Service → SSL → Manual cert upload.
+6. **Adicionar domínio `api.condovote.com.br`** na aplicação Coolify — Let's Encrypt é emitido automaticamente.
 7. **Conectar repo GitHub** no Coolify: Settings → Sources → GitHub App. Selecionar branch `main`.
-8. **Setar env vars** no Coolify (Secrets): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWKS_URL`, `REDIS_URL`, `RESEND_API_KEY`, `CPF_ENCRYPTION_KEY`, `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br`.
+8. **Setar env vars** no Coolify (Secrets): `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `CPF_ENCRYPTION_KEY`, `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br`. **Sem `SUPABASE_JWT_SECRET`**: Spring deriva a URL do JWKS a partir de `SUPABASE_URL` e valida assinaturas com chaves públicas (ver subseção "Por que JWKS em vez de HS256" abaixo).
 9. **Configurar webhook** no Coolify para auto-deploy em push para `main`.
 
 **Risco consciente:** Oracle tem histórico de encerrar contas Always Free por critérios opacos. Mitigação: (a) billing alert ativo, (b) cartão válido, (c) imagem Docker espelhada em GHCR (ver decisão acima), (d) backup diário do Supabase, (e) provisioning roteirizado (Terraform/script) para recriar a VM em outra região se necessário.
@@ -1163,7 +1183,7 @@ Domínio de produção: **`condovote.com.br`**. Zona registrada no Cloudflare (D
 | CORS | **Whitelist de origens** | Local: `http://localhost:4200`. Prod: `https://<domínio-final>`. Configurado em `SecurityConfig`. Sem wildcard `*` — apenas origens explícitas |
 | Gestão de chave de criptografia | **AES-256 determinístico (SIV), chave em variável de ambiente** | `CPF_ENCRYPTION_KEY` como env var no Coolify (Secrets, criptografada em repouso). Criptografia determinística: mesmo CPF → mesmo ciphertext (necessário para UNIQUE constraint no banco e comparação no onboarding). Classe utilitária `CpfEncryptor` com `encrypt()`/`decrypt()`. Para v1, env var é suficiente. Migrar para AWS KMS ou HashiCorp Vault se/quando houver requisito de compliance |
 | Auditoria | **Tabela `audit_event` (append-only)** | Já definida no data model. Todas as ações de síndico (criar poll, cancelar, convidar, remover morador) geram um INSERT na mesma transação. Não é event sourcing — é log append-only para rastreabilidade. Campos: `event_type`, `actor_user_id`, `target_entity`, `payload` (JSONB) |
-| TLS termination | **Cloudflare edge + origin re-encryption** | Cloudflare termina TLS no edge (cert gerenciado). Backend: Caddy (Coolify) re-termina com Cloudflare Origin CA cert → modo **Full (strict)**. Frontend: Cloudflare Pages gerencia TLS nativamente. Comunicação Angular (Pages) → Spring (Oracle/Coolify) → Supabase é sempre HTTPS ponta a ponta |
+| TLS termination | **Cloudflare edge + origin re-encryption** | Cloudflare termina TLS no edge (cert gerenciado). Backend: Caddy (Coolify) re-termina com Let's Encrypt → modo **Full (strict)**. Frontend: Cloudflare Pages gerencia TLS nativamente. Comunicação Angular (Pages) → Spring (Oracle/Coolify) → Supabase é sempre HTTPS ponta a ponta |
 | Headers de segurança | **Spring Security defaults + customização** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`. CSP básico. Configurado em `SecurityConfig` |
 
 ### Detalhamento: Rate limiting com Bucket4j

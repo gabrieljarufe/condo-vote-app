@@ -92,12 +92,12 @@
 ---
 
 ## T3.8 — Deploy Coolify
-- [ ] Configurar todas as env vars no Coolify (do `.env.example`) como Secrets criptografados
-- [ ] Confirmar que Coolify detecta o Dockerfile e builda (build pack Dockerfile, root `backend/`)
-- [ ] Merge em `main` dispara deploy automático via webhook (configurado em T1.4i)
-- [ ] Opção alternativa documentada: em vez de Coolify buildar, puxar imagem do GHCR (`ghcr.io/<owner>/condo-vote-backend:latest`) após workflow do Actions publicar (Fase 5)
-- [ ] Ativar custom domain `api.condovote.com.br` no Coolify (cert Cloudflare Origin CA já instalado em T1.4i)
-- [ ] Setar `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br` no Coolify
+- [x] Configurar todas as env vars no Coolify (do `.env.example`) como Secrets criptografados
+- [x] Confirmar que Coolify detecta o Dockerfile e builda (build pack Dockerfile, root `backend/`)
+- [x] Merge em `main` dispara deploy automático via webhook (configurado em T1.4i)
+- [x] Opção alternativa documentada: em vez de Coolify buildar, puxar imagem do GHCR (`ghcr.io/<owner>/condo-vote-backend:latest`) após workflow do Actions publicar (Fase 5)
+- [x] Let's Encrypt automático — não requer configuração manual de certificate
+- [x] Setar `CORS_ALLOWED_ORIGINS=https://app.condovote.com.br` no Coolify
 
 **Aceite:** `curl https://api.condovote.com.br/actuator/health` retorna 200 com `{"status":"UP"}`.
 

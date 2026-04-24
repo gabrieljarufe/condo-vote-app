@@ -89,6 +89,40 @@ cd infra/supabase && supabase start
 cd backend && ./mvnw flyway:migrate
 ```
 
+### VM Oracle (acesso SSH)
+
+O acesso à VM de produção é via **Tailscale** — obrigatório estar com o cliente Tailscale ativo no Mac.
+
+```bash
+# Conectar na VM (IP Tailscale em docs/private/phase-1-state.md)
+ssh -i ~/.ssh/condo-vote/oracle.key ubuntu@<VM_TAILSCALE_IP>
+
+# Verificar regras de firewall da VM
+ssh -i ~/.ssh/condo-vote/oracle.key ubuntu@<VM_TAILSCALE_IP> "sudo iptables -L INPUT --line-numbers -n"
+
+# Atualizar Security List OCI (ex: após mudar IP Tailscale)
+oci network security-list update \
+  --security-list-id <DEFAULT_SL_OCID> \
+  --ingress-security-rules file://infra/oci/security-list-rules.json \
+  --force
+```
+
+**IPs e OCIDs:** ver `docs/private/phase-1-state.md` (gitignored)
+
+**Chave SSH:** `~/.ssh/condo-vote/oracle.key` — Bitwarden: `condo-vote-oracle-ssh-private-key`
+
+**Security List versionada em:** `infra/oci/security-list-rules.json` — editar e reaplicar via `oci-cli`. Nunca alterar diretamente no console OCI.
+
+**Tutorial completo de SSH:** `docs/runbooks/ssh-vm.md` (gitignored)
+
+### Coolify (painel de deploy)
+
+- **Acesso normal:** `https://coolify.condovote.com.br` (porta 443 → Caddy → Coolify internamente na 8000)
+- **Acesso direto (fallback):** `http://<VM_TAILSCALE_IP>:8000` via Tailscale — bypassa o Caddy, útil se o domínio estiver com problema
+- **Credenciais:** Bitwarden → `condo-vote-coolify-admin`
+- **Webhook GitHub App:** `https://coolify.condovote.com.br`
+- **Porta 8000 NÃO está aberta na OCI Security List** — acesso direto só funciona via Tailscale.
+
 
 ## Decisões arquiteturais chave (resumo rápido)
 

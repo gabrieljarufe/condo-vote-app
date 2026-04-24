@@ -63,4 +63,4 @@ Ver `.env.example` para a lista completa. Valores locais ficam em `.env` (gitign
 - [Arquitetura](docs/architecture.md)
 - [Data Model](docs/data-model.md)
 - [Princípios de Produto](docs/condo-vote-principles.md)
-- [Plano de Implementação](docs/implementation/plan.md)
+- [Plano de Implementação](plan.md)

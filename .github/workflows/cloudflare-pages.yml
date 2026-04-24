@@ -39,4 +39,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist/frontend/browser --project-name=condo-vote-frontend --branch=${{ github.ref_name }}
+          command: pages deploy frontend/dist/frontend/browser --project-name=condo-vote-frontend --branch=${{ github.ref_name }}

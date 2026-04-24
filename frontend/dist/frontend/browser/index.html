@@ -107,7 +107,25 @@
         }
         body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
     </style>
-</head>
+<style>
+    .faq-answer {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+        opacity: 0;
+    }
+    .faq-answer.active {
+        max-height: 500px;
+        opacity: 1;
+        margin-top: 8px;
+    }
+    .faq-icon {
+        transition: transform 0.3s ease;
+    }
+    .faq-icon.rotate {
+        transform: rotate(180deg);
+    }
+</style></head>
 <body class="bg-background text-on-surface">
 <header class="fixed top-0 w-full z-50 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 h-16">
 <div class="flex justify-between items-center max-w-7xl mx-auto px-4 md:px-8 h-full">
@@ -281,27 +299,33 @@
 <div class="max-w-3xl mx-auto px-4 md:px-8">
 <h2 class="font-headline-lg text-headline-lg text-primary text-center mb-16">Dúvidas Frequentes</h2>
 <div class="space-y-4">
-<div class="border border-slate-200 rounded-lg p-6">
-<h4 class="font-headline-md text-primary text-lg mb-2 flex justify-between items-center">
-                            A votação online é legalmente válida?
-                            <span class="material-symbols-outlined">expand_more</span>
+<div class="border border-slate-200 rounded-lg p-6"><div class="cursor-pointer" onclick="toggleFaq(this)">
+<h4 class="font-headline-md text-primary text-lg mb-0 flex justify-between items-center">
+        A votação online é legalmente válida?
+        <span class="material-symbols-outlined faq-icon">expand_more</span>
 </h4>
+<div class="faq-answer">
 <p class="text-on-surface-variant font-body-md text-body-md">Sim, desde 2022 a Lei 14.309 autoriza assembleias virtuais em condomínios de forma permanente, desde que respeitados os requisitos de transparência e auditoria que nossa plataforma oferece.</p>
 </div>
-<div class="border border-slate-200 rounded-lg p-6">
-<h4 class="font-headline-md text-primary text-lg mb-2 flex justify-between items-center">
-                            Como é feita a identificação do morador?
-                            <span class="material-symbols-outlined">expand_more</span>
+</div></div>
+<div class="border border-slate-200 rounded-lg p-6"><div class="cursor-pointer" onclick="toggleFaq(this)">
+<h4 class="font-headline-md text-primary text-lg mb-0 flex justify-between items-center">
+        Como é feita a identificação do morador?
+        <span class="material-symbols-outlined faq-icon">expand_more</span>
 </h4>
+<div class="faq-answer">
 <p class="text-on-surface-variant font-body-md text-body-md">Utilizamos autenticação multifator e links criptografados individuais vinculados à unidade e ao CPF do proprietário ou procurador cadastrado.</p>
 </div>
-<div class="border border-slate-200 rounded-lg p-6">
-<h4 class="font-headline-md text-primary text-lg mb-2 flex justify-between items-center">
-                            O sistema gera a ata automaticamente?
-                            <span class="material-symbols-outlined">expand_more</span>
+</div></div>
+<div class="border border-slate-200 rounded-lg p-6"><div class="cursor-pointer" onclick="toggleFaq(this)">
+<h4 class="font-headline-md text-primary text-lg mb-0 flex justify-between items-center">
+        O sistema gera a ata automaticamente?
+        <span class="material-symbols-outlined faq-icon">expand_more</span>
 </h4>
+<div class="faq-answer">
 <p class="text-on-surface-variant font-body-md text-body-md">Sim, ao final do período de votação o sistema consolida os resultados e gera uma ata em PDF seguindo os padrões exigidos pelos cartórios de registro civil.</p>
 </div>
+</div></div>
 </div>
 </div>
 </section>
@@ -356,4 +380,15 @@
             </p>
 </div>
 </footer>
-</body></html>
+<script>
+    function toggleFaq(element) {
+        const answer = element.querySelector('.faq-answer');
+        const icon = element.querySelector('.faq-icon');
+        
+        // Alterna a classe ativa na resposta
+        answer.classList.toggle('active');
+        
+        // Alterna a rotação do ícone
+        icon.classList.toggle('rotate');
+    }
+</script></body></html>

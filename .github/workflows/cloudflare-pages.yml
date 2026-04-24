@@ -1,4 +1,11 @@
-name: Deploy Frontend
+name: Frontend CI/CD
+
+# Push em main      → deploy de produção (app.condovote.com.br)
+# Push em develop   → deploy de preview (develop.condo-vote-frontend.pages.dev)
+# Pull request      → só build (valida que compila, sem deploy)
+#
+# O que determina "main = produção" é o setting "Production branch" do projeto
+# no Cloudflare Pages Dashboard. Qualquer outra branch vira preview.
 
 on:
   push:
@@ -6,11 +13,15 @@ on:
     paths:
       - 'frontend/**'
       - '.github/workflows/cloudflare-pages.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'frontend/**'
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: Deploy to Cloudflare Pages
+  build-and-deploy:
+    name: Build and deploy
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,8 +46,32 @@ jobs:
         run: npm run build -- --configuration=production
 
       - name: Deploy to Cloudflare Pages
+        id: deploy
+        if: github.event_name != 'pull_request'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy frontend/dist/frontend/browser --project-name=condo-vote-frontend --branch=${{ github.ref_name }}
+
+      - name: Publish URL to summary
+        if: steps.deploy.outcome == 'success'
+        run: |
+          OUTPUT='${{ steps.deploy.outputs.command-output }}'
+          UNIQUE_URL=$(echo "$OUTPUT" | grep -oE 'https://[a-z0-9]+\.condo-vote-frontend\.pages\.dev' | head -1 || echo "")
+          BRANCH="${{ github.ref_name }}"
+
+          if [ "$BRANCH" = "main" ]; then
+            echo "### 🚀 Deploy de produção — \`main\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Produção:** https://app.condovote.com.br" >> $GITHUB_STEP_SUMMARY
+            [ -n "$UNIQUE_URL" ] && echo "- **Unique URL:** $UNIQUE_URL" >> $GITHUB_STEP_SUMMARY
+          else
+            ALIAS_URL="https://${BRANCH}.condo-vote-frontend.pages.dev"
+            echo "### 👀 Deploy de preview — \`${BRANCH}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Alias URL:** $ALIAS_URL" >> $GITHUB_STEP_SUMMARY
+            [ -n "$UNIQUE_URL" ] && echo "- **Unique URL:** $UNIQUE_URL" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "> ℹ️ Alias URL pode levar alguns minutos pra propagar." >> $GITHUB_STEP_SUMMARY
+          fi

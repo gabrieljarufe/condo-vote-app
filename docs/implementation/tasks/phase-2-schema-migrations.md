@@ -8,24 +8,25 @@
 
 ---
 
-## T2.1 — Setup Flyway no Spring
+## T2.1 — Setup Flyway no Spring ✅
 
 > **⚠️ Pré-requisito bloqueante:** T3.1a (Spring Initializr) precisa ter rodado primeiro. Gera `backend/pom.xml`, `backend/mvnw`, `backend/src/main/resources/application*.yml`, `CondoVoteApplication.java`. Sem isto, esta task não executa.
 
-- [ ] Adicionar dependência `flyway-core` + `flyway-database-postgresql` no `backend/pom.xml`
-- [ ] `application.yml` (default, prod): `spring.flyway.enabled=true`, `locations=classpath:db/migration`, `baseline-on-migrate=true`
-- [ ] `application-local.yml`: adicionar `classpath:db/seed` em `spring.flyway.locations` para ativar `R__seed_dev.sql`. **Jamais** adicionar em `application-prod.yml`.
-- [ ] `spring.jpa.properties.hibernate.jdbc.time_zone=UTC` — todos os timestamps armazenados em UTC; UI converte para timezone local.
-- [ ] Criar diretório `backend/src/main/resources/db/migration/`
-- [ ] **Decisão registrada:** Flyway roda no startup do Spring na v1 (migrado para CI-driven quando time ≥ 3 devs)
+- [x] Adicionar dependência `flyway-core` + `flyway-database-postgresql` no `backend/pom.xml`
+- [x] `application.yaml` (default): `spring.flyway.enabled=true`, `locations=classpath:db/migration`, `baseline-on-migrate=true`, `validate-on-migrate=true`, `out-of-order=false`
+- [x] `application-local.yaml`: adiciona `classpath:db/seed` em `spring.flyway.locations` para ativar `R__seed_dev.sql`. **Jamais** adicionar em prod.
+- [x] `spring.jpa.properties.hibernate.jdbc.time_zone=UTC` — todos os timestamps armazenados em UTC; UI converte para timezone local.
+- [x] Criar diretório `backend/src/main/resources/db/migration/`
+- [x] Criar diretório `backend/src/main/resources/db/seed/`
+- [x] **Decisão registrada:** Flyway roda no startup do Spring na v1 (migrado para CI-driven quando time ≥ 3 devs)
 
 **Aceite:** `./mvnw spring-boot:run` não falha por configuração Flyway (ainda sem migrations).
 
 ---
 
-## T2.2 — Migration V1: enums
-- [ ] `V1__enums.sql` com todos os enums de `docs/data-model.md`: `resident_role`, `resident_end_reason`, `convocation_type`, `quorum_mode`, `poll_status`, `invitation_status`, `poll_invalidation_reason`, `poll_close_trigger`, `audit_event_type`, `email_type`, `email_status`
-- [ ] Habilitar extensão `pgcrypto` para `gen_random_uuid()`
+## T2.2 — Migration V1: enums ✅
+- [x] `V1__enums.sql` com todos os enums de `docs/data-model.md`: `resident_role`, `resident_end_reason`, `convocation_type`, `quorum_mode`, `poll_status`, `invitation_status`, `poll_invalidation_reason`, `poll_close_trigger`, `audit_event_type`, `email_type`, `email_status`
+- [x] Habilitar extensão `pgcrypto` para `gen_random_uuid()`
 
 **Aceite:** `\dT` no psql lista todos os enums previstos.
 

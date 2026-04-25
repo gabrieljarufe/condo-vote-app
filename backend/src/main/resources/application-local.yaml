@@ -1,0 +1,14 @@
+spring:
+  flyway:
+    locations:
+      - classpath:db/migration
+      - classpath:db/seed
+
+  web:
+    cors:
+      allowed-origins: http://localhost:4200
+
+management:
+  endpoint:
+    health:
+      show-details: always

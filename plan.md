@@ -222,10 +222,10 @@ Este teste é a garantia de que a RLS foi instalada corretamente. Sem ele, bugs 
 - Logging JSON estruturado (Logback + `logstash-logback-encoder`) — conforme §9
 - Actuator: `/actuator/health`, `/actuator/info`, `/actuator/metrics` (expostos só internamente ou com auth básico)
 - UptimeRobot monitorando `/actuator/health` (free tier)
-- **Verificação de DKIM/SPF do Resend** para `condovote.com.br` no Cloudflare DNS (TXT records do Resend dashboard). Sem isso, emails caem em spam.
-- **SMTP customizado Supabase Auth via Resend** (Auth → SMTP Settings no Dashboard): emails de reset de senha saem do mesmo domínio/remetente que os emails transacionais.
 - **Runbook de bootstrap** em `docs/runbooks/bootstrap-condominio.md` conforme `architecture.md §1`: migration Flyway V1001+ com template de `condominium` + `app_user` + `condominium_admin`. Script auxiliar `scripts/encrypt-cpf.sh` para gerar ciphertext.
 - **Risco CPF_ENCRYPTION_KEY:** perda = CPFs irrecuperáveis. Guardar cópia offline (papel em cofre físico) + backup em Bitwarden + documentação de rotação no runbook.
+
+> **Pré-requisito pra features que enviam email** (F2 Onboarding, F3 Email outbox): T1.3a (DKIM/SPF Resend) e T1.3b (SMTP Supabase via Resend) devem estar `[x]` na Fase 1. Sem isso, emails transacionais caem em spam e reset de senha sai do domínio errado.
 
 **Critério de saída:** operador consegue criar um condomínio novo seguindo o runbook. Logs em prod chegam estruturados. Monitor básico ativo.
 

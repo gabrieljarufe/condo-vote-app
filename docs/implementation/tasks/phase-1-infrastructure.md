@@ -33,12 +33,12 @@
 - [x] Enviar e-mail de teste via `curl` para validar credenciais
 
 **T1.3a — DKIM + SPF (pode ser feito após T1.4f — Cloudflare DNS configurado):**
-- [ ] Adicionar registros DKIM + SPF para `condovote.com.br` no Cloudflare DNS (TXT records gerados pelo Resend dashboard → "Domains → Add Domain → condovote.com.br → DNS Records")
-- [ ] Validar: `dig +short TXT condovote.com.br` (mostra SPF) e `dig +short TXT resend._domainkey.condovote.com.br` (mostra DKIM)
-- [ ] Aguardar status "Verified" no Resend dashboard
+- [x] Adicionar registros DKIM + SPF para `contato.condovote.com.br` no Cloudflare DNS (TXT records gerados pelo Resend dashboard → "Domains → Add Domain → contato.condovote.com.br → DNS Records")
+- [x] Validar: `dig +short TXT contato.condovote.com.br` (mostra SPF) e `dig +short TXT resend._domainkey.contato.condovote.com.br` (mostra DKIM)
+- [x] Aguardar status "Verified" no Resend dashboard
 
 **T1.3b — SMTP Supabase Auth via Resend** (depende de T1.3a):
-- [ ] Configurar SMTP customizado no Supabase Dashboard (Auth → SMTP Settings): host Resend, porta 465/587, credenciais SMTP do Resend. Garante que emails de reset de senha saem de `condovote.com.br`, não do domínio padrão do Supabase.
+- [x] Configurar SMTP customizado no Supabase Dashboard (Auth → SMTP Settings): host Resend, porta 465, credenciais SMTP do Resend. Garante que emails de reset de senha saem de `contato.condovote.com.br`, não do domínio padrão do Supabase.
 
 **Aceite T1.3 (feito):** API key funciona; e-mail de teste chegou via curl.
 

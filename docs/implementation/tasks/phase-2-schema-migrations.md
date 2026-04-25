@@ -32,6 +32,22 @@
 
 ---
 
+## T2.2a — Aplicar otimizações de escala no `data-model.md`
+
+> **Pré-requisito bloqueante das migrations V4, V7 e V8.** A análise de escala (`docs/analysis/2026-04-25-data-model-scale-review.md`) aprovou 5 otimizações que precisam refletir na fonte da verdade antes das migrations serem escritas. Sem isto, há risco de divergência entre `data-model.md` e o schema real.
+
+**Referência:** `docs/analysis/2026-04-25-data-model-scale-review.md`
+
+- [ ] Issue #1 — adicionar em `data-model.md` (seção `poll`): índices parciais `idx_poll_due_to_open ON (scheduled_start) WHERE status='SCHEDULED'` e `idx_poll_due_to_close ON (scheduled_end) WHERE status='OPEN'`
+- [ ] Issue #2 — adicionar em `data-model.md` (seção `poll`): coluna `eligible_count INT NULL` (denormalização de `|snapshot|`, preenchida na transição SCHEDULED→OPEN). Documentar invariante: `eligible_count = COUNT(poll_eligible_snapshot WHERE poll_id = poll.id)` no momento da abertura
+- [ ] Issue #3 — atualizar em `data-model.md` (seção `email_notification`): trocar `INDEX ON (scheduled_for) WHERE status='PENDING'` por `INDEX ON (scheduled_for, created_at) WHERE status='PENDING'` (suporta ORDER BY FIFO sem sort em memória)
+- [ ] Issue #4 — adicionar em `data-model.md` (seção "Decisões de Modelagem" ou nota nas tabelas afetadas): UUID v7 via `@UuidGenerator(style = TIME)` para `vote`, `audit_event`, `email_notification`. Schema mantém `gen_random_uuid()` como default; app gera v7 antes do INSERT
+- [ ] Issue #5 — adicionar em `data-model.md` (seção `apartment_resident`): `idx_apartment_resident_active ON (apartment_id) WHERE ended_at IS NULL`
+
+**Aceite:** `data-model.md` reflete todas as 5 mudanças. Cada mudança tem nota inline referenciando o doc de análise. Próximas migrations podem ser escritas usando o `data-model.md` como fonte única.
+
+---
+
 ## T2.3 — Migration V2: condominium
 - [ ] `V2__condominium.sql`: tabela conforme spec (id, name, address, created_at)
 - [ ] Sem RLS (tabela cross-tenant acessada por superadmin)
@@ -52,6 +68,7 @@
   - [ ] Usar `TIMESTAMPTZ` (não `TIMESTAMP`) em `joined_at`, `ended_at` e em **todas** as colunas de data/hora em todas as migrations — regra global: todos os timestamps são `TIMESTAMPTZ` armazenados em UTC.
   - [ ] CHECK constraints de coerência de encerramento
   - [ ] Índices: `idx_apartment_condominium_id`, `idx_apartment_resident_condominium_id`, `idx_apartment_resident_user_id`
+  - [ ] **[Otimização Issue #5]** `idx_apartment_resident_active ON (apartment_id) WHERE ended_at IS NULL` — ver `docs/analysis/2026-04-25-data-model-scale-review.md`
 
 **Aceite:** inserir 2 OWNERs ativos no mesmo apt é rejeitado pelo partial unique.
 
@@ -75,6 +92,10 @@
 - [ ] Todos os índices listados no data model
 - [ ] CHECK constraints de `poll` para coerência de status ↔ timestamps
 - [ ] UNIQUE `(poll_id, apartment_id)` em `vote` (1 voto por apt por poll)
+- [ ] **[Otimização Issue #2]** coluna `poll.eligible_count INT NULL` — denormalização do tamanho do snapshot, preenchida pelo `PollOpenerJob` na transição SCHEDULED→OPEN. Elimina N+1 do `AllVotedCheckerJob`. Ver `docs/analysis/2026-04-25-data-model-scale-review.md`
+- [ ] **[Otimização Issue #1]** índices parciais para jobs cross-tenant:
+  - `idx_poll_due_to_open ON poll (scheduled_start) WHERE status = 'SCHEDULED'`
+  - `idx_poll_due_to_close ON poll (scheduled_end) WHERE status = 'OPEN'`
 
 **Aceite:** inserir 2º voto do mesmo apt no mesmo poll é rejeitado.
 
@@ -82,6 +103,7 @@
 
 ## T2.9 — Migration V8: audit e notifications
 - [ ] `V8__audit_and_notifications.sql`: `audit_event` (com índices por entity, event_type, timeline) + `email_notification` (com index partial em PENDING)
+- [ ] **[Otimização Issue #3]** índice de `email_notification` deve ser FIFO-friendly: `idx_email_pending_fifo ON email_notification (scheduled_for, created_at) WHERE status = 'PENDING'` (substitui o índice apenas com `scheduled_for` — suporta ORDER BY do `EmailSenderJob` sem sort em memória). Ver `docs/analysis/2026-04-25-data-model-scale-review.md`
 
 ---
 

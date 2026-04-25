@@ -4,6 +4,8 @@
 
 **Pré-requisitos:** Fase 2 (migrations aplicáveis local e remoto).
 
+> **Pendência herdada da Fase 2 — Issue #4 (UUID v7):** ao criar as entities Hibernate de `vote`, `audit_event` e `email_notification` (Fase 3 implementação), usar `@UuidGenerator(style = UuidGenerator.Style.TIME)` para gerar UUID v7 no app. Schema em prod mantém `gen_random_uuid()` como default — usado apenas se o app não fornecer ID. Ver `docs/analysis/2026-04-25-data-model-scale-review.md`.
+
 ---
 
 ## T3.1 — Projeto Spring Boot

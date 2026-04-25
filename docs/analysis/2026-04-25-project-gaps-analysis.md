@@ -114,23 +114,11 @@ Mas o pom.xml já tem várias dependências (Spring Web, Security, OAuth2, JPA, 
 
 ---
 
-## Gap #6 — `application-prod.yml` mencionado mas não existe 🟡
+## Gap #6 — `application-prod.yml` mencionado mas não existe ✅ resolvido (2026-04-25)
 
-**Arquivos:** `docs/implementation/tasks/phase-3-backend-skeleton.md`, `backend/src/main/resources/`
+**Decisão:** **aceitar a ausência**. `application.yaml` base é o "perfil produção" implícito — todas as configs sensíveis vêm de env vars do Coolify. `application-local.yaml` sobrescreve apenas o que difere em dev. Criar arquivo prod vazio seria poluição.
 
-**Problema:** T3.1a/T3.1b citam `application-prod.yml`. O projeto atual só tem:
-- `application.yaml` (default)
-- `application-local.yaml` (sobrescreve quando `SPRING_PROFILES_ACTIVE=local`)
-
-Em prod (Coolify) o profile `prod` é ativado mas não há arquivo correspondente. Spring usa o default + env vars.
-
-**Impacto:** funciona perfeitamente — Spring Boot trata profile inexistente como "use o default". Não há bug.
-
-**Decisão pendente:** aceitar como design consciente (default vira prod, local sobrescreve) ou criar `application-prod.yaml` mesmo que vazio para simetria documental?
-
-**Recomendação:** **aceitar**. Documentar no README a estrutura de profiles. Criar arquivo vazio só por simetria visual seria over-engineering.
-
-**Trade-off:** se aceitar, atualizar tasks da Fase 3 para refletir essa decisão (remove menções a `application-prod.yml`).
+**Aplicado:** menções a `application-prod.yml` removidas de T3.1a/T3.1b. Decisão documentada como nota explícita no header de T3.1a.
 
 ---
 
@@ -166,8 +154,8 @@ Em prod (Coolify) o profile `prod` é ativado mas não há arquivo correspondent
 
 ### Roadmap (não bloqueador)
 
-- 📌 Gap #5 — adicionar Redis + Swagger ao `pom.xml` (Fase 3)
-- 📌 Gap #6 — decidir entre aceitar ausência de `application-prod.yml` ou criar arquivo vazio
+- 📌 Gap #5 — adicionar Redis + Swagger ao `pom.xml` (Fase 3, T3.1b)
+- ✅ Gap #6 — resolvido: aceitar ausência de `application-prod.yml` (Spring Boot funciona com default + env vars)
 
 ---
 

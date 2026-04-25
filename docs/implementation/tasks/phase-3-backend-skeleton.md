@@ -13,18 +13,21 @@
 > **⚠️ T3.1 é pré-requisito bloqueante da Fase 2.** Embora numerada como Fase 3, é a primeira coisa a fazer após Fase 1. Apenas o scaffolding mínimo (T3.1a) é necessário antes da Fase 2 — as classes de segurança/tenant/etc. (T3.2–T3.6) ficam para depois das migrations.
 
 ### T3.1a — Scaffolding mínimo (pré-requisito da Fase 2)
-- [ ] Gerar via Spring Initializr: Java 21, Spring Boot 3.x, Maven
-- [ ] Package base: `com.condovote`
-- [ ] `application.yml` + `application-local.yml` + `application-prod.yml` com datasource e Flyway config mínima
-- [ ] `CondoVoteApplication.java` sobe em localhost:8080
+- [x] Gerar via Spring Initializr: Java 21, Spring Boot 4.x, Maven
+- [x] Package base: `com.condovote`
+- [x] `application.yaml` (base) + `application-local.yaml` (override de dev) com datasource e Flyway config mínima
+- [x] `CondoVoteApplication.java` sobe em localhost:8080
 - [ ] Estrutura de packages vazias: `auth/`, `shared/config/`, `shared/tenant/`, `shared/exception/`
+
+> **Decisão de profiles (2026-04-25):** sem `application-prod.yaml`. O `application.yaml` base já é o "perfil produção" implícito — todas as configs sensíveis vêm de env vars (`${DATABASE_URL}`, `${SUPABASE_URL}`, etc.) injetadas pelo Coolify. `application-local.yaml` sobrescreve apenas o que difere em dev (CORS localhost, seed do Flyway, health show-details). Criar arquivo prod vazio seria poluição — Spring Boot trata profile inexistente como "use o default".
 
 **Aceite de T3.1a:** `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` sobe sem erro (com ou sem banco). Fase 2 pode começar.
 
-### T3.1b — Dependências e profiles completos
-- [ ] Adicionar dependências: `spring-boot-starter-web`, `-data-jpa`, `-security`, `-oauth2-resource-server`, `-actuator`, `-validation`, `-thymeleaf`, `flyway-core`, `flyway-database-postgresql`, `postgresql`, `jedis`/`lettuce-core`, `springdoc-openapi-starter-webmvc-ui`
-- [ ] Completar `application-local.yml` com Flyway locations (incluindo `classpath:db/seed`), HikariCP pool size 10
-- [ ] `application-prod.yml` com datasource prod, sem seed
+### T3.1b — Dependências completas e config refinada
+- [ ] Adicionar dependências faltantes ao `pom.xml`: `lettuce-core` (Redis), `springdoc-openapi-starter-webmvc-ui` (Swagger UI). Demais já estão (Web, JPA, Security, OAuth2 Resource Server, Validation, Thymeleaf, Flyway, PostgreSQL, Actuator)
+- [ ] Validar Flyway locations no `application-local.yaml`: `classpath:db/migration` + `classpath:db/seed`
+- [ ] Validar HikariCP pool size 10 no `application.yaml`
+- [ ] Em prod, todas as configs vêm de env vars do Coolify — sem `application-prod.yaml` (ver decisão em T3.1a)
 
 **Aceite:** `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` sobe com banco conectado e migrations aplicadas.
 

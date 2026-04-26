@@ -6,6 +6,8 @@
 
 > **Regra inegociável:** cada tabela com `condominium_id` nasce com RLS na mesma ou em migration subsequente da mesma PR. Nunca "adicionar RLS depois".
 
+> **Convenção UUID (todas as migrations desta fase):** colunas PK UUID **não** declaram `DEFAULT gen_random_uuid()`. App gera UUID v7 via Hibernate `@UuidGenerator(style = TIME)`. Para SQL puro (seed `R__seed_dev.sql` em T2.12 e bootstrap `V1001+`), gerar UUID v7 offline e hardcodar (ver `docs/data-model.md` seção "UUID v7 como padrão do projeto" → "Geração offline"). Decisão expandida em 2026-04-26.
+
 ---
 
 ## T2.1 — Setup Flyway no Spring ✅
@@ -41,7 +43,7 @@
 - [x] Issue #1 — adicionar em `data-model.md` (seção `poll`): índices parciais `idx_poll_due_to_open ON (scheduled_start) WHERE status='SCHEDULED'` e `idx_poll_due_to_close ON (scheduled_end) WHERE status='OPEN'`
 - [x] Issue #2 — adicionar em `data-model.md` (seção `poll`): coluna `eligible_count INT NULL` (denormalização de `|snapshot|`, preenchida na transição SCHEDULED→OPEN). Documentar invariante: `eligible_count = COUNT(poll_eligible_snapshot WHERE poll_id = poll.id)` no momento da abertura
 - [x] Issue #3 — atualizar em `data-model.md` (seção `email_notification`): trocar `INDEX ON (scheduled_for) WHERE status='PENDING'` por `idx_email_pending_fifo (scheduled_for, created_at) WHERE status='PENDING'`
-- [x] Issue #4 — UUID v7 documentado em seção dedicada de `data-model.md` + nota inline em `vote`, `audit_event`, `email_notification`. Schema mantém `gen_random_uuid()` como default; app gera v7 via `@UuidGenerator(style = TIME)` (implementação na Fase 3 — entities)
+- [x] Issue #4 — UUID v7 documentado como padrão do projeto em `data-model.md` (escopo expandido 2026-04-26). Migrations **não** usam `DEFAULT gen_random_uuid()` — app gera via `@UuidGenerator(style = TIME)` em todas as entities de domínio (implementação na Fase 3 — entities). Única exceção: entity de `app_user`, cujo ID vem do Supabase Auth.
 - [ ] Issue #5 — adiada conscientemente — pode ser aplicada como índice retroativo quando a rotatividade de moradores justificar; baixo custo de adicionar depois
 
 **Aceite:** `data-model.md` reflete todas as 5 mudanças. Cada mudança tem nota inline referenciando o doc de análise. Próximas migrations podem ser escritas usando o `data-model.md` como fonte única.
@@ -135,7 +137,8 @@
 ## T2.12 — Seed repeatable para dev local
 - [ ] Arquivo: `backend/src/main/resources/db/seed/R__seed_dev.sql` — separado do diretório `db/migration`
 - [ ] Picked-up pelo Flyway **somente** quando `spring.flyway.locations` inclui `classpath:db/seed` (configurado em `application-local.yml`; nunca em `application-prod.yml`)
-- [ ] Popula: 1 condomínio teste, 1 `app_user` síndico com **UUID fixo** (o mesmo UUID deve existir em `auth.users` do Supabase local)
+- [ ] **UUIDs hardcoded como v7** — não usar `gen_random_uuid()` (geraria v4, violando o padrão do projeto). Gerar UUIDs v7 offline (ver `data-model.md` seção "UUID v7 como padrão do projeto" → "Geração offline") e hardcodar. Adicionar comentário SQL com a data de geração para rastreabilidade.
+- [ ] Popula: 1 condomínio teste, 1 `app_user` síndico com **UUID fixo** (o mesmo UUID deve existir em `auth.users` do Supabase local). O UUID do `app_user`/síndico segue o formato gerado pelo Supabase Auth (v4 atualmente) — única exceção ao padrão v7 do projeto.
 - [ ] Documentar em `infra/supabase/supabase/seed.sql` (arquivo oficial do Supabase CLI): INSERT em `auth.users` para criar o user do síndico seed com UUID fixo:
   ```sql
   INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, role)

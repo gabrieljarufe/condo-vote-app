@@ -1,4 +1,8 @@
--- Extensão necessária para gen_random_uuid() nas PKs
+-- pgcrypto: utilitários criptográficos. PKs UUID v7 são geradas pela aplicação
+-- (Hibernate @UuidGenerator(style = TIME)), não pelo banco. Migrations futuras
+-- não declaram DEFAULT gen_random_uuid() em colunas PK — INSERT sem ID falha
+-- cedo em vez de gerar v4 silencioso. Ver docs/data-model.md "UUID v7 como
+-- padrão do projeto".
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Moradores

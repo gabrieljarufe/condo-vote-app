@@ -268,7 +268,7 @@ CREATE TYPE email_status AS ENUM (
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
 |--------|------|----------|-------------|-----------|
-| id | UUID | NOT NULL | PK, DEFAULT gen_random_uuid() | Identificador único |
+| id | UUID | NOT NULL | PK | Identificador único |
 | name | VARCHAR(255) | NOT NULL | | Nome do condomínio |
 | address | VARCHAR(500) | NOT NULL | | Endereço completo |
 | created_at | TIMESTAMP | NOT NULL | DEFAULT now() | Data de criação |
@@ -463,7 +463,7 @@ CREATE TYPE email_status AS ENUM (
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
 |--------|------|----------|-------------|-----------|
-| id | UUID | NOT NULL | PK | Identificador único — **UUID v7** gerado pela aplicação (ver "UUID v7 em tabelas hot" abaixo) |
+| id | UUID | NOT NULL | PK | Identificador único |
 | condominium_id | UUID | NOT NULL | FK → condominium(id) | Tenant |
 | poll_id | UUID | NOT NULL | FK composite → poll(id, condominium_id) | Votação |
 | poll_option_id | UUID | NOT NULL | FK → poll_option(id) | Opção escolhida |
@@ -479,7 +479,6 @@ CREATE TYPE email_status AS ENUM (
 
 **Regras:**
 - Imutável após registro. Sem UPDATE/DELETE pela aplicação. Voto pertence ao apartamento; remoção do morador não invalida (não existe coluna `is_nullified` — qualquer menção em outros docs está desatualizada).
-- **PK gerada pelo app como UUID v7.** Tabela hot — Issue #4 da análise de escala 2026-04-25.
 
 ---
 
@@ -536,7 +535,7 @@ CREATE TYPE email_status AS ENUM (
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
 |--------|------|----------|-------------|-----------|
-| id | UUID | NOT NULL | PK | Identificador único — **UUID v7** gerado pela aplicação (ver "UUID v7 em tabelas hot" abaixo) |
+| id | UUID | NOT NULL | PK | Identificador único |
 | condominium_id | UUID | NOT NULL | FK → condominium(id) | Tenant (RLS) |
 | actor_user_id | UUID | NOT NULL | | Quem executou a ação (ref. `app_user.id`) |
 | event_type | audit_event_type | NOT NULL | | Tipo do evento |
@@ -585,29 +584,29 @@ Evolução v2: criar entrada real em `app_user` se queries RLS demandarem JOIN e
 
 ---
 
-## UUID v7 em tabelas hot
+## UUID v7 como padrão do projeto
 
-> Issue #4 da análise de escala 2026-04-25. Decisão tomada para mitigar fragmentação de B-tree em tabelas com alto volume de INSERTs.
+> Origem: Issue #4 da análise de escala 2026-04-25. Escopo expandido em 2026-04-26 — antes restrita a 3 tabelas hot, agora é o padrão de toda PK UUID gerada pela aplicação.
 
-### Tabelas afetadas
+### Regra
 
-PKs geradas como **UUID v7** pela aplicação (Hibernate):
+Toda PK UUID em tabelas geradas pela aplicação é **UUID v7** (RFC 9562, 2024), gerado pelo Hibernate via `@UuidGenerator(style = UuidGenerator.Style.TIME)`. Migrations **não** declaram `DEFAULT gen_random_uuid()` nas colunas PK — o app é a única fonte de IDs.
 
-- `vote` — INSERTs proporcionais ao número de votantes ativos
-- `audit_event` — INSERTs em toda ação relevante; cresce indefinidamente (retenção 5 anos)
-- `email_notification` — INSERTs proporcionais a notificações × destinatários
+**Única exceção:** `app_user.id` herda o ID gerado pelo Supabase Auth (atualmente UUID v4). É um ID externo ao nosso controle; o service do `/register/complete` apenas o copia para `app_user`. Volume desta tabela é baixo, fragmentação imaterial.
 
-Demais tabelas (`condominium`, `apartment`, `poll`, `app_user`, `invitation`, etc.) mantêm UUID v4 (`gen_random_uuid()`) — volume baixo, fragmentação imaterial. `app_user.id` herda obrigatoriamente o formato gerado pelo Supabase Auth (UUID v4 atualmente).
+### Por que padrão único (e não só nas 3 hot)
 
-### Mecânica
+Heterogeneidade silenciosa custa caro: separar "tabelas v7" de "tabelas v4" exige documentação contínua, revisão por entity, e qualquer omissão futura cria fragmentação progressiva. Aplicar v7 universalmente custa o mesmo (uma anotação Hibernate por entity), elimina a categoria de bug e mantém o schema previsível. Para tabelas de baixo volume não há ganho de performance, mas também não há perda.
 
-UUID v7 (RFC 9562, 2024) tem 48 bits iniciais de timestamp Unix em milissegundos. Inserções consecutivas geram IDs quase ordenados → todas vão para a "ponta direita" da B-tree → minimiza page splits, fragmentação e cache misses. Versão hot do índice fica sempre quente em `shared_buffers`.
+### Por que sem `DEFAULT gen_random_uuid()` no schema
 
-UUID v4 (random) gera page splits frequentes; degrada throughput de INSERT em 2-3× quando o índice ultrapassa o tamanho do `shared_buffers`.
+`gen_random_uuid()` produz UUID v4. Se o app falhar em fornecer ID (entity sem `@UuidGenerator`, INSERT manual via SQL bruto), o banco gera v4 sem aviso e quebra a homogeneidade da B-tree. Sem default, o INSERT falha imediatamente com erro de NOT NULL violation, expondo o problema cedo. A extensão `pgcrypto` permanece carregada (custo zero, utilitários úteis para outros fins).
+
+### Mecânica do v7
+
+UUID v7 tem 48 bits iniciais de timestamp Unix em milissegundos. Inserções consecutivas geram IDs quase ordenados → todas vão para a "ponta direita" da B-tree → minimiza page splits, fragmentação e cache misses. UUID v4 (random) gera page splits frequentes; degrada throughput de INSERT em 2-3× quando o índice ultrapassa `shared_buffers`.
 
 ### Implementação
-
-Schema mantém `gen_random_uuid()` como default da coluna (segurança caso o app não forneça ID). A geração migra para a aplicação, via Hibernate 6.6+:
 
 ```java
 @Id
@@ -615,11 +614,22 @@ Schema mantém `gen_random_uuid()` como default da coluna (segurança caso o app
 private UUID id;
 ```
 
-Nenhuma mudança DDL é necessária — coluna `UUID` aceita qualquer versão. Compatível com FKs e UNIQUEs existentes.
+Aplica-se a todas as entities de domínio (Fase 3). Para a entity de `app_user`, o ID é setado manualmente pelo service durante o `/register/complete` com o UUID que veio do Supabase — sem `@UuidGenerator`.
+
+### Geração offline (seed dev e bootstrap de produção)
+
+Para SQL puro (seed `R__seed_dev.sql` e bootstrap de condomínio `V1001+`), o Postgres não tem função nativa de UUID v7 (chega no pg18). Estratégia: gerar UUIDs v7 **offline** e hardcodar no SQL.
+
+Ferramentas para gerar v7 offline:
+- Web: `https://www.uuidgenerator.net/version7`
+- CLI: `python3 -c "import uuid; print(uuid.uuid7())"` (Python 3.14+) ou `npx uuidv7`
+- Java: utilitário pontual com `UuidCreator.getTimeOrderedEpoch()` (lib `uuid-creator`) ou `Generators.timeBasedEpochGenerator().generate()` (lib `java-uuid-generator`)
+
+Documentar o UUID escolhido e a data de geração no comentário do arquivo SQL para rastreabilidade.
 
 ### Trade-off aceito
 
-UUID v7 expõe o timestamp de criação dentro do ID. **Irrelevante neste domínio** — `vote.voted_at`, `audit_event.occurred_at` e `email_notification.created_at` já são informações públicas/auditáveis. Sem perda de privacidade.
+UUID v7 expõe o timestamp de criação dentro do ID. **Irrelevante neste domínio** — `vote.voted_at`, `audit_event.occurred_at`, `email_notification.created_at`, `*.created_at` já são informações públicas/auditáveis. Sem perda de privacidade.
 
 ### Por que UUID e não BIGINT
 
@@ -657,7 +667,7 @@ UUID v7 expõe o timestamp de criação dentro do ID. **Irrelevante neste domín
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
 |--------|------|----------|-------------|-----------|
-| id | UUID | NOT NULL | PK | Identificador único — **UUID v7** gerado pela aplicação (ver "UUID v7 em tabelas hot" abaixo) |
+| id | UUID | NOT NULL | PK | Identificador único |
 | user_id | UUID | NOT NULL | | Destinatário |
 | type | email_type | NOT NULL | | Tipo do e-mail (template a renderizar) |
 | payload | JSONB | NOT NULL | | Variáveis para o template (poll_id, etc.) |
@@ -771,6 +781,6 @@ Tokens efêmeros de convite vivem no Redis para evitar I/O no PostgreSQL e expir
 | Outbox de e-mail (`email_notification`) | Atomicidade entre operação de domínio e envio; idempotência; observabilidade |
 | Consentimento LGPD inline em `app_user` | Mínimo viável v1; migrar para tabela dedicada quando a política mudar |
 | Índice FIFO em `email_notification` (`scheduled_for, created_at`) WHERE PENDING | Cobre WHERE + ORDER BY do `EmailSenderJob` em uma única index walk; preserva ordem FIFO no drenamento de backlog (oldest-first). Issue #3 da análise 2026-04-25 |
-| UUID v7 em `vote`, `audit_event`, `email_notification` | Tabelas hot — UUID v4 fragmenta B-tree em volume; v7 mantém INSERTs próximos da "ponta direita" do índice. Demais tabelas seguem v4 (volume baixo). Schema mantém `gen_random_uuid()` como default; app gera via `@UuidGenerator(style = TIME)`. Issue #4 da análise 2026-04-25 |
+| UUID v7 como padrão de PK em todas as tabelas geradas pelo app | Padrão único evita heterogeneidade silenciosa e elimina fragmentação progressiva da B-tree. Exceção: `app_user.id` (herdado do Supabase Auth, v4). Schema **não** usa `DEFAULT gen_random_uuid()` — app gera via `@UuidGenerator(style = TIME)`; INSERT sem ID falha cedo em vez de gerar v4 silencioso. Para SQL puro (seed/bootstrap) gerar UUID v7 offline. Issue #4 da análise 2026-04-25, escopo expandido em 2026-04-26 |
 | `poll.eligible_count` denormalizado | Snapshot é write-once → contagem é constante após abertura. Materializar elimina N+1 do `AllVotedCheckerJob`. Issue #2 da análise 2026-04-25 |
 | Índices parciais em `poll` (`due_to_open`, `due_to_close`) | Jobs cross-tenant filtram por status global (sem `condominium_id`); índices existentes não ajudam. Partial indexes são minúsculos (~99% dos polls fora desses estados). Issue #1 da análise 2026-04-25 |

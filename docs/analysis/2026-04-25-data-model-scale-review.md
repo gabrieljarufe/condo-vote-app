@@ -1,6 +1,8 @@
 # Análise de Escala do Data Model — 2026-04-25
 
-> **Status:** decisões pendentes de aprovação. Aguarda decisão antes de aplicar nas migrations da Fase 2.
+> **Atualização 2026-04-26:** documento histórico — decisões já aplicadas. Issues #1, #2, #3 estão refletidas em `data-model.md`. Issue #4 teve **escopo expandido**: UUID v7 virou padrão do projeto (todas as PKs UUID geradas pelo app), não apenas as 3 tabelas hot originalmente propostas; além disso, decidiu-se remover `DEFAULT gen_random_uuid()` das colunas PK para evitar heterogeneidade silenciosa. Issue #5 conscientemente adiada. Fonte de verdade atual: `docs/data-model.md` seção "UUID v7 como padrão do projeto".
+>
+> **Status original:** decisões pendentes de aprovação. Aguarda decisão antes de aplicar nas migrations da Fase 2.
 > **Contexto:** análise feita durante a Fase 2 (Schema e Migrations), após criar V1 (`enums.sql`). V2+ ainda não escritas — janela ideal para incorporar otimizações.
 
 ---

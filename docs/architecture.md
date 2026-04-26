@@ -231,6 +231,23 @@ A criação de um novo condomínio + seu primeiro síndico é feita via **migrat
    O script usa a mesma CPF_ENCRYPTION_KEY da prod
    (lida de um cofre — 1Password/Bitwarden; nunca committar a chave).
 
+2.5. Operador gera o UUID v7 offline para o condomínio (placeholder
+     <uuid_v7_gerado_offline> no SQL abaixo). Padrão do projeto: toda
+     PK UUID é v7. Postgres não tem função nativa de v7 (pg18 em diante),
+     então a geração é offline.
+
+     Ferramentas:
+       - Web: https://www.uuidgenerator.net/version7
+       - CLI: python3 -c "import uuid; print(uuid.uuid7())"  (Python 3.14+)
+       - npm:  npx uuidv7
+       - Java: utilitário com lib uuid-creator ou java-uuid-generator
+
+     O UUID do síndico (<uuid_do_passo_1>) é gerado pelo Supabase Auth
+     no passo 1 — esse permanece v4 (única exceção ao padrão v7 do projeto;
+     app_user.id herda do Supabase).
+
+     Ver docs/data-model.md seção "UUID v7 como padrão do projeto".
+
 3. Operador cria o arquivo de migration no repo:
 
    src/main/resources/db/migration/
@@ -247,7 +264,7 @@ A criação de um novo condomínio + seu primeiro síndico é feita via **migrat
    -- Autorizado por: <operador>, em <data>
 
    INSERT INTO condominium (id, name, address) VALUES
-     ('<uuid_gerado_offline>', 'Condomínio Piloto', 'Rua X, 123');
+     ('<uuid_v7_gerado_offline>', 'Condomínio Piloto', 'Rua X, 123');
 
    INSERT INTO app_user (
      id, name, email, cpf_encrypted,

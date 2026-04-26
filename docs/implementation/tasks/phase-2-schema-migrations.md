@@ -38,11 +38,11 @@
 
 **Referência:** `docs/analysis/2026-04-25-data-model-scale-review.md`
 
-- [ ] Issue #1 — adicionar em `data-model.md` (seção `poll`): índices parciais `idx_poll_due_to_open ON (scheduled_start) WHERE status='SCHEDULED'` e `idx_poll_due_to_close ON (scheduled_end) WHERE status='OPEN'`
-- [ ] Issue #2 — adicionar em `data-model.md` (seção `poll`): coluna `eligible_count INT NULL` (denormalização de `|snapshot|`, preenchida na transição SCHEDULED→OPEN). Documentar invariante: `eligible_count = COUNT(poll_eligible_snapshot WHERE poll_id = poll.id)` no momento da abertura
-- [ ] Issue #3 — atualizar em `data-model.md` (seção `email_notification`): trocar `INDEX ON (scheduled_for) WHERE status='PENDING'` por `INDEX ON (scheduled_for, created_at) WHERE status='PENDING'` (suporta ORDER BY FIFO sem sort em memória)
-- [ ] Issue #4 — adicionar em `data-model.md` (seção "Decisões de Modelagem" ou nota nas tabelas afetadas): UUID v7 via `@UuidGenerator(style = TIME)` para `vote`, `audit_event`, `email_notification`. Schema mantém `gen_random_uuid()` como default; app gera v7 antes do INSERT
-- [ ] Issue #5 — adicionar em `data-model.md` (seção `apartment_resident`): `idx_apartment_resident_active ON (apartment_id) WHERE ended_at IS NULL`
+- [x] Issue #1 — adicionar em `data-model.md` (seção `poll`): índices parciais `idx_poll_due_to_open ON (scheduled_start) WHERE status='SCHEDULED'` e `idx_poll_due_to_close ON (scheduled_end) WHERE status='OPEN'`
+- [x] Issue #2 — adicionar em `data-model.md` (seção `poll`): coluna `eligible_count INT NULL` (denormalização de `|snapshot|`, preenchida na transição SCHEDULED→OPEN). Documentar invariante: `eligible_count = COUNT(poll_eligible_snapshot WHERE poll_id = poll.id)` no momento da abertura
+- [x] Issue #3 — atualizar em `data-model.md` (seção `email_notification`): trocar `INDEX ON (scheduled_for) WHERE status='PENDING'` por `idx_email_pending_fifo (scheduled_for, created_at) WHERE status='PENDING'`
+- [x] Issue #4 — UUID v7 documentado em seção dedicada de `data-model.md` + nota inline em `vote`, `audit_event`, `email_notification`. Schema mantém `gen_random_uuid()` como default; app gera v7 via `@UuidGenerator(style = TIME)` (implementação na Fase 3 — entities)
+- [ ] Issue #5 — adiada conscientemente — pode ser aplicada como índice retroativo quando a rotatividade de moradores justificar; baixo custo de adicionar depois
 
 **Aceite:** `data-model.md` reflete todas as 5 mudanças. Cada mudança tem nota inline referenciando o doc de análise. Próximas migrations podem ser escritas usando o `data-model.md` como fonte única.
 

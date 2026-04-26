@@ -12,11 +12,11 @@ CREATE TABLE apartment (
     CONSTRAINT fk_apartment_condominium FOREIGN KEY (condominium_id) REFERENCES condominium (id),
 
     -- necessário para composite FKs em tabelas filhas (defesa contra mismatch de tenant)
-    CONSTRAINT uq_apartment_id_condominium_id UNIQUE (id, condominium_id),
-
-    -- unicidade funcional: COALESCE trata NULL como string vazia para fins de comparação
-    CONSTRAINT uq_apartment_unit UNIQUE (condominium_id, COALESCE(block, ''), unit_number)
+    CONSTRAINT uq_apartment_id_condominium_id UNIQUE (id, condominium_id)
 );
+
+-- unicidade funcional: COALESCE trata NULL como string vazia (expressão não aceita em CONSTRAINT inline)
+CREATE UNIQUE INDEX uq_apartment_unit ON apartment (condominium_id, COALESCE(block, ''), unit_number);
 
 CREATE INDEX idx_apartment_condominium_id ON apartment (condominium_id);
 

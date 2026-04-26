@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estado atual do projeto
 
-Fase 2 (Schema e Migrations) em andamento. Concluídos: scaffold Spring Boot 4 (T3.1a), Setup Flyway (T2.1), V1__enums.sql (T2.2) e T2.2a (otimizações de escala incorporadas ao `data-model.md`). Issues #1, #2, #3 da análise de escala aplicadas; Issue #4 expandida para "UUID v7 como padrão do projeto" + remoção de `DEFAULT gen_random_uuid()` nas migrations (decisão de 2026-04-26); Issue #5 conscientemente adiada. Os 7 gaps de `docs/analysis/2026-04-25-project-gaps-analysis.md` foram executados. Próximo passo: T2.3 — V2__condominium.sql.
+Fase 2 (Schema e Migrations) em andamento. Concluídos: scaffold Spring Boot 4 (T3.1a), Setup Flyway (T2.1), V1__enums.sql (T2.2) e T2.2a (otimizações de escala incorporadas ao `data-model.md`). Issues #1, #2, #3 da análise de escala aplicadas; Issue #4 expandida para "UUID v7 como padrão do projeto" + remoção de `DEFAULT gen_random_uuid()` nas migrations (decisão de 2026-04-26); Issue #5 conscientemente adiada. Os 7 gaps de `docs/analysis/2026-04-25-project-gaps-analysis.md` foram executados. Próximo passo: T2.12 — seed dev + T2.13 — teste de integração RLS.
 
 Metodologia adotada: **Spec-Driven Development** (Specify → Plan → Tasks → Implement). As fases **Specify**, **Plan** e **Tasks** estão concluídas. Fase atual: **Implement** (Fases 2–6 das tasks).
 

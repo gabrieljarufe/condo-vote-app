@@ -50,85 +50,80 @@
 
 ---
 
-## T2.3 — Migration V2: condominium
-- [ ] `V2__condominium.sql`: tabela conforme spec (id, name, address, created_at)
-- [ ] Sem RLS (tabela cross-tenant acessada por superadmin)
+## T2.3 — Migration V2: condominium ✅
+- [x] `V2__condominium.sql`: tabela conforme spec (id, name, address, created_at)
+- [x] Sem RLS (tabela cross-tenant acessada por superadmin)
 
 ---
 
-## T2.4 — Migration V3: app_user
-- [ ] `V3__app_user.sql`: tabela com `cpf_encrypted BYTEA UNIQUE`, `email VARCHAR(320) UNIQUE`, `is_active`, `consent_accepted_at`, `consent_policy_version`
-- [ ] Sem FK para `auth.users` (decisão arquitetural — validação no service)
-- [ ] Sem RLS (perfil é cross-tenant)
+## T2.4 — Migration V3: app_user ✅
+- [x] `V3__app_user.sql`: tabela com `cpf_encrypted BYTEA UNIQUE`, `email VARCHAR(320) UNIQUE`, `is_active`, `consent_accepted_at`, `consent_policy_version`
+- [x] Sem FK para `auth.users` (decisão arquitetural — validação no service)
+- [x] Sem RLS (perfil é cross-tenant)
 
 ---
 
-## T2.5 — Migration V4: apartment + apartment_resident
-- [ ] `V4__apartment_and_residents.sql`:
-  - [ ] `apartment` com UNIQUE `(condominium_id, COALESCE(block, ''), unit_number)` e UNIQUE `(id, condominium_id)`
-  - [ ] `apartment_resident` com partial unique index `(apartment_id) WHERE role = 'OWNER' AND ended_at IS NULL`
-  - [ ] Usar `TIMESTAMPTZ` (não `TIMESTAMP`) em `joined_at`, `ended_at` e em **todas** as colunas de data/hora em todas as migrations — regra global: todos os timestamps são `TIMESTAMPTZ` armazenados em UTC.
-  - [ ] CHECK constraints de coerência de encerramento
-  - [ ] Índices: `idx_apartment_condominium_id`, `idx_apartment_resident_condominium_id`, `idx_apartment_resident_user_id`
-  - [ ] **[Otimização Issue #5]** `idx_apartment_resident_active ON (apartment_id) WHERE ended_at IS NULL` — ver `docs/analysis/2026-04-25-data-model-scale-review.md`
+## T2.5 — Migration V4: apartment + apartment_resident ✅
+- [x] `V4__apartment_and_residents.sql`:
+  - [x] `apartment` com UNIQUE `(condominium_id, COALESCE(block, ''), unit_number)` e UNIQUE `(id, condominium_id)`
+  - [x] `apartment_resident` com partial unique index `(apartment_id) WHERE role = 'OWNER' AND ended_at IS NULL`
+  - [x] Usar `TIMESTAMPTZ` (não `TIMESTAMP`) em `joined_at`, `ended_at` e em **todas** as colunas de data/hora em todas as migrations — regra global: todos os timestamps são `TIMESTAMPTZ` armazenados em UTC.
+  - [x] CHECK constraints de coerência de encerramento
+  - [x] Índices: `idx_apartment_condominium_id`, `idx_apartment_resident_condominium_id`, `idx_apartment_resident_user_id`
+  - [ ] **[Otimização Issue #5]** `idx_apartment_resident_active ON (apartment_id) WHERE ended_at IS NULL` — adiada conscientemente; adicionar como índice retroativo quando rotatividade justificar
 
 **Aceite:** inserir 2 OWNERs ativos no mesmo apt é rejeitado pelo partial unique.
 
 ---
 
-## T2.6 — Migration V5: condominium_admin
-- [ ] `V5__condominium_admin.sql`: tabela com partial unique `(condominium_id, user_id) WHERE revoked_at IS NULL`
-- [ ] CHECK `revoked_at IS NULL OR revoked_by_user_id IS NOT NULL`
+## T2.6 — Migration V5: condominium_admin ✅
+- [x] `V5__condominium_admin.sql`: tabela com partial unique `(condominium_id, user_id) WHERE revoked_at IS NULL`
+- [x] CHECK `revoked_at IS NULL OR revoked_by_user_id IS NOT NULL`
 
 ---
 
-## T2.7 — Migration V6: invitation
-- [ ] `V6__invitation.sql`: tabela + partial unique `(condominium_id, apartment_id, email, role) WHERE status = 'PENDING'`
-- [ ] CHECKs de coerência para ACCEPTED/REVOKED
-- [ ] **Sem** coluna de token (vive no Redis — `docs/data-model.md` "Token storage")
+## T2.7 — Migration V6: invitation ✅
+- [x] `V6__invitation.sql`: tabela + partial unique `(condominium_id, apartment_id, email, role) WHERE status = 'PENDING'`
+- [x] CHECKs de coerência para ACCEPTED/REVOKED
+- [x] **Sem** coluna de token (vive no Redis — `docs/data-model.md` "Token storage")
 
 ---
 
-## T2.8 — Migration V7: poll domain
-- [ ] `V7__poll_domain.sql`: `poll` (com UNIQUE `(id, condominium_id)` para composite FKs), `poll_option`, `poll_eligible_snapshot`, `vote`, `poll_result`
-- [ ] Todos os índices listados no data model
-- [ ] CHECK constraints de `poll` para coerência de status ↔ timestamps
-- [ ] UNIQUE `(poll_id, apartment_id)` em `vote` (1 voto por apt por poll)
-- [ ] **[Otimização Issue #2]** coluna `poll.eligible_count INT NULL` — denormalização do tamanho do snapshot, preenchida pelo `PollOpenerJob` na transição SCHEDULED→OPEN. Elimina N+1 do `AllVotedCheckerJob`. Ver `docs/analysis/2026-04-25-data-model-scale-review.md`
-- [ ] **[Otimização Issue #1]** índices parciais para jobs cross-tenant:
-  - `idx_poll_due_to_open ON poll (scheduled_start) WHERE status = 'SCHEDULED'`
-  - `idx_poll_due_to_close ON poll (scheduled_end) WHERE status = 'OPEN'`
+## T2.8 — Migration V7: poll domain ✅
+- [x] `V7__poll_domain.sql`: `poll` (com UNIQUE `(id, condominium_id)` para composite FKs), `poll_option`, `poll_eligible_snapshot`, `vote`, `poll_result`
+- [x] Todos os índices listados no data model
+- [x] CHECK constraints de `poll` para coerência de status ↔ timestamps
+- [x] UNIQUE `(poll_id, apartment_id)` em `vote` (1 voto por apt por poll)
+- [x] **[Otimização Issue #2]** coluna `poll.eligible_count INT NULL`
+- [x] **[Otimização Issue #1]** índices parciais `idx_poll_due_to_open` e `idx_poll_due_to_close`
 
 **Aceite:** inserir 2º voto do mesmo apt no mesmo poll é rejeitado.
 
 ---
 
-## T2.9 — Migration V8: audit e notifications
-- [ ] `V8__audit_and_notifications.sql`: `audit_event` (com índices por entity, event_type, timeline) + `email_notification` (com index partial em PENDING)
-- [ ] **[Otimização Issue #3]** índice de `email_notification` deve ser FIFO-friendly: `idx_email_pending_fifo ON email_notification (scheduled_for, created_at) WHERE status = 'PENDING'` (substitui o índice apenas com `scheduled_for` — suporta ORDER BY do `EmailSenderJob` sem sort em memória). Ver `docs/analysis/2026-04-25-data-model-scale-review.md`
+## T2.9 — Migration V8: audit e notifications ✅
+- [x] `V8__audit_and_notifications.sql`: `audit_event` + `email_notification`
+- [x] **[Otimização Issue #3]** `idx_email_pending_fifo ON email_notification (scheduled_for, created_at) WHERE status = 'PENDING'`
 
 ---
 
-## T2.10 — Migration V9: RLS policies
-- [ ] `V9__rls_policies.sql`: para cada tabela com `condominium_id`:
-  - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`
-  - `CREATE POLICY tenant_isolation ON <table> USING (condominium_id = current_setting('app.current_tenant')::uuid)`
-- [ ] Tabelas: `apartment`, `apartment_resident`, `condominium_admin`, `invitation`, `poll`, `poll_eligible_snapshot`, `vote`, `poll_result`, `audit_event`
-- [ ] `poll_option` herda filtro via JOIN com `poll` (sem RLS direta)
-- [ ] Documentar no arquivo da migration (comentário SQL) o comportamento quando `app.current_tenant` não está setado — esperado: query retorna 0 linhas (a policy `current_setting('app.current_tenant')::uuid` falha com erro se a variável não existe; usar `current_setting('app.current_tenant', true)` com default para evitar erro ou tratar no service).
+## T2.10 — Migration V9: RLS policies ✅
+- [x] `V9__rls_policies.sql`: 9 tabelas com `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation`
+- [x] `poll_option` herda filtro via JOIN com `poll` (sem RLS direta)
+- [x] Usa `current_setting('app.current_tenant', true)` (missing_ok=true) — sem tenant → retorna NULL → 0 linhas (documentado no arquivo)
 
 **Aceite:** psql autenticado como role app executa `SET LOCAL app.current_tenant = '<uuid>'` e vê só dados do tenant; sem SET LOCAL → retorna 0 linhas.
 
 ---
 
-## T2.11 — Migration V10: composite FKs
-- [ ] `V10__composite_foreign_keys.sql`:
-  - `vote (poll_id, condominium_id) → poll`
-  - `vote (apartment_id, condominium_id) → apartment`
-  - `apartment_resident (apartment_id, condominium_id) → apartment`
-  - `poll_eligible_snapshot (poll_id, condominium_id) → poll`
-  - `poll_eligible_snapshot (apartment_id, condominium_id) → apartment`
-  - `invitation (apartment_id, condominium_id) → apartment`
+## T2.11 — Migration V10: composite FKs ✅
+- [x] `V10__composite_foreign_keys.sql`:
+  - [x] `vote (poll_id, condominium_id) → poll`
+  - [x] `vote (apartment_id, condominium_id) → apartment`
+  - [x] `apartment_resident (apartment_id, condominium_id) → apartment`
+  - [x] `poll_eligible_snapshot (poll_id, condominium_id) → poll`
+  - [x] `poll_eligible_snapshot (apartment_id, condominium_id) → apartment`
+  - [x] `invitation (apartment_id, condominium_id) → apartment`
 
 **Aceite:** tentativa de INSERT com `condominium_id` ≠ do pai é rejeitada por FK.
 

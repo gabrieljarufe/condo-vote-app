@@ -1,5 +1,8 @@
 # Gap Analysis do Projeto — 2026-04-25 (noite)
 
+> **Status 2026-04-26:** todos os 7 gaps deste documento foram executados. Doc preservado como registro histórico.
+
+
 > **Status:** levantamento de inconsistências e pendências encontradas após Fase 2 começar (V1 migration concluída).
 > **Contexto:** análise complementar à `2026-04-25-data-model-scale-review.md`. Foco em desalinhamentos entre **plan/docs** e o **estado real do repo**.
 

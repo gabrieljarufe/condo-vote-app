@@ -4,7 +4,7 @@
 
 **Pré-requisitos:** Fase 2 (migrations aplicáveis local e remoto).
 
-> **Pendência herdada da Fase 2 — Issue #4 (UUID v7):** ao criar as entities Hibernate de `vote`, `audit_event` e `email_notification` (Fase 3 implementação), usar `@UuidGenerator(style = UuidGenerator.Style.TIME)` para gerar UUID v7 no app. Schema em prod mantém `gen_random_uuid()` como default — usado apenas se o app não fornecer ID. Ver `docs/analysis/2026-04-25-data-model-scale-review.md`.
+> **Pendência herdada da Fase 2 — Issue #4 (UUID v7 como padrão do projeto):** ao criar **qualquer** entity Hibernate com PK UUID, anotar com `@UuidGenerator(style = UuidGenerator.Style.TIME)` para gerar UUID v7 no app. Migrations **não** declaram `DEFAULT gen_random_uuid()` — INSERT sem ID falha cedo em vez de gerar v4 silencioso. Única exceção: entity de `app_user`, cujo ID vem do Supabase Auth e é setado manualmente pelo service durante o `/register/complete`. Ver `docs/data-model.md` seção "UUID v7 como padrão do projeto" e `docs/analysis/2026-04-25-data-model-scale-review.md` (escopo expandido em 2026-04-26).
 
 ---
 

@@ -410,6 +410,7 @@ CREATE TYPE email_status AS ENUM (
 | scheduled_end | TIMESTAMP | NULL | | Fim agendado (preenchido a partir de SCHEDULED) |
 | opened_at | TIMESTAMP | NULL | | Quando abriu de fato (manual ou automático) |
 | opened_by_user_id | UUID | NULL | | Síndico que abriu manualmente (NULL se automático) |
+| eligible_count | INT | NULL | | Tamanho do snapshot na abertura (`COUNT(poll_eligible_snapshot WHERE poll_id = poll.id)`). Preenchido pelo `PollOpenerJob` na transição SCHEDULED→OPEN, junto com `opened_at`. Denormalização controlada — snapshot é write-once, logo este valor é imutável após a abertura. Elimina N+1 do `AllVotedCheckerJob` (Issue #2 da análise de escala 2026-04-25) |
 | closed_at | TIMESTAMP | NULL | | Quando fechou (CLOSED ou INVALIDATED) |
 | cancelled_at | TIMESTAMP | NULL | | Quando foi cancelado |
 | cancelled_by_user_id | UUID | NULL | | Síndico que cancelou |
@@ -422,10 +423,13 @@ CREATE TYPE email_status AS ENUM (
 - `UNIQUE (id, condominium_id)` — para composite FKs (vote, snapshot)
 - `idx_poll_condominium_id ON (condominium_id)` — RLS
 - `idx_poll_status ON (condominium_id, status)` — filtragem por estado
+- `idx_poll_due_to_open ON (scheduled_start) WHERE status = 'SCHEDULED'` — partial index para `PollOpenerJob` (cross-tenant, evita seq scan). Issue #1 da análise de escala 2026-04-25
+- `idx_poll_due_to_close ON (scheduled_end) WHERE status = 'OPEN'` — partial index para `PollCloserJob` e `AllVotedCheckerJob` (cross-tenant). Issue #1 da análise de escala 2026-04-25
 - `CHECK (status = 'DRAFT' OR (scheduled_start IS NOT NULL AND scheduled_end IS NOT NULL AND scheduled_end > scheduled_start))`
 - `CHECK (status != 'CANCELLED' OR (cancelled_at IS NOT NULL AND cancelled_by_user_id IS NOT NULL AND cancellation_reason IS NOT NULL))`
 - `CHECK (status NOT IN ('OPEN','CLOSED','INVALIDATED') OR opened_at IS NOT NULL)`
 - `CHECK (status NOT IN ('CLOSED','INVALIDATED') OR closed_at IS NOT NULL)`
+- `CHECK (status NOT IN ('OPEN','CLOSED','INVALIDATED') OR eligible_count IS NOT NULL)` — coerência: se está aberto/fechado, o snapshot foi gerado e a contagem foi materializada
 
 **Notas:**
 - Polls nunca são deletados (retenção de 5 anos — ver spec §11). `poll_option` tem CASCADE vestigial.
@@ -459,7 +463,7 @@ CREATE TYPE email_status AS ENUM (
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
 |--------|------|----------|-------------|-----------|
-| id | UUID | NOT NULL | PK | Identificador único |
+| id | UUID | NOT NULL | PK | Identificador único — **UUID v7** gerado pela aplicação (ver "UUID v7 em tabelas hot" abaixo) |
 | condominium_id | UUID | NOT NULL | FK → condominium(id) | Tenant |
 | poll_id | UUID | NOT NULL | FK composite → poll(id, condominium_id) | Votação |
 | poll_option_id | UUID | NOT NULL | FK → poll_option(id) | Opção escolhida |
@@ -475,6 +479,7 @@ CREATE TYPE email_status AS ENUM (
 
 **Regras:**
 - Imutável após registro. Sem UPDATE/DELETE pela aplicação. Voto pertence ao apartamento; remoção do morador não invalida (não existe coluna `is_nullified` — qualquer menção em outros docs está desatualizada).
+- **PK gerada pelo app como UUID v7.** Tabela hot — Issue #4 da análise de escala 2026-04-25.
 
 ---
 
@@ -531,7 +536,7 @@ CREATE TYPE email_status AS ENUM (
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
 |--------|------|----------|-------------|-----------|
-| id | UUID | NOT NULL | PK | Identificador único |
+| id | UUID | NOT NULL | PK | Identificador único — **UUID v7** gerado pela aplicação (ver "UUID v7 em tabelas hot" abaixo) |
 | condominium_id | UUID | NOT NULL | FK → condominium(id) | Tenant (RLS) |
 | actor_user_id | UUID | NOT NULL | | Quem executou a ação (ref. `app_user.id`) |
 | event_type | audit_event_type | NOT NULL | | Tipo do evento |
@@ -580,6 +585,48 @@ Evolução v2: criar entrada real em `app_user` se queries RLS demandarem JOIN e
 
 ---
 
+## UUID v7 em tabelas hot
+
+> Issue #4 da análise de escala 2026-04-25. Decisão tomada para mitigar fragmentação de B-tree em tabelas com alto volume de INSERTs.
+
+### Tabelas afetadas
+
+PKs geradas como **UUID v7** pela aplicação (Hibernate):
+
+- `vote` — INSERTs proporcionais ao número de votantes ativos
+- `audit_event` — INSERTs em toda ação relevante; cresce indefinidamente (retenção 5 anos)
+- `email_notification` — INSERTs proporcionais a notificações × destinatários
+
+Demais tabelas (`condominium`, `apartment`, `poll`, `app_user`, `invitation`, etc.) mantêm UUID v4 (`gen_random_uuid()`) — volume baixo, fragmentação imaterial. `app_user.id` herda obrigatoriamente o formato gerado pelo Supabase Auth (UUID v4 atualmente).
+
+### Mecânica
+
+UUID v7 (RFC 9562, 2024) tem 48 bits iniciais de timestamp Unix em milissegundos. Inserções consecutivas geram IDs quase ordenados → todas vão para a "ponta direita" da B-tree → minimiza page splits, fragmentação e cache misses. Versão hot do índice fica sempre quente em `shared_buffers`.
+
+UUID v4 (random) gera page splits frequentes; degrada throughput de INSERT em 2-3× quando o índice ultrapassa o tamanho do `shared_buffers`.
+
+### Implementação
+
+Schema mantém `gen_random_uuid()` como default da coluna (segurança caso o app não forneça ID). A geração migra para a aplicação, via Hibernate 6.6+:
+
+```java
+@Id
+@UuidGenerator(style = UuidGenerator.Style.TIME)
+private UUID id;
+```
+
+Nenhuma mudança DDL é necessária — coluna `UUID` aceita qualquer versão. Compatível com FKs e UNIQUEs existentes.
+
+### Trade-off aceito
+
+UUID v7 expõe o timestamp de criação dentro do ID. **Irrelevante neste domínio** — `vote.voted_at`, `audit_event.occurred_at` e `email_notification.created_at` já são informações públicas/auditáveis. Sem perda de privacidade.
+
+### Por que UUID e não BIGINT
+
+`app_user.id` é forçadamente UUID (igual a `auth.users.id` do Supabase). Adotar BIGINT em outras tabelas criaria heterogeneidade arquitetural (PK BIGINT + FK UUID na mesma tabela). UUID v7 é o sweet spot: mantém consistência com Supabase Auth e elimina a fragmentação do v4.
+
+---
+
 ## Tabelas — Perfil de Usuário e Notificações
 
 > Tabelas no mesmo banco PostgreSQL (Supabase). Módulos `auth/` e `notification/` no monolito.
@@ -610,7 +657,7 @@ Evolução v2: criar entrada real em `app_user` se queries RLS demandarem JOIN e
 
 | Coluna | Tipo | Nullable | Constraints | Descrição |
 |--------|------|----------|-------------|-----------|
-| id | UUID | NOT NULL | PK | Identificador único |
+| id | UUID | NOT NULL | PK | Identificador único — **UUID v7** gerado pela aplicação (ver "UUID v7 em tabelas hot" abaixo) |
 | user_id | UUID | NOT NULL | | Destinatário |
 | type | email_type | NOT NULL | | Tipo do e-mail (template a renderizar) |
 | payload | JSONB | NOT NULL | | Variáveis para o template (poll_id, etc.) |
@@ -622,7 +669,7 @@ Evolução v2: criar entrada real em `app_user` se queries RLS demandarem JOIN e
 | created_at | TIMESTAMP | NOT NULL | DEFAULT now() | Quando foi enfileirado |
 
 **Índices:**
-- `CREATE INDEX ON email_notification(scheduled_for) WHERE status = 'PENDING'` — job pega só pendentes vencidos
+- `idx_email_pending_fifo ON email_notification (scheduled_for, created_at) WHERE status = 'PENDING'` — partial index FIFO-friendly: cobre o `WHERE status='PENDING' AND scheduled_for <= now()` E o `ORDER BY created_at` do `EmailSenderJob` em uma única index walk, sem sort em memória. Issue #3 da análise de escala 2026-04-25
 - `idx_email_notification_user_id ON (user_id, created_at DESC)` — histórico por usuário
 
 **Padrão transactional outbox:**
@@ -723,3 +770,7 @@ Tokens efêmeros de convite vivem no Redis para evitar I/O no PostgreSQL e expir
 | `invitation.token_hash` (não plaintext) | Dump de banco não expõe convites válidos |
 | Outbox de e-mail (`email_notification`) | Atomicidade entre operação de domínio e envio; idempotência; observabilidade |
 | Consentimento LGPD inline em `app_user` | Mínimo viável v1; migrar para tabela dedicada quando a política mudar |
+| Índice FIFO em `email_notification` (`scheduled_for, created_at`) WHERE PENDING | Cobre WHERE + ORDER BY do `EmailSenderJob` em uma única index walk; preserva ordem FIFO no drenamento de backlog (oldest-first). Issue #3 da análise 2026-04-25 |
+| UUID v7 em `vote`, `audit_event`, `email_notification` | Tabelas hot — UUID v4 fragmenta B-tree em volume; v7 mantém INSERTs próximos da "ponta direita" do índice. Demais tabelas seguem v4 (volume baixo). Schema mantém `gen_random_uuid()` como default; app gera via `@UuidGenerator(style = TIME)`. Issue #4 da análise 2026-04-25 |
+| `poll.eligible_count` denormalizado | Snapshot é write-once → contagem é constante após abertura. Materializar elimina N+1 do `AllVotedCheckerJob`. Issue #2 da análise 2026-04-25 |
+| Índices parciais em `poll` (`due_to_open`, `due_to_close`) | Jobs cross-tenant filtram por status global (sem `condominium_id`); índices existentes não ajudam. Partial indexes são minúsculos (~99% dos polls fora desses estados). Issue #1 da análise 2026-04-25 |

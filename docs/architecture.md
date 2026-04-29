@@ -604,6 +604,12 @@ O data model está definido em Markdown. Como vira schema real?
 └────────────────────────────────────────────────────────────┘
 ```
 
+### Role do backend e service_role
+
+O backend conecta ao Postgres do Supabase como role **`postgres`**. No Supabase Cloud, `postgres` **não tem `BYPASSRLS`** — portanto as políticas RLS se aplicam também a queries do backend. É por isso que o `TenantInterceptor` + `SET LOCAL app.current_tenant` é obrigatório: sem ele, as queries do backend retornam 0 linhas.
+
+A variável de ambiente `SUPABASE_SERVICE_ROLE_KEY` está disponível (configurada no Coolify), mas **não é usada na v1**. Está reservada para operações administrativas futuras que precisem contornar RLS — por exemplo, bootstrap de condomínio via job ou queries cross-tenant sem contexto de tenant. Na v1, todas as queries cross-tenant rodam como `postgres` com filtros explícitos (`WHERE user_id = :userId`), sem `SET LOCAL` e sem `service_role`.
+
 ### Flyway + Supabase: como funciona
 
 Flyway conecta direto no Postgres do Supabase (connection string do Dashboard). As migrations são SQL puro:
@@ -1215,6 +1221,22 @@ Domínio de produção: **`condovote.com.br`**. Zona registrada no Cloudflare (D
 | Auditoria | **Tabela `audit_event` (append-only)** | Já definida no data model. Todas as ações de síndico (criar poll, cancelar, convidar, remover morador) geram um INSERT na mesma transação. Não é event sourcing — é log append-only para rastreabilidade. Campos: `event_type`, `actor_user_id`, `target_entity`, `payload` (JSONB) |
 | TLS termination | **Cloudflare edge + origin re-encryption** | Cloudflare termina TLS no edge (cert gerenciado). Backend: Caddy (Coolify) re-termina com Let's Encrypt → modo **Full (strict)**. Frontend: Cloudflare Pages gerencia TLS nativamente. Comunicação Angular (Pages) → Spring (Oracle/Coolify) → Supabase é sempre HTTPS ponta a ponta |
 | Headers de segurança | **Spring Security defaults + customização** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`. CSP básico. Configurado em `SecurityConfig` |
+
+### Por que algumas tabelas não têm RLS
+
+As tabelas `app_user`, `condominium`, `email_notification` e `poll_option` (além de `flyway_schema_history`, operacional) **não têm RLS habilitada**. Esta é uma decisão arquitetural consciente, não omissão.
+
+**Fronteira externa — Data API desabilitada:** a Data API do Supabase (PostgREST) está desabilitada neste projeto (Dashboard → Settings → API → "Data API" off). Nenhum cliente externo consegue acessar `/rest/v1/*` para nenhuma tabela do schema `public`. Sem PostgREST, não há vetor de acesso externo direto ao banco.
+
+**Fronteira interna — backend é o único caminho:** o backend conecta direto via JDBC como role `postgres`. Todas as queries nessas tabelas são controladas pelo código do Spring Boot, com filtros explícitos (`WHERE user_id = :userId`, `WHERE id = :condominiumId`). Não há caminho de query que não passe pelo código da aplicação.
+
+**Trade-off considerado:** habilitar RLS nessas tabelas exigiria policies fictícias (`USING (true)`) ou roles separadas — custo arquitetural alto para ganho zero enquanto a Data API estiver desabilitada.
+
+**Pré-condição reversível:** se a Data API for habilitada no futuro (ex: Realtime queries de frontend na v2), revisar antes de ativar. Caminhos viáveis:
+- Opção A: revogar grants em `public.*` para `anon`/`authenticated`
+- Opção B: adicionar RLS defensiva nessas 4 tabelas
+
+Ver análise completa em `docs/analysis/2026-04-27-supabase-linter-rls-warnings.md` §2.
 
 ### Detalhamento: Rate limiting com Bucket4j
 

@@ -55,6 +55,14 @@
 
 ---
 
+## T6.3b — Runbook mensal: verificar Data API desabilitada
+
+- [ ] Mensalmente, verificar no Supabase Dashboard → Settings → API que **Data API permanece desabilitada**.
+
+  Esta é uma fronteira de segurança crítica: `app_user`, `condominium`, `email_notification` e `poll_option` não têm RLS habilitada. Ativar a Data API sem antes revogar grants em `public.*` para `anon`/`authenticated`, ou sem adicionar RLS defensiva nessas 4 tabelas, expõe dados sem controle de acesso.
+
+  Ver decisão completa em `docs/analysis/2026-04-27-supabase-linter-rls-warnings.md` e subseção "Por que algumas tabelas não têm RLS" em `docs/architecture.md §8`.
+
 ## T6.4 — Backup manual semanal Supabase
 - [ ] Agendar backup manual semanal no Dashboard Supabase (Database → Backups → "Create backup") até migração para Supabase Pro (que tem PITR automático)
 - [ ] Documentar procedimento em `docs/runbooks/backup-restore.md`

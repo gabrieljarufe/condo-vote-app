@@ -111,6 +111,7 @@
 - [x] `V9__rls_policies.sql`: 9 tabelas com `ENABLE ROW LEVEL SECURITY` + `CREATE POLICY tenant_isolation`
 - [x] `poll_option` herda filtro via JOIN com `poll` (sem RLS direta)
 - [x] Usa `current_setting('app.current_tenant', true)` (missing_ok=true) — sem tenant → retorna NULL → 0 linhas (documentado no arquivo)
+- [x] **T2.14 (2026-04-28):** V9 reescrita com `(SELECT current_setting(...))` em todas as 9 policies — elimina warning `auth_rls_initplan` do Supabase linter. Header expandido com justificativas de RLS ausente nas 4 tabelas cross-tenant. Ver `docs/analysis/2026-04-27-supabase-linter-rls-warnings.md`.
 
 **Aceite:** psql autenticado como role app executa `SET LOCAL app.current_tenant = '<uuid>'` e vê só dados do tenant; sem SET LOCAL → retorna 0 linhas.
 
@@ -129,12 +130,12 @@
 
 ---
 
-## T2.12 — Seed repeatable para dev local
-- [ ] Arquivo: `backend/src/main/resources/db/seed/R__seed_dev.sql` — separado do diretório `db/migration`
-- [ ] Picked-up pelo Flyway **somente** quando `spring.flyway.locations` inclui `classpath:db/seed` (configurado em `application-local.yml`; nunca em `application-prod.yml`)
-- [ ] **UUIDs hardcoded como v7** — não usar `gen_random_uuid()` (geraria v4, violando o padrão do projeto). Gerar UUIDs v7 offline (ver `data-model.md` seção "UUID v7 como padrão do projeto" → "Geração offline") e hardcodar. Adicionar comentário SQL com a data de geração para rastreabilidade.
-- [ ] Popula: 1 condomínio teste, 1 `app_user` síndico com **UUID fixo** (o mesmo UUID deve existir em `auth.users` do Supabase local). O UUID do `app_user`/síndico segue o formato gerado pelo Supabase Auth (v4 atualmente) — única exceção ao padrão v7 do projeto.
-- [ ] Documentar em `infra/supabase/supabase/seed.sql` (arquivo oficial do Supabase CLI): INSERT em `auth.users` para criar o user do síndico seed com UUID fixo:
+## T2.12 — Seed repeatable para dev local ✅
+- [x] Arquivo: `backend/src/main/resources/db/seed/R__seed_dev.sql` — separado do diretório `db/migration`
+- [x] Picked-up pelo Flyway **somente** quando `spring.flyway.locations` inclui `classpath:db/seed` (configurado em `application-local.yml`; nunca em `application-prod.yml`)
+- [x] **UUIDs hardcoded como v7** — não usar `gen_random_uuid()` (geraria v4, violando o padrão do projeto). Gerar UUIDs v7 offline (ver `data-model.md` seção "UUID v7 como padrão do projeto" → "Geração offline") e hardcodar. Adicionar comentário SQL com a data de geração para rastreabilidade.
+- [x] Popula: 1 condomínio teste, 1 `app_user` síndico com **UUID fixo** (o mesmo UUID deve existir em `auth.users` do Supabase local). O UUID do `app_user`/síndico segue o formato gerado pelo Supabase Auth (v4 atualmente) — única exceção ao padrão v7 do projeto.
+- [x] Documentar em `infra/supabase/supabase/seed.sql` (arquivo oficial do Supabase CLI): INSERT em `auth.users` para criar o user do síndico seed com UUID fixo:
   ```sql
   INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, role)
   VALUES ('<uuid-fixo>', 'sindico@local.dev', crypt('password', gen_salt('bf')), now(), 'authenticated')
@@ -146,17 +147,17 @@
 
 ---
 
-## T2.13 — Teste de integração RLS
+## T2.13 — Teste de integração RLS ✅
 
 > **Pré-requisito:** Docker Desktop instalado e rodando (requerido pelo Testcontainers).
 
-- [ ] `backend/src/test/java/com/condovote/shared/tenant/RlsIsolationIT.java`
-- [ ] Usa `@Testcontainers` com `PostgreSQLContainer:16`
-- [ ] Setup: Flyway aplica todas as migrations
-- [ ] Cenários:
-  - [ ] Insere condo A e condo B; com `SET LOCAL app.current_tenant = A`, `SELECT * FROM apartment` retorna só de A
-  - [ ] Sem `SET LOCAL`: query retorna 0 (a policy exige tenant setado) — documentar comportamento observado
-  - [ ] Insere `vote` com `condominium_id` divergente entre vote e apartment → FK rejeita
-- [ ] Configurar como `@Tag("integration")` para rodar no `verify` (não em `test` unitário)
+- [x] `backend/src/test/java/com/condovote/shared/tenant/RlsIsolationIT.java`
+- [x] Usa `@Testcontainers` com `PostgreSQLContainer:16`
+- [x] Setup: Flyway aplica todas as migrations
+- [x] Cenários:
+  - [x] Insere condo A e condo B; com `SET LOCAL app.current_tenant = A`, `SELECT * FROM apartment` retorna só de A
+  - [x] Sem `SET LOCAL`: query retorna 0 (a policy exige tenant setado) — documentar comportamento observado
+  - [x] Insere `vote` com `condominium_id` divergente entre vote e apartment → FK rejeita
+- [x] Configurar como `@Tag("integration")` para rodar no `verify` (não em `test` unitário)
 
 **Aceite:** suite roda verde local (`./mvnw verify`) e em CI (Fase 5).

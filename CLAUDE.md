@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estado atual do projeto
 
-Fase 2 (Schema e Migrations) em andamento. Concluídos: scaffold Spring Boot 4 (T3.1a), Setup Flyway (T2.1), V1__enums.sql (T2.2) e T2.2a (otimizações de escala incorporadas ao `data-model.md`). Issues #1, #2, #3 da análise de escala aplicadas; Issue #4 expandida para "UUID v7 como padrão do projeto" + remoção de `DEFAULT gen_random_uuid()` nas migrations (decisão de 2026-04-26); Issue #5 conscientemente adiada. Os 7 gaps de `docs/analysis/2026-04-25-project-gaps-analysis.md` foram executados. Próximo passo: T2.12 — seed dev + T2.13 — teste de integração RLS.
+Fase 2 (Schema e Migrations) **concluída**. Concluídos: scaffold Spring Boot 4 (T3.1a), Setup Flyway (T2.1), V1–V10 migrations com schema completo (T2.2–T2.11), seed dev repeatável com `sindico@local.dev` (T2.12), teste de integração RLS com Testcontainers (T2.13), reescrita V9 com otimização `auth_rls_initplan` (T2.14–T2.19). Issues #1–#4 da análise de escala aplicadas; Issue #5 conscientemente adiada. Adicionados: `UuidV7.java` (RFC 9562 §6.2 Método 1), `AbstractIntegrationTest` (Singleton Testcontainers), `RlsIsolationIT` (3 cenários RLS). Próximo passo: **Fase 3 — Backend entities e controllers**.
 
 Metodologia adotada: **Spec-Driven Development** (Specify → Plan → Tasks → Implement). As fases **Specify**, **Plan** e **Tasks** estão concluídas. Fase atual: **Implement** (Fases 2–6 das tasks).
 

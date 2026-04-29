@@ -15,9 +15,9 @@ spring:
         jwt:
           jwk-set-uri: http://localhost:54321/auth/v1/.well-known/jwks.json
 
-  web:
-    cors:
-      allowed-origins: http://localhost:4200
+app:
+  cors:
+    allowed-origins: http://localhost:4200
 
 management:
   endpoint:

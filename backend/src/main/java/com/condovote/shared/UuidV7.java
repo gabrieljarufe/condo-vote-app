@@ -33,6 +33,9 @@ public final class UuidV7 {
     }
 
     public static UUID generate() {
+        // Pré-computa seed fora do lock. SecureRandom é thread-safe e não bloqueia o monitor.
+        // Descartado no caminho quente (counter++ simples, ~4095/4096 das chamadas).
+        long seed = RANDOM.nextLong();
         long timestamp;
         long c;
 
@@ -40,16 +43,13 @@ public final class UuidV7 {
             long now = System.currentTimeMillis();
 
             if (now > lastTimestampMs) {
-                // Novo ms — reseta counter com valor baixo para dar margem de crescimento
                 lastTimestampMs = now;
-                counter = RANDOM.nextLong() & (COUNTER_MAX >>> 1); // 0..2047
+                counter = seed & (COUNTER_MAX >>> 1); // 0..2047
             } else {
-                // Mesmo ms (ou clock backward) — incrementa
                 counter++;
                 if (counter > COUNTER_MAX) {
-                    // Counter estourou: avança timestamp lógico, reseta
                     lastTimestampMs++;
-                    counter = RANDOM.nextLong() & (COUNTER_MAX >>> 1);
+                    counter = seed & (COUNTER_MAX >>> 1);
                 }
             }
 

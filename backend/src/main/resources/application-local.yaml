@@ -1,8 +1,19 @@
 spring:
+  datasource:
+    url: jdbc:postgresql://localhost:54322/postgres
+    username: postgres
+    password: postgres
+
   flyway:
     locations:
       - classpath:db/migration
       - classpath:db/seed
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:54321/auth/v1/.well-known/jwks.json
 
   web:
     cors:

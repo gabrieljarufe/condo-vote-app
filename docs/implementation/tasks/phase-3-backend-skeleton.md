@@ -17,39 +17,39 @@
 - [x] Package base: `com.condovote`
 - [x] `application.yaml` (base) + `application-local.yaml` (override de dev) com datasource e Flyway config mínima
 - [x] `CondoVoteApplication.java` sobe em localhost:8080
-- [ ] Estrutura de packages vazias: `auth/`, `shared/config/`, `shared/tenant/`, `shared/exception/`
+- [x] Estrutura de packages vazias: `auth/`, `shared/config/`, `shared/tenant/`, `shared/exception/`
 
 > **Decisão de profiles (2026-04-25):** sem `application-prod.yaml`. O `application.yaml` base já é o "perfil produção" implícito — todas as configs sensíveis vêm de env vars (`${DATABASE_URL}`, `${SUPABASE_URL}`, etc.) injetadas pelo Coolify. `application-local.yaml` sobrescreve apenas o que difere em dev (CORS localhost, seed do Flyway, health show-details). Criar arquivo prod vazio seria poluição — Spring Boot trata profile inexistente como "use o default".
 
 **Aceite de T3.1a:** `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` sobe sem erro (com ou sem banco). Fase 2 pode começar.
 
 ### T3.1b — Dependências completas e config refinada
-- [ ] Adicionar dependências faltantes ao `pom.xml`: `lettuce-core` (Redis), `springdoc-openapi-starter-webmvc-ui` (Swagger UI). Demais já estão (Web, JPA, Security, OAuth2 Resource Server, Validation, Thymeleaf, Flyway, PostgreSQL, Actuator)
-- [ ] Validar Flyway locations no `application-local.yaml`: `classpath:db/migration` + `classpath:db/seed`
-- [ ] Validar HikariCP pool size 10 no `application.yaml`
-- [ ] Em prod, todas as configs vêm de env vars do Coolify — sem `application-prod.yaml` (ver decisão em T3.1a)
+- [x] Adicionar dependências faltantes ao `pom.xml`: `lettuce-core` (Redis), `springdoc-openapi-starter-webmvc-ui` (Swagger UI). Demais já estão (Web, JPA, Security, OAuth2 Resource Server, Validation, Thymeleaf, Flyway, PostgreSQL, Actuator)
+- [x] Validar Flyway locations no `application-local.yaml`: `classpath:db/migration` + `classpath:db/seed`
+- [x] Validar HikariCP pool size 10 no `application.yaml`
+- [x] Em prod, todas as configs vêm de env vars do Coolify — sem `application-prod.yaml` (ver decisão em T3.1a)
 
 **Aceite:** `./mvnw spring-boot:run -Dspring-boot.run.profiles=local` sobe com banco conectado e migrations aplicadas.
 
 ---
 
 ## T3.2 — SecurityConfig com JWKS Supabase
-- [ ] `shared/config/SecurityConfig.java`:
-  - [ ] `OAuth2ResourceServerConfigurer` com `jwkSetUri = ${supabase.url}/auth/v1/.well-known/jwks.json`
-  - [ ] `NimbusJwtDecoder` com cache de chaves (`cache-duration = PT1H`)
-  - [ ] `SecurityFilterChain`: `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**` públicas; `/api/**` exige JWT
-  - [ ] Headers: X-Content-Type-Options nosniff, X-Frame-Options DENY, HSTS 1y
-  - [ ] CORS: whitelist de `${app.cors.allowed-origins}` — `http://localhost:4200` local, `https://app.condovote.com.br` em prod
-  - [ ] CSRF desabilitado para APIs stateless
+- [x] `shared/config/SecurityConfig.java`:
+  - [x] `OAuth2ResourceServerConfigurer` com `jwkSetUri = ${supabase.url}/auth/v1/.well-known/jwks.json`
+  - [x] `NimbusJwtDecoder` via auto-config Boot (jwk-set-uri em application.yaml; cache padrão Spring Security adequado para v1)
+  - [x] `SecurityFilterChain`: `/actuator/health`, `/v3/api-docs/**`, `/swagger-ui/**` públicas; `/api/**` exige JWT
+  - [x] Headers: X-Content-Type-Options nosniff (default), X-Frame-Options DENY, HSTS 1y
+  - [x] CORS: whitelist de `${app.cors.allowed-origins}` — `http://localhost:4200` local, `https://app.condovote.com.br` em prod
+  - [x] CSRF desabilitado para APIs stateless
 
 **Aceite:** curl sem token em `/api/me/condominiums` retorna 401; curl em `/actuator/health` retorna 200.
 
 ---
 
 ## T3.3 — AuthGateway
-- [ ] `auth/AuthGateway.java`: interface com `UUID getCurrentUserId()`, `String getCurrentUserEmail()`
-- [ ] `auth/SupabaseAuthGateway.java`: implementação que extrai `sub` e `email` de `SecurityContextHolder.getContext().getAuthentication().getPrincipal()` (cast para `Jwt`)
-- [ ] Bean Spring injetável; **nenhum outro código do app toca `Jwt` diretamente** (isola Supabase)
+- [x] `auth/AuthGateway.java`: interface com `UUID getCurrentUserId()`, `String getCurrentUserEmail()`
+- [x] `auth/SupabaseAuthGateway.java`: implementação que extrai `sub` e `email` de `SecurityContextHolder.getContext().getAuthentication().getPrincipal()` (cast para `Jwt`)
+- [x] Bean Spring injetável; **nenhum outro código do app toca `Jwt` diretamente** (isola Supabase)
 
 **Aceite:** teste unitário com `Jwt` mock confirma extração correta.
 

@@ -33,9 +33,9 @@ spring:
         jwt:
           jwk-set-uri: ${SUPABASE_URL}/auth/v1/.well-known/jwks.json
 
-  web:
-    cors:
-      allowed-origins: ${CORS_ALLOWED_ORIGINS}
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
 management:
   endpoints:

@@ -4,6 +4,16 @@
 
 **Pré-requisitos:** Fase 2 (migrations aplicáveis local e remoto).
 
+## Docs de referência (Context7)
+
+| Biblioteca | ID Context7 |
+|-----------|-------------|
+| Spring Security 7 (referência oficial) | `/websites/spring_io_spring-security_reference_7_0` |
+| Spring Security (código-fonte / issues) | `/spring-projects/spring-security` |
+| springdoc-openapi | `/springdoc/springdoc-openapi` |
+
+> Uso: `mcp__context7__query-docs` com o ID acima para consultar documentação atualizada durante a implementação.
+
 > **Pendência herdada da Fase 2 — Issue #4 (UUID v7 como padrão do projeto):** ao criar **qualquer** entity Hibernate com PK UUID, anotar com `@UuidGenerator(style = UuidGenerator.Style.TIME)` para gerar UUID v7 no app. Migrations **não** declaram `DEFAULT gen_random_uuid()` — INSERT sem ID falha cedo em vez de gerar v4 silencioso. Única exceção: entity de `app_user`, cujo ID vem do Supabase Auth e é setado manualmente pelo service durante o `/register/complete`. Ver `docs/data-model.md` seção "UUID v7 como padrão do projeto" e `docs/analysis/2026-04-25-data-model-scale-review.md` (escopo expandido em 2026-04-26).
 
 ---
@@ -70,9 +80,9 @@
 ---
 
 ## T3.5 — GlobalExceptionHandler
-- [ ] `shared/exception/ForbiddenException.java`, `NotFoundException.java` (runtime exceptions)
-- [ ] `shared/exception/ApiError.java`: DTO `{code, message, details?, timestamp}`
-- [ ] `shared/exception/GlobalExceptionHandler.java` (`@RestControllerAdvice`):
+- [x] `shared/exception/ForbiddenException.java`, `NotFoundException.java` (runtime exceptions)
+- [x] `shared/exception/ApiError.java`: DTO `{code, message, details?, timestamp}`
+- [x] `shared/exception/GlobalExceptionHandler.java` (`@RestControllerAdvice`):
   - `MethodArgumentNotValidException` → 400 com lista de erros por campo
   - `DataIntegrityViolationException` → 409
   - `ForbiddenException` → 403

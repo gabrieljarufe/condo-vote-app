@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estado atual do projeto
 
-Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.5 concluídas.
+Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.6 concluídas.
 
 **Concluído até agora:**
 - Fase 2 completa: Setup Flyway (T2.1), V1–V10 migrations (T2.2–T2.11), seed dev (T2.12), RlsIsolationIT (T2.13), reescrita V9 com `auth_rls_initplan` (T2.14–T2.19). Issues #1–#4 da análise de escala aplicadas; Issue #5 adiada.
@@ -13,10 +13,11 @@ Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.5
 - T3.3 — `AuthGateway` interface + `SupabaseAuthGateway` (extrai `sub` e `email` do JWT)
 - T3.4 — `TenantContext` (ThreadLocal), `TenantInterceptor` (valida `X-Tenant-Id` + pertencimento), `TenantTransactionAspect` (`set_config` via AOP), `WebMvcConfig` (`@EnableTransactionManagement(order=0)` + registro do interceptor). 14 testes (10 unit + 4 IT).
 - T3.5 — `GlobalExceptionHandler` (`@RestControllerAdvice`): `ForbiddenException` → 403, `NotFoundException` → 404, `DataIntegrityViolationException` → 409, `MethodArgumentNotValidException` → 400 com lista de campos, fallback `Exception` → 500 sem stacktrace. `ApiError` record `{code, message, details?, timestamp}`. 6 testes unitários via `standaloneSetup`.
+- T3.6 — `GET /api/me/condominiums`: `CondominiumController` (thin) + `CondominiumService` (query UNION cross-tenant via JdbcTemplate) + `CondominiumSummary` record + `UserRoleInCondo` enum (ADMIN/OWNER/TENANT/MULTIPLE). 13 testes (3 unit + 10 IT).
 
 **Adicionados ao longo das fases:** `UuidV7.java` (RFC 9562), `AbstractIntegrationTest` (Singleton Testcontainers), `RlsIsolationIT` (3 cenários RLS).
 
-**Próximo passo:** T3.6 — Endpoint sentinela `GET /api/me/condominiums`.
+**Próximo passo:** T3.7 — Dockerfile multi-stage.
 
 Metodologia adotada: **Spec-Driven Development** (Specify → Plan → Tasks → Implement). As fases **Specify**, **Plan** e **Tasks** estão concluídas. Fase atual: **Implement** (Fases 2–6 das tasks).
 

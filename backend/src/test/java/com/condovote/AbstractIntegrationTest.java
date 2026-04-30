@@ -17,7 +17,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * Subclasses declaram @SpringBootTest e seus próprios @Test.
  * Para isolamento entre testes, use @Transactional (Spring faz rollback automático).
  */
-abstract class AbstractIntegrationTest {
+public abstract class AbstractIntegrationTest {
 
     static final PostgreSQLContainer<?> postgres;
 

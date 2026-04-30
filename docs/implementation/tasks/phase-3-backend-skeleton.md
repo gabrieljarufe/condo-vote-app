@@ -56,16 +56,16 @@
 ---
 
 ## T3.4 — TenantContext + Interceptor + TransactionAspect
-- [ ] `shared/tenant/TenantContext.java`: ThreadLocal<UUID> com `set`, `get`, `clear`
-- [ ] `shared/tenant/TenantInterceptor.java` (`HandlerInterceptor`):
-  - [ ] `preHandle`: lê header `X-Tenant-Id`; se ausente → segue sem setar (cross-tenant); se presente → valida UUID, valida pertencimento do user (query `condominium_admin` OR `apartment_resident`), armazena em `TenantContext`
-  - [ ] `afterCompletion`: `TenantContext.clear()`
-- [ ] `shared/tenant/TenantTransactionAspect.java` (`@Aspect`):
-  - [ ] `@Around("@annotation(org.springframework.transaction.annotation.Transactional)")`
-  - [ ] Se `TenantContext.get() != null`: executa `SET LOCAL app.current_tenant = :tenant` via `EntityManager.createNativeQuery`
-- [ ] Registro do interceptor em `WebMvcConfigurer`
+- [x] `shared/tenant/TenantContext.java`: ThreadLocal<UUID> com `set`, `get`, `clear`
+- [x] `shared/tenant/TenantInterceptor.java` (`HandlerInterceptor`):
+  - [x] `preHandle`: lê header `X-Tenant-Id`; se ausente → segue sem setar (cross-tenant); se presente → valida UUID, valida pertencimento do user (query `condominium_admin` OR `apartment_resident`), armazena em `TenantContext`
+  - [x] `afterCompletion`: `TenantContext.clear()`
+- [x] `shared/tenant/TenantTransactionAspect.java` (`@Aspect`):
+  - [x] `@Around("@annotation(...Transactional) || @within(...Transactional)")` — cobre anotação no método e na classe
+  - [x] Se `TenantContext.get() != null`: executa `set_config('app.current_tenant', tenant, true)` via `EntityManager.createNativeQuery`
+- [x] Registro do interceptor em `WebMvcConfigurer` + `@EnableTransactionManagement(order = 0)` para garantir TX como wrapper externo
 
-**Aceite:** teste de integração com 2 tenants confirma que queries com header filtram corretamente.
+**Aceite:** 14 testes (10 unit + 4 IT com Testcontainers) — isolamento de threads, SET LOCAL transaction-scoped, @Transactional em método e em classe.
 
 ---
 

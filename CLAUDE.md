@@ -4,7 +4,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estado atual do projeto
 
-Fase 2 (Schema e Migrations) **concluída**. Concluídos: scaffold Spring Boot 4 (T3.1a), Setup Flyway (T2.1), V1–V10 migrations com schema completo (T2.2–T2.11), seed dev repeatável com `sindico@local.dev` (T2.12), teste de integração RLS com Testcontainers (T2.13), reescrita V9 com otimização `auth_rls_initplan` (T2.14–T2.19). Issues #1–#4 da análise de escala aplicadas; Issue #5 conscientemente adiada. Adicionados: `UuidV7.java` (RFC 9562 §6.2 Método 1), `AbstractIntegrationTest` (Singleton Testcontainers), `RlsIsolationIT` (3 cenários RLS). Próximo passo: **Fase 3 — Backend entities e controllers**.
+Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.4 concluídas.
+
+**Concluído até agora:**
+- Fase 2 completa: Setup Flyway (T2.1), V1–V10 migrations (T2.2–T2.11), seed dev (T2.12), RlsIsolationIT (T2.13), reescrita V9 com `auth_rls_initplan` (T2.14–T2.19). Issues #1–#4 da análise de escala aplicadas; Issue #5 adiada.
+- T3.1 — Scaffold Spring Boot 4 + dependências completas (Web, JPA, Security, OAuth2 Resource Server, Flyway, Actuator, springdoc, lettuce)
+- T3.2 — `SecurityConfig`: JWKS Supabase, `/actuator/health` + `/v3/api-docs/**` + `/swagger-ui/**` públicos, `/api/**` exige JWT, CORS, HSTS, CSRF off
+- T3.3 — `AuthGateway` interface + `SupabaseAuthGateway` (extrai `sub` e `email` do JWT)
+- T3.4 — `TenantContext` (ThreadLocal), `TenantInterceptor` (valida `X-Tenant-Id` + pertencimento), `TenantTransactionAspect` (`set_config` via AOP), `WebMvcConfig` (`@EnableTransactionManagement(order=0)` + registro do interceptor). 14 testes (10 unit + 4 IT).
+
+**Adicionados ao longo das fases:** `UuidV7.java` (RFC 9562), `AbstractIntegrationTest` (Singleton Testcontainers), `RlsIsolationIT` (3 cenários RLS).
+
+**Próximo passo:** T3.5 — GlobalExceptionHandler.
 
 Metodologia adotada: **Spec-Driven Development** (Specify → Plan → Tasks → Implement). As fases **Specify**, **Plan** e **Tasks** estão concluídas. Fase atual: **Implement** (Fases 2–6 das tasks).
 

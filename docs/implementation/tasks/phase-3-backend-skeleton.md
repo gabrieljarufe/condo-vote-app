@@ -99,24 +99,24 @@ Antes de escrever qualquer classe Java, consulte **[`docs/coding-patterns.md`](.
 
 ---
 
-## T3.6 — Endpoint sentinela `GET /api/me/condominiums`
-- [ ] `condominium/CondominiumController.java` (thin)
-- [ ] `condominium/CondominiumService.java`:
-  - [ ] Query explícita por `user_id` em `condominium_admin` UNION `apartment_resident` (sem RLS — cross-tenant)
-  - [ ] Retorna `List<CondominiumSummary { id, name, role }>`
-- [ ] DTO `CondominiumSummary` com enum `UserRoleInCondo { ADMIN, OWNER, TENANT, MULTIPLE }`
-- [ ] Endpoint **não exige** header `X-Tenant-Id`
+## T3.6 — Endpoint sentinela `GET /api/me/condominiums` ✅
+- [x] `condominium/CondominiumController.java` (thin)
+- [x] `condominium/CondominiumService.java`:
+  - [x] Query explícita por `user_id` em `condominium_admin` UNION `apartment_resident` (sem RLS — cross-tenant)
+  - [x] Retorna `List<CondominiumSummary { id, name, role }>`
+- [x] DTO `CondominiumSummary` com enum `UserRoleInCondo { ADMIN, OWNER, TENANT, MULTIPLE }`
+- [x] Endpoint **não exige** header `X-Tenant-Id`
 
 **Aceite:** user seed do `R__seed_dev.sql` chama endpoint e vê o condo do seed com role ADMIN.
 
 ---
 
-## T3.7 — Dockerfile multi-stage
-- [ ] `backend/Dockerfile` conforme `docs/architecture.md` §7:
+## T3.7 — Dockerfile multi-stage ✅
+- [x] `backend/Dockerfile` conforme `docs/architecture.md` §7:
   - Stage 1: `eclipse-temurin:21-jdk` → `./mvnw dependency:go-offline` + `package -DskipTests`
   - Stage 2: `eclipse-temurin:21-jre` → copia jar, EXPOSE 8080, ENTRYPOINT java -jar
-- [ ] `backend/.dockerignore`: `target/`, `.idea`, `*.md`, `.env*`, `.git/`, `Dockerfile`, `*.iml`
-- [ ] Build local: `docker build -t condovote-backend ./backend` funciona
+- [x] `backend/.dockerignore`: `target/`, `.idea`, `*.md`, `.env*`, `.git/`, `Dockerfile`, `*.iml`
+- [x] Build local: `docker build -t condovote-backend ./backend` funciona
 
 **Aceite:** container sobe com `docker run -e DATABASE_URL=... -p 8080:8080 condovote-backend` e responde em `/actuator/health`.
 
@@ -145,8 +145,8 @@ Antes de escrever qualquer classe Java, consulte **[`docs/coding-patterns.md`](.
 
 ---
 
-## T3.10 — Atualizar comandos do CLAUDE.md
-- [ ] Atualizar seção `CLAUDE.md → Comandos → Backend` com comandos reais:
+## T3.10 — Atualizar comandos do CLAUDE.md ✅
+- [x] Atualizar seção `CLAUDE.md → Comandos → Backend` com comandos reais:
   - `./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
   - `./mvnw verify`
   - `docker build -t condo-vote-backend ./backend`

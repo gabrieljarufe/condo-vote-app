@@ -614,37 +614,38 @@ A variável de ambiente `SUPABASE_SERVICE_ROLE_KEY` está disponível (configura
 
 ### Flyway + Supabase: como funciona
 
-Flyway conecta direto no Postgres do Supabase (connection string do Dashboard). As migrations são SQL puro:
+Flyway conecta direto no Postgres do Supabase (connection string do Dashboard). As migrations são SQL puro versionado em `backend/src/main/resources/db/migration/` — agrupadas por domínio em vez de uma migration por tabela, para reduzir overhead de versão (V1–V10 hoje cobrem todo o schema v1):
 
 ```
-src/main/resources/db/migration/
-├── V1__create_enums.sql              ← resident_role, poll_status, etc.
-├── V2__create_condominium.sql        ← tabela + RLS policy
-├── V3__create_apartment.sql          ← tabela + RLS + índice funcional UNIQUE
-├── V4__create_app_user.sql           ← tabela (sem RLS — cross-tenant)
-├── V5__create_apartment_resident.sql ← tabela + RLS + constraints
-├── V6__create_invitation.sql         ← tabela + RLS + CHECK + índice parcial
-├── V7__create_poll.sql               ← tabela + RLS + lifecycle constraints
-├── V8__create_poll_option.sql
-├── V9__create_vote.sql               ← tabela + RLS + UNIQUE (poll_id, apartment_id), imutável
-├── V10__create_poll_eligible_snapshot.sql
-├── V11__create_poll_result.sql
-├── V12__create_audit_event.sql
-├── V13__create_email_notification.sql
-└── R__seed_dev_data.sql              ← repeatable migration (só roda em profile local)
+backend/src/main/resources/db/migration/
+├── V1__enums.sql                     ← todos os enums (resident_role, poll_status, …) + extensão pgcrypto
+├── V2__condominium.sql
+├── V3__app_user.sql                  ← sem RLS (cross-tenant)
+├── V4__apartment_and_residents.sql   ← apartment + apartment_resident
+├── V5__condominium_admin.sql
+├── V6__invitation.sql
+├── V7__poll_domain.sql               ← poll, poll_option, poll_eligible_snapshot, vote, poll_result
+├── V8__audit_and_notifications.sql   ← audit_event + email_notification
+├── V9__rls_policies.sql              ← ENABLE RLS + policies em todas as tabelas com condominium_id
+└── V10__composite_foreign_keys.sql   ← FKs compostas para reforçar tenant integrity
+
+backend/src/main/resources/db/seed/
+└── R__seed_dev.sql                   ← repeatable; só roda em profile local (locations inclui db/seed)
 ```
 
-Cada migration inclui a RLS policy da tabela:
+> **Detalhamento completo:** `docs/context-docs/flyway-migrations.md` cobre o ciclo de vida das migrations, semântica de checksum, integração com Spring Boot e particularidades do projeto (UUID v7 sem `DEFAULT`, RLS na mesma migration, `auth.*` fora do Flyway).
+
+V9 agrupa todas as policies RLS em vez de espalhar uma por arquivo:
 
 ```sql
--- V2__create_condominium.sql
-CREATE TABLE condominium (...);
+-- V9__rls_policies.sql (extrato)
+ALTER TABLE condominium_admin ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE condominium ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation ON condominium
-    USING (id = current_setting('app.current_tenant')::uuid);
+CREATE POLICY tenant_isolation ON condominium_admin
+    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 ```
+
+O `(SELECT current_setting(...))` força o Postgres a usar um InitPlan — função avaliada uma vez por query em vez de uma vez por linha. Elimina o warning `auth_rls_initplan` do Supabase linter (ver `docs/analysis/2026-04-27-supabase-linter-rls-warnings.md`).
 
 ### Convenções de numeração de migrations
 

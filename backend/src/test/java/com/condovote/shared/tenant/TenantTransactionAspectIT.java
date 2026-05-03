@@ -2,8 +2,6 @@ package com.condovote.shared.tenant;
 
 import com.condovote.AbstractIntegrationTest;
 import com.condovote.shared.UuidV7;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -11,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,42 +31,46 @@ class TenantTransactionAspectIT extends AbstractIntegrationTest {
     @TestConfiguration
     static class TenantTestConfig {
         @Bean
-        TenantSettingReader tenantSettingReader() {
-            return new TenantSettingReader();
+        TenantSettingReader tenantSettingReader(JdbcTemplate jdbcTemplate) {
+            return new TenantSettingReader(jdbcTemplate);
         }
 
         @Bean
-        ClassLevelTransactionalService classLevelTransactionalService() {
-            return new ClassLevelTransactionalService();
+        ClassLevelTransactionalService classLevelTransactionalService(JdbcTemplate jdbcTemplate) {
+            return new ClassLevelTransactionalService(jdbcTemplate);
         }
     }
 
     // @Transactional no método — cenário padrão
     @Service
     static class TenantSettingReader {
-        @PersistenceContext
-        EntityManager entityManager;
+        private final JdbcTemplate jdbcTemplate;
+
+        TenantSettingReader(JdbcTemplate jdbcTemplate) {
+            this.jdbcTemplate = jdbcTemplate;
+        }
 
         @Transactional
         public String readCurrentTenantSetting() {
-            Object result = entityManager
-                    .createNativeQuery("SELECT current_setting('app.current_tenant', true)")
-                    .getSingleResult();
-            return result != null ? result.toString() : null;
+            return jdbcTemplate.queryForObject(
+                    "SELECT current_setting('app.current_tenant', true)",
+                    String.class);
         }
     }
 
     // @Transactional na CLASSE — cenário que o pointcut @annotation não pegava antes do fix
     @Transactional
     static class ClassLevelTransactionalService {
-        @PersistenceContext
-        EntityManager entityManager;
+        private final JdbcTemplate jdbcTemplate;
+
+        ClassLevelTransactionalService(JdbcTemplate jdbcTemplate) {
+            this.jdbcTemplate = jdbcTemplate;
+        }
 
         public String readCurrentTenantSetting() {
-            Object result = entityManager
-                    .createNativeQuery("SELECT current_setting('app.current_tenant', true)")
-                    .getSingleResult();
-            return result != null ? result.toString() : null;
+            return jdbcTemplate.queryForObject(
+                    "SELECT current_setting('app.current_tenant', true)",
+                    String.class);
         }
     }
 

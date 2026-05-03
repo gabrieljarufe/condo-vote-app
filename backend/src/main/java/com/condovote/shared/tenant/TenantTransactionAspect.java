@@ -1,11 +1,10 @@
 package com.condovote.shared.tenant;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -21,17 +20,20 @@ import java.util.UUID;
 @Order(10)
 public class TenantTransactionAspect {
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private final JdbcTemplate jdbcTemplate;
+
+    public TenantTransactionAspect(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @Around("@annotation(org.springframework.transaction.annotation.Transactional) || @within(org.springframework.transaction.annotation.Transactional)")
     public Object applyTenant(ProceedingJoinPoint pjp) throws Throwable {
         UUID tenantId = TenantContext.get();
         if (tenantId != null) {
-            entityManager.createNativeQuery(
-                    "SELECT set_config('app.current_tenant', :tenant, true)")
-                    .setParameter("tenant", tenantId.toString())
-                    .getSingleResult();
+            jdbcTemplate.queryForObject(
+                    "SELECT set_config('app.current_tenant', ?, true)",
+                    String.class,
+                    tenantId.toString());
         }
         return pjp.proceed();
     }

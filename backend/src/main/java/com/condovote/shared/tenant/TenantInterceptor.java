@@ -3,7 +3,6 @@ package com.condovote.shared.tenant;
 import com.condovote.auth.AuthGateway;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -15,11 +14,11 @@ import java.util.UUID;
 public class TenantInterceptor implements HandlerInterceptor {
 
     private final AuthGateway authGateway;
-    private final JdbcTemplate jdbcTemplate;
+    private final TenantMembershipRepository membershipRepository;
 
-    public TenantInterceptor(AuthGateway authGateway, JdbcTemplate jdbcTemplate) {
+    public TenantInterceptor(AuthGateway authGateway, TenantMembershipRepository membershipRepository) {
         this.authGateway = authGateway;
-        this.jdbcTemplate = jdbcTemplate;
+        this.membershipRepository = membershipRepository;
     }
 
     @Override
@@ -45,7 +44,7 @@ public class TenantInterceptor implements HandlerInterceptor {
         }
 
         UUID userId = authGateway.getCurrentUserId();
-        if (!userBelongsToTenant(userId, tenantId)) {
+        if (!membershipRepository.userBelongsToTenant(userId, tenantId)) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "Acesso ao condomínio negado");
             return false;
         }
@@ -57,21 +56,5 @@ public class TenantInterceptor implements HandlerInterceptor {
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
         TenantContext.clear();
-    }
-
-    private boolean userBelongsToTenant(UUID userId, UUID tenantId) {
-        Boolean result = jdbcTemplate.queryForObject("""
-                SELECT EXISTS (
-                    SELECT 1 FROM condominium_admin
-                    WHERE user_id = ? AND condominium_id = ? AND revoked_at IS NULL
-                ) OR EXISTS (
-                    SELECT 1 FROM apartment_resident
-                    WHERE user_id = ? AND condominium_id = ? AND ended_at IS NULL
-                )
-                """,
-                Boolean.class,
-                userId, tenantId,
-                userId, tenantId);
-        return Boolean.TRUE.equals(result);
     }
 }

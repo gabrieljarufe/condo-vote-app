@@ -5,3 +5,4 @@ target/
 .git/
 Dockerfile
 *.iml
+src/test/

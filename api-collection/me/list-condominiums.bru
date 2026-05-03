@@ -1,0 +1,23 @@
+meta {
+  name: List My Condominiums
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/api/me/condominiums
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+headers {
+  ~X-Tenant-Id: <condominium-uuid>
+}
+
+assert {
+  res.status: eq 200
+}

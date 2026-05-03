@@ -162,14 +162,14 @@ oci network security-list update \
 
 ## Bruno API Collection
 
-A collection está em `condo-vote/` na raiz do repo. Abrir no Bruno Desktop: File → Open Collection → selecionar a pasta `condo-vote/`.
+A collection está em `api-collection/` na raiz do repo. Abrir no Bruno Desktop: File → Open Collection → selecionar a pasta `api-collection/`.
 
 ### Setup inicial
 ```bash
-# Copiar template de secrets e preencher SUPABASE_ANON_KEY
-cp condo-vote/.env.example condo-vote/.env
+# Criar environment local a partir do template
+cp api-collection/environments/environment.bru.example api-collection/environments/local.bru
 
-# Obter o SUPABASE_ANON_KEY local
+# Obter a supabase_anon_key local e preencher no local.bru
 cd infra/supabase && supabase status | grep "anon key"
 ```
 
@@ -179,7 +179,7 @@ cd infra/supabase && supabase status | grep "anon key"
 3. Executar qualquer endpoint autenticado
 
 ### Convenção obrigatória
-**Toda nova rota adicionada ao backend requer um arquivo `.bru` correspondente** na pasta de feature correta dentro de `condo-vote/`. O PR não deve ser mergeado sem o `.bru` da nova rota. Estrutura de pastas espelha o módulo do backend (ex: rotas de `poll` → `condo-vote/poll/`).
+**Toda nova rota adicionada ao backend requer um arquivo `.bru` correspondente** na pasta de feature correta dentro de `api-collection/`. O PR não deve ser mergeado sem o `.bru` da nova rota. Estrutura de pastas espelha o módulo do backend (ex: rotas de `poll` → `api-collection/poll/`).
 
 ---
 

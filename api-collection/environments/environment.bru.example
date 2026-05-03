@@ -1,0 +1,13 @@
+vars {
+  base_url: http://localhost:8080
+  supabase_url: http://localhost:54321
+  supabase_anon_key: <supabase-anon-key>
+  access_token:
+  test_email: <email-do-usuario-de-teste>
+  test_password: <senha-do-usuario-de-teste>
+}
+
+vars:secret [
+  supabase_anon_key,
+  access_token
+]

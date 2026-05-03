@@ -231,6 +231,23 @@ A criação de um novo condomínio + seu primeiro síndico é feita via **migrat
    O script usa a mesma CPF_ENCRYPTION_KEY da prod
    (lida de um cofre — 1Password/Bitwarden; nunca committar a chave).
 
+2.5. Operador gera o UUID v7 offline para o condomínio (placeholder
+     <uuid_v7_gerado_offline> no SQL abaixo). Padrão do projeto: toda
+     PK UUID é v7. Postgres não tem função nativa de v7 (pg18 em diante),
+     então a geração é offline.
+
+     Ferramentas:
+       - Web: https://www.uuidgenerator.net/version7
+       - CLI: python3 -c "import uuid; print(uuid.uuid7())"  (Python 3.14+)
+       - npm:  npx uuidv7
+       - Java: utilitário com lib uuid-creator ou java-uuid-generator
+
+     O UUID do síndico (<uuid_do_passo_1>) é gerado pelo Supabase Auth
+     no passo 1 — esse permanece v4 (única exceção ao padrão v7 do projeto;
+     app_user.id herda do Supabase).
+
+     Ver docs/data-model.md seção "UUID v7 como padrão do projeto".
+
 3. Operador cria o arquivo de migration no repo:
 
    src/main/resources/db/migration/
@@ -247,7 +264,7 @@ A criação de um novo condomínio + seu primeiro síndico é feita via **migrat
    -- Autorizado por: <operador>, em <data>
 
    INSERT INTO condominium (id, name, address) VALUES
-     ('<uuid_gerado_offline>', 'Condomínio Piloto', 'Rua X, 123');
+     ('<uuid_v7_gerado_offline>', 'Condomínio Piloto', 'Rua X, 123');
 
    INSERT INTO app_user (
      id, name, email, cpf_encrypted,
@@ -352,7 +369,7 @@ O data model usa RLS com `SET LOCAL app.current_tenant`. Isso implica:
 |---------|---------|---------------|
 | Arquitetura geral | **Monolito modular** | Um artefato Spring Boot com módulos bem separados (`auth/`, `poll/`, `apartment/`, `notification/`, `shared/`). Microserviços é overhead injustificável para 2-3 devs e 3 meses. A "peça de User/Email" virou módulo interno (`auth/`) — com Supabase Auth, restam apenas ~4-5 classes (AuthGateway, RegisterController, RegisterService, app_user CRUD). Não justifica serviço separado. Fronteira de módulo permite extração futura sem reescrita |
 | Estrutura de packages | **Package by feature + DDD-lite** | Cada módulo contém seu controller, service, repository, DTOs. Entities têm comportamento (não anêmicas): `poll.canBeOpened()`, `poll.isQuorumReached()`. Controllers são finos (valida → service → response). Services orquestram (chamam entity methods + repositories + outros services). Sem maquinaria formal de DDD (sem aggregate roots, domain events, bounded contexts, specification pattern). Estrutura: `auth/`, `poll/`, `apartment/`, `condominium/`, `notification/`, `shared/` |
-| Estratégia de RLS no app | **Interceptor + @Transactional** | `HandlerInterceptor` extrai `X-Tenant-Id` do header e guarda em `TenantContext` (ThreadLocal). Um `TransactionInterceptor` customizado (AOP) executa `SET LOCAL app.current_tenant = :id` no início de cada transação. Para operações **cross-tenant** (ex: listar condomínios do user), o controller não envia `X-Tenant-Id` e o interceptor não seta tenant — a query roda sem RLS filtering. Ver detalhamento abaixo |
+| Estratégia de RLS no app | **Interceptor + @Transactional** | `HandlerInterceptor` extrai `X-Tenant-Id` do header e guarda em `TenantContext` (ThreadLocal). `TenantTransactionAspect` (AOP `@Around`) executa `set_config('app.current_tenant', tenant, true)` — equivalente a `SET LOCAL` — no início de cada transação. `@EnableTransactionManagement(order=0)` garante que o proxy `@Transactional` abre a TX antes do aspecto rodar, pré-requisito para `SET LOCAL` ter efeito. Para operações **cross-tenant** (ex: listar condomínios do user), o controller não envia `X-Tenant-Id` e o interceptor não seta tenant — a query roda sem RLS filtering. Ver detalhamento abaixo |
 | Estratégia de validação | **Bean Validation + @ControllerAdvice** | DTOs de entrada usam `@Valid` com annotations (`@NotBlank`, `@Size`, `@Email`). Regras de domínio vivem no Service (ex: "mínimo 2 opções por poll", "user é síndico deste condo"). `@RestControllerAdvice` global mapeia exceções para HTTP: `ConstraintViolationException` → 400, `DataIntegrityViolationException` (voto duplicado) → 409, `ForbiddenException` (custom) → 403, `NotFoundException` (custom) → 404 |
 
 ### Detalhamento: Estratégia de RLS no app
@@ -422,7 +439,7 @@ src/main/java/com/condovote/
 ├── poll/                         ← votações
 │   ├── PollController.java           thin: valida input, chama service
 │   ├── PollService.java              orquestra: cria poll, abre, fecha, gera snapshot
-│   ├── PollRepository.java           interface Spring Data
+│   ├── PollRepository.java           interface Spring Data JDBC (extends CrudRepository)
 │   ├── Poll.java                     entity com comportamento:
 │   │                                   poll.canBeOpened()
 │   │                                   poll.isQuorumReached(snapshotCount)
@@ -447,7 +464,7 @@ src/main/java/com/condovote/
 │   ├── InvitationController.java
 │   ├── InvitationService.java        orquestra: cria, reenvia, expira, valida token
 │   ├── Invitation.java               entity: inv.accept(), inv.revoke(userId), inv.isExpired()
-│   ├── InvitationRepository.java
+│   ├── InvitationRepository.java     interface Spring Data JDBC (extends CrudRepository)
 │   └── dto/
 ├── notification/                 ← email outbox
 │   ├── EmailNotificationService.java  enfileira emails na mesma transação
@@ -473,7 +490,9 @@ src/main/java/com/condovote/
 - Services orquestram: chamam entity methods → repositories → outros services
 - Controllers são finos: deserializa → `@Valid` → service → serializa
 - Comunicação entre módulos é direta (service chama service), sem event bus
-- DTOs de request/response nunca são a entity JPA
+- DTOs de request/response nunca são a entity de persistência
+
+Detalhes de implementação (assinaturas de Repository, mapeamento, naming, testes) vivem em [`docs/coding-patterns.md`](coding-patterns.md).
 
 ### Endpoints de ação do síndico (não cobertos nos jobs)
 
@@ -587,39 +606,46 @@ O data model está definido em Markdown. Como vira schema real?
 └────────────────────────────────────────────────────────────┘
 ```
 
+### Role do backend e service_role
+
+O backend conecta ao Postgres do Supabase como role **`postgres`**. No Supabase Cloud, `postgres` **não tem `BYPASSRLS`** — portanto as políticas RLS se aplicam também a queries do backend. É por isso que o `TenantInterceptor` + `SET LOCAL app.current_tenant` é obrigatório: sem ele, as queries do backend retornam 0 linhas.
+
+A variável de ambiente `SUPABASE_SERVICE_ROLE_KEY` está disponível (configurada no Coolify), mas **não é usada na v1**. Está reservada para operações administrativas futuras que precisem contornar RLS — por exemplo, bootstrap de condomínio via job ou queries cross-tenant sem contexto de tenant. Na v1, todas as queries cross-tenant rodam como `postgres` com filtros explícitos (`WHERE user_id = :userId`), sem `SET LOCAL` e sem `service_role`.
+
 ### Flyway + Supabase: como funciona
 
-Flyway conecta direto no Postgres do Supabase (connection string do Dashboard). As migrations são SQL puro:
+Flyway conecta direto no Postgres do Supabase (connection string do Dashboard). As migrations são SQL puro versionado em `backend/src/main/resources/db/migration/` — agrupadas por domínio em vez de uma migration por tabela, para reduzir overhead de versão (V1–V10 hoje cobrem todo o schema v1):
 
 ```
-src/main/resources/db/migration/
-├── V1__create_enums.sql              ← resident_role, poll_status, etc.
-├── V2__create_condominium.sql        ← tabela + RLS policy
-├── V3__create_apartment.sql          ← tabela + RLS + índice funcional UNIQUE
-├── V4__create_app_user.sql           ← tabela (sem RLS — cross-tenant)
-├── V5__create_apartment_resident.sql ← tabela + RLS + constraints
-├── V6__create_invitation.sql         ← tabela + RLS + CHECK + índice parcial
-├── V7__create_poll.sql               ← tabela + RLS + lifecycle constraints
-├── V8__create_poll_option.sql
-├── V9__create_vote.sql               ← tabela + RLS + UNIQUE (poll_id, apartment_id), imutável
-├── V10__create_poll_eligible_snapshot.sql
-├── V11__create_poll_result.sql
-├── V12__create_audit_event.sql
-├── V13__create_email_notification.sql
-└── R__seed_dev_data.sql              ← repeatable migration (só roda em profile local)
+backend/src/main/resources/db/migration/
+├── V1__enums.sql                     ← todos os enums (resident_role, poll_status, …) + extensão pgcrypto
+├── V2__condominium.sql
+├── V3__app_user.sql                  ← sem RLS (cross-tenant)
+├── V4__apartment_and_residents.sql   ← apartment + apartment_resident
+├── V5__condominium_admin.sql
+├── V6__invitation.sql
+├── V7__poll_domain.sql               ← poll, poll_option, poll_eligible_snapshot, vote, poll_result
+├── V8__audit_and_notifications.sql   ← audit_event + email_notification
+├── V9__rls_policies.sql              ← ENABLE RLS + policies em todas as tabelas com condominium_id
+└── V10__composite_foreign_keys.sql   ← FKs compostas para reforçar tenant integrity
+
+backend/src/main/resources/db/seed/
+└── R__seed_dev.sql                   ← repeatable; só roda em profile local (locations inclui db/seed)
 ```
 
-Cada migration inclui a RLS policy da tabela:
+> **Detalhamento completo:** `docs/context-docs/flyway-migrations.md` cobre o ciclo de vida das migrations, semântica de checksum, integração com Spring Boot e particularidades do projeto (UUID v7 sem `DEFAULT`, RLS na mesma migration, `auth.*` fora do Flyway).
+
+V9 agrupa todas as policies RLS em vez de espalhar uma por arquivo:
 
 ```sql
--- V2__create_condominium.sql
-CREATE TABLE condominium (...);
+-- V9__rls_policies.sql (extrato)
+ALTER TABLE condominium_admin ENABLE ROW LEVEL SECURITY;
 
-ALTER TABLE condominium ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY tenant_isolation ON condominium
-    USING (id = current_setting('app.current_tenant')::uuid);
+CREATE POLICY tenant_isolation ON condominium_admin
+    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 ```
+
+O `(SELECT current_setting(...))` força o Postgres a usar um InitPlan — função avaliada uma vez por query em vez de uma vez por linha. Elimina o warning `auth_rls_initplan` do Supabase linter (ver `docs/analysis/2026-04-27-supabase-linter-rls-warnings.md`).
 
 ### Convenções de numeração de migrations
 
@@ -1198,6 +1224,22 @@ Domínio de produção: **`condovote.com.br`**. Zona registrada no Cloudflare (D
 | Auditoria | **Tabela `audit_event` (append-only)** | Já definida no data model. Todas as ações de síndico (criar poll, cancelar, convidar, remover morador) geram um INSERT na mesma transação. Não é event sourcing — é log append-only para rastreabilidade. Campos: `event_type`, `actor_user_id`, `target_entity`, `payload` (JSONB) |
 | TLS termination | **Cloudflare edge + origin re-encryption** | Cloudflare termina TLS no edge (cert gerenciado). Backend: Caddy (Coolify) re-termina com Let's Encrypt → modo **Full (strict)**. Frontend: Cloudflare Pages gerencia TLS nativamente. Comunicação Angular (Pages) → Spring (Oracle/Coolify) → Supabase é sempre HTTPS ponta a ponta |
 | Headers de segurança | **Spring Security defaults + customização** | `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Strict-Transport-Security`. CSP básico. Configurado em `SecurityConfig` |
+
+### Por que algumas tabelas não têm RLS
+
+As tabelas `app_user`, `condominium`, `email_notification` e `poll_option` (além de `flyway_schema_history`, operacional) **não têm RLS habilitada**. Esta é uma decisão arquitetural consciente, não omissão.
+
+**Fronteira externa — Data API desabilitada:** a Data API do Supabase (PostgREST) está desabilitada neste projeto (Dashboard → Settings → API → "Data API" off). Nenhum cliente externo consegue acessar `/rest/v1/*` para nenhuma tabela do schema `public`. Sem PostgREST, não há vetor de acesso externo direto ao banco.
+
+**Fronteira interna — backend é o único caminho:** o backend conecta direto via JDBC como role `postgres`. Todas as queries nessas tabelas são controladas pelo código do Spring Boot, com filtros explícitos (`WHERE user_id = :userId`, `WHERE id = :condominiumId`). Não há caminho de query que não passe pelo código da aplicação.
+
+**Trade-off considerado:** habilitar RLS nessas tabelas exigiria policies fictícias (`USING (true)`) ou roles separadas — custo arquitetural alto para ganho zero enquanto a Data API estiver desabilitada.
+
+**Pré-condição reversível:** se a Data API for habilitada no futuro (ex: Realtime queries de frontend na v2), revisar antes de ativar. Caminhos viáveis:
+- Opção A: revogar grants em `public.*` para `anon`/`authenticated`
+- Opção B: adicionar RLS defensiva nessas 4 tabelas
+
+Ver análise completa em `docs/analysis/2026-04-27-supabase-linter-rls-warnings.md` §2.
 
 ### Detalhamento: Rate limiting com Bucket4j
 

@@ -1,0 +1,8 @@
+target/
+.idea/
+*.md
+.env*
+.git/
+Dockerfile
+*.iml
+src/test/

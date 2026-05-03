@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Estado atual do projeto
 
-Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.6 concluídas.
+Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.7 concluídas e validadas manualmente.
 
 **Concluído até agora:**
 - Fase 2 completa: Setup Flyway (T2.1), V1–V10 migrations (T2.2–T2.11), seed dev (T2.12), RlsIsolationIT (T2.13), reescrita V9 com `auth_rls_initplan` (T2.14–T2.19). Issues #1–#4 da análise de escala aplicadas; Issue #5 adiada.
@@ -13,8 +13,17 @@ Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.6
 - T3.3 — `AuthGateway` interface + `SupabaseAuthGateway` (extrai `sub` e `email` do JWT)
 - T3.4 — `TenantContext` (ThreadLocal), `TenantInterceptor` (valida `X-Tenant-Id` + pertencimento), `TenantTransactionAspect` (`set_config` via AOP), `WebMvcConfig` (`@EnableTransactionManagement(order=0)` + registro do interceptor). 14 testes (10 unit + 4 IT).
 - T3.5 — `GlobalExceptionHandler` (`@RestControllerAdvice`): `ForbiddenException` → 403, `NotFoundException` → 404, `DataIntegrityViolationException` → 409, `MethodArgumentNotValidException` → 400 com lista de campos, fallback `Exception` → 500 sem stacktrace. `ApiError` record `{code, message, details?, timestamp}`. 6 testes unitários via `standaloneSetup`.
-- T3.6 — `GET /api/me/condominiums`: `CondominiumController` (thin) + `CondominiumService` (query UNION cross-tenant via JdbcTemplate) + `CondominiumSummary` record + `UserRoleInCondo` enum (ADMIN/OWNER/TENANT/MULTIPLE). 13 testes (3 unit + 10 IT).
+- T3.6 — `GET /api/me/condominiums`: `CondominiumController` (thin) + `CondominiumService` (query UNION cross-tenant) + `CondominiumSummary` record + `UserRoleInCondo` enum (ADMIN/OWNER/TENANT/MULTIPLE). 13 testes (3 unit + 10 IT). Refatorado: `Condominium` aggregate root + `CondominiumRepository` (Spring Data JDBC, `@Query` UNION). `TenantInterceptor` refatorado para `TenantMembershipRepository`. Starter JPA → JDBC; `TenantTransactionAspect` usa `JdbcTemplate`.
 - T3.7 — `backend/Dockerfile` multi-stage (eclipse-temurin:21-jdk build → eclipse-temurin:21-jre runtime) + `backend/.dockerignore`. Build e smoke test `/actuator/health` → `{"status":"UP"}` validados.
+
+**Correções aplicadas pós-validação manual (2026-05-01):**
+- `pom.xml` — Surefire configurado para incluir `**/*IT.java` no scan; sem isso `./mvnw test -Dgroups="integration"` retornava 0 testes
+- `application.yaml` + `application-local.yaml` — adicionado `jws-algorithms: ES256`; sem isso Spring Boot rejeitava tokens Supabase (ES256/ECDSA) com "Another algorithm expected"
+- `infra/supabase/supabase/seed.sql` — corrigido: adicionado INSERT em `auth.identities` (obrigatório para GoTrue autenticar) e token columns como `''` em vez de NULL (`confirmation_token`, `recovery_token`, `email_change`, etc.)
+
+**Documentação criada:**
+- `docs/runbooks/validate-fase-3.md` — runbook completo de validação manual T3.1–T3.9
+- `docs/context-docs/auth-flow.md` — fluxo de autenticação/autorização, GoTrue, JWT algorithms, JWKS
 
 **Adicionados ao longo das fases:** `UuidV7.java` (RFC 9562), `AbstractIntegrationTest` (Singleton Testcontainers), `RlsIsolationIT` (3 cenários RLS).
 
@@ -31,6 +40,7 @@ Toda a documentação é escrita em **português** — mantenha o idioma ao edit
 | `docs/condo-vote-principles.md` | Spec de produto. Fonte da verdade para **regras de negócio, atores, ciclo de vida de votações, quórum, LGPD** |
 | `docs/data-model.md` | ERD, enums PostgreSQL, tabelas, índices e política de RLS. Fonte para **schema do banco** |
 | `docs/architecture.md` | Decisões arquiteturais — **todas as 10 seções preenchidas**: auth (Supabase), backend (monolito modular DDD-lite), banco (Supabase Postgres + Flyway), jobs (@Scheduled), e-mail (Resend + outbox), frontend↔backend (REST + springdoc), infra (Oracle Cloud + Coolify + Cloudflare DNS/Pages + Upstash + GHCR + GitHub Actions), segurança (Bucket4j, AES-256-SIV, audit_event), observabilidade (JSON logging + Actuator + UptimeRobot) |
+| `docs/coding-patterns.md` | **Como implementar**: Controller→Service→Repository, Spring Data JDBC, aggregates, DTOs, testes, naming — backend + frontend |
 
 Ao responder perguntas sobre o domínio, **leia a spec** antes de deduzir — ela é detalhada e já cobriu muitos edge cases.
 
@@ -83,6 +93,16 @@ cd backend && ./mvnw verify
 
 # Build Docker (em fase 3)
 cd backend && ./mvnw package -DskipTests && docker build -t condo-vote-backend .
+
+# Subir backend em container, conectando ao Supabase CLI já rodando
+# Pré-condição: supabase start deve estar rodando (portas 54321/54322 publicadas no host)
+docker compose up --build backend
+
+# Logs
+docker compose logs -f backend
+
+# Derrubar
+docker compose down
 ```
 
 ### Frontend
@@ -139,6 +159,29 @@ oci network security-list update \
 - **Webhook GitHub App:** `https://coolify.condovote.com.br`
 - **Porta 8000 NÃO está aberta na OCI Security List** — acesso direto só funciona via Tailscale.
 
+
+## Bruno API Collection
+
+A collection está em `condo-vote/` na raiz do repo. Abrir no Bruno Desktop: File → Open Collection → selecionar a pasta `condo-vote/`.
+
+### Setup inicial
+```bash
+# Copiar template de secrets e preencher SUPABASE_ANON_KEY
+cp condo-vote/.env.example condo-vote/.env
+
+# Obter o SUPABASE_ANON_KEY local
+cd infra/supabase && supabase status | grep "anon key"
+```
+
+### Fluxo de uso
+1. Selecionar ambiente `local` ou `prod`
+2. Executar `auth / Get Access Token` — o script salva o token automaticamente em `access_token`
+3. Executar qualquer endpoint autenticado
+
+### Convenção obrigatória
+**Toda nova rota adicionada ao backend requer um arquivo `.bru` correspondente** na pasta de feature correta dentro de `condo-vote/`. O PR não deve ser mergeado sem o `.bru` da nova rota. Estrutura de pastas espelha o módulo do backend (ex: rotas de `poll` → `condo-vote/poll/`).
+
+---
 
 ## Decisões arquiteturais chave (resumo rápido)
 

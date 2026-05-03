@@ -4,6 +4,12 @@
 
 **Pré-requisitos:** Fase 2 (migrations aplicáveis local e remoto).
 
+## Patterns de implementação
+
+Antes de escrever qualquer classe Java, consulte **[`docs/coding-patterns.md`](../../coding-patterns.md)**. Define Controller → Service → Repository, Spring Data JDBC, aggregates, DTOs, testes e naming para este projeto.
+
+---
+
 ## Docs de referência (Context7)
 
 | Biblioteca | ID Context7 |

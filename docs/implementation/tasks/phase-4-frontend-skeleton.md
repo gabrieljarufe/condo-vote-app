@@ -4,6 +4,10 @@
 
 **Pré-requisitos:** Fase 3 (backend deployado, endpoint `/api/me/condominiums` responde).
 
+## Patterns de implementação
+
+Antes de escrever qualquer componente Angular, consulte **[`docs/coding-patterns.md`](../../coding-patterns.md)** seção "Frontend (Angular 20+)". Define standalone components, signals, services, interceptors, estrutura de pastas e TypeScript strict.
+
 ---
 
 ## T4.1 — Projeto Angular

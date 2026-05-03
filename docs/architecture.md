@@ -439,7 +439,7 @@ src/main/java/com/condovote/
 ├── poll/                         ← votações
 │   ├── PollController.java           thin: valida input, chama service
 │   ├── PollService.java              orquestra: cria poll, abre, fecha, gera snapshot
-│   ├── PollRepository.java           interface Spring Data
+│   ├── PollRepository.java           interface Spring Data JDBC (extends CrudRepository)
 │   ├── Poll.java                     entity com comportamento:
 │   │                                   poll.canBeOpened()
 │   │                                   poll.isQuorumReached(snapshotCount)
@@ -464,7 +464,7 @@ src/main/java/com/condovote/
 │   ├── InvitationController.java
 │   ├── InvitationService.java        orquestra: cria, reenvia, expira, valida token
 │   ├── Invitation.java               entity: inv.accept(), inv.revoke(userId), inv.isExpired()
-│   ├── InvitationRepository.java
+│   ├── InvitationRepository.java     interface Spring Data JDBC (extends CrudRepository)
 │   └── dto/
 ├── notification/                 ← email outbox
 │   ├── EmailNotificationService.java  enfileira emails na mesma transação
@@ -490,7 +490,9 @@ src/main/java/com/condovote/
 - Services orquestram: chamam entity methods → repositories → outros services
 - Controllers são finos: deserializa → `@Valid` → service → serializa
 - Comunicação entre módulos é direta (service chama service), sem event bus
-- DTOs de request/response nunca são a entity JPA
+- DTOs de request/response nunca são a entity de persistência
+
+Detalhes de implementação (assinaturas de Repository, mapeamento, naming, testes) vivem em [`docs/coding-patterns.md`](coding-patterns.md).
 
 ### Endpoints de ação do síndico (não cobertos nos jobs)
 

@@ -8,30 +8,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class TenantInterceptorTest {
 
     @Mock AuthGateway authGateway;
-    @Mock JdbcTemplate jdbcTemplate;
+    @Mock TenantMembershipRepository membershipRepository;
 
     TenantInterceptor interceptor;
     MockHttpServletRequest request;
@@ -42,7 +37,7 @@ class TenantInterceptorTest {
 
     @BeforeEach
     void setUp() {
-        interceptor = new TenantInterceptor(authGateway, jdbcTemplate);
+        interceptor = new TenantInterceptor(authGateway, membershipRepository);
         request = new MockHttpServletRequest();
         response = new MockHttpServletResponse();
     }
@@ -89,8 +84,7 @@ class TenantInterceptorTest {
         request.addHeader("X-Tenant-Id", tenantId.toString());
         setupJwtAuth();
         when(authGateway.getCurrentUserId()).thenReturn(userId);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), any(), any(), any(), any()))
-                .thenReturn(false);
+        when(membershipRepository.userBelongsToTenant(userId, tenantId)).thenReturn(false);
 
         boolean result = interceptor.preHandle(request, response, null);
 
@@ -104,8 +98,7 @@ class TenantInterceptorTest {
         request.addHeader("X-Tenant-Id", tenantId.toString());
         setupJwtAuth();
         when(authGateway.getCurrentUserId()).thenReturn(userId);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), any(), any(), any(), any()))
-                .thenReturn(true);
+        when(membershipRepository.userBelongsToTenant(userId, tenantId)).thenReturn(true);
 
         boolean result = interceptor.preHandle(request, response, null);
 
@@ -150,8 +143,7 @@ class TenantInterceptorTest {
         request.addHeader("X-Tenant-Id", "  " + tenantId + "  ");
         setupJwtAuth();
         when(authGateway.getCurrentUserId()).thenReturn(userId);
-        when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), any(), any(), any(), any()))
-                .thenReturn(true);
+        when(membershipRepository.userBelongsToTenant(userId, tenantId)).thenReturn(true);
 
         boolean result = interceptor.preHandle(request, response, null);
 

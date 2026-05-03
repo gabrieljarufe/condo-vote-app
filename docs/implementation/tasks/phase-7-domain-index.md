@@ -4,6 +4,8 @@
 
 **Pré-requisitos:** Fases 0–6 completas (walking skeleton verde ponta-a-ponta: backend deployado, migrations aplicadas, auth ligada, CI/CD verde, observabilidade ativa).
 
+> Antes de iniciar qualquer feature, consulte **[`docs/coding-patterns.md`](../../coding-patterns.md)**. Cada feature segue o padrão Controller → Service → Repository (Spring Data JDBC). SQL nunca sai da camada Repository; aggregates têm métodos de negócio; Services orquestram. Padrões de testes, naming e multi-tenant estão documentados lá.
+
 ---
 
 ## Features (ordem sugerida de implementação)

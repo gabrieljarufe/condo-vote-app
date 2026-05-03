@@ -25,6 +25,12 @@ Roadmap executável derivado de [`../plan.md`](../plan.md). Cada arquivo abaixo 
 
 **Total:** 44 tasks de fundação (Fases 0–6) + 8 features de domínio indexadas (Fase 7), ~10–14 dias úteis de trabalho focado para fundação.
 
+## Patterns de implementação
+
+Antes de escrever qualquer código (backend ou frontend), consulte **[`docs/coding-patterns.md`](../../coding-patterns.md)**. Ele define Controller → Service → Repository, Spring Data JDBC, aggregates, DTOs, testes e naming. Decisões de arquitetura vivem em `architecture.md`; como traduzir essas decisões em código vive no coding-patterns.
+
+---
+
 ## Convenções
 
 - **Branch por task ou grupo coeso:** `feature/t2.5-apartment-residents-migration`

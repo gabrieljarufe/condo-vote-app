@@ -2,47 +2,33 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Estado atual do projeto
+## Estado atual
 
-Fase 2 (Schema e Migrations) **concluída**. Fase 3 em andamento — T3.1–T3.7 concluídas e validadas manualmente.
+**Progresso por fase + descobertas não-óbvias:** [`docs/STATUS.md`](docs/STATUS.md).
 
-**Concluído até agora:**
-- Fase 2 completa: Setup Flyway (T2.1), V1–V10 migrations (T2.2–T2.11), seed dev (T2.12), RlsIsolationIT (T2.13), reescrita V9 com `auth_rls_initplan` (T2.14–T2.19). Issues #1–#4 da análise de escala aplicadas; Issue #5 adiada.
-- T3.1 — Scaffold Spring Boot 4 + dependências completas (Web, JPA, Security, OAuth2 Resource Server, Flyway, Actuator, springdoc, lettuce)
-- T3.2 — `SecurityConfig`: JWKS Supabase, `/actuator/health` + `/v3/api-docs/**` + `/swagger-ui/**` públicos, `/api/**` exige JWT, CORS, HSTS, CSRF off
-- T3.3 — `AuthGateway` interface + `SupabaseAuthGateway` (extrai `sub` e `email` do JWT)
-- T3.4 — `TenantContext` (ThreadLocal), `TenantInterceptor` (valida `X-Tenant-Id` + pertencimento), `TenantTransactionAspect` (`set_config` via AOP), `WebMvcConfig` (`@EnableTransactionManagement(order=0)` + registro do interceptor). 14 testes (10 unit + 4 IT).
-- T3.5 — `GlobalExceptionHandler` (`@RestControllerAdvice`): `ForbiddenException` → 403, `NotFoundException` → 404, `DataIntegrityViolationException` → 409, `MethodArgumentNotValidException` → 400 com lista de campos, fallback `Exception` → 500 sem stacktrace. `ApiError` record `{code, message, details?, timestamp}`. 6 testes unitários via `standaloneSetup`.
-- T3.6 — `GET /api/me/condominiums`: `CondominiumController` (thin) + `CondominiumService` (query UNION cross-tenant) + `CondominiumSummary` record + `UserRoleInCondo` enum (ADMIN/OWNER/TENANT/MULTIPLE). 13 testes (3 unit + 10 IT). Refatorado: `Condominium` aggregate root + `CondominiumRepository` (Spring Data JDBC, `@Query` UNION). `TenantInterceptor` refatorado para `TenantMembershipRepository`. Starter JPA → JDBC; `TenantTransactionAspect` usa `JdbcTemplate`.
-- T3.7 — `backend/Dockerfile` multi-stage (eclipse-temurin:21-jdk build → eclipse-temurin:21-jre runtime) + `backend/.dockerignore`. Build e smoke test `/actuator/health` → `{"status":"UP"}` validados.
+Metodologia: **Spec-Driven Development** (Specify → Plan → Tasks → Implement).
+Specify/Plan/Tasks estão concluídos; fase atual: **Implement**.
 
-**Correções aplicadas pós-validação manual (2026-05-01):**
-- `pom.xml` — Surefire configurado para incluir `**/*IT.java` no scan; sem isso `./mvnw test -Dgroups="integration"` retornava 0 testes
-- `application.yaml` + `application-local.yaml` — adicionado `jws-algorithms: ES256`; sem isso Spring Boot rejeitava tokens Supabase (ES256/ECDSA) com "Another algorithm expected"
-- `infra/supabase/supabase/seed.sql` — corrigido: adicionado INSERT em `auth.identities` (obrigatório para GoTrue autenticar) e token columns como `''` em vez de NULL (`confirmation_token`, `recovery_token`, `email_change`, etc.)
-
-**Documentação criada:**
-- `docs/runbooks/validate-fase-3.md` — runbook completo de validação manual T3.1–T3.9
-- `docs/context-docs/auth-flow.md` — fluxo de autenticação/autorização, GoTrue, JWT algorithms, JWKS
-
-**Adicionados ao longo das fases:** `UuidV7.java` (RFC 9562), `AbstractIntegrationTest` (Singleton Testcontainers), `RlsIsolationIT` (3 cenários RLS).
-
-**Próximo passo:** T3.8 — Deploy Coolify (confirmar que Dockerfile é detectado e build ocorre).
-
-Metodologia adotada: **Spec-Driven Development** (Specify → Plan → Tasks → Implement). As fases **Specify**, **Plan** e **Tasks** estão concluídas. Fase atual: **Implement** (Fases 2–6 das tasks).
-
-Toda a documentação é escrita em **português** — mantenha o idioma ao editar docs existentes ou criar novos.
+Toda a documentação é em **português** — mantenha o idioma ao editar.
 
 ## Docs canônicos (onde as decisões vivem)
 
 | Arquivo | Propósito |
-|---------|-----------|
-| `docs/condo-vote-principles.md` | Spec de produto. Fonte da verdade para **regras de negócio, atores, ciclo de vida de votações, quórum, LGPD** |
-| `docs/data-model.md` | ERD, enums PostgreSQL, tabelas, índices e política de RLS. Fonte para **schema do banco** |
-| `docs/architecture.md` | Decisões arquiteturais — **todas as 10 seções preenchidas**: auth (Supabase), backend (monolito modular DDD-lite), banco (Supabase Postgres + Flyway), jobs (@Scheduled), e-mail (Resend + outbox), frontend↔backend (REST + springdoc), infra (Oracle Cloud + Coolify + Cloudflare DNS/Pages + Upstash + GHCR + GitHub Actions), segurança (Bucket4j, AES-256-SIV, audit_event), observabilidade (JSON logging + Actuator + UptimeRobot) |
-| `docs/coding-patterns.md` | **Como implementar**: Controller→Service→Repository, Spring Data JDBC, aggregates, DTOs, testes, naming — backend + frontend |
+|---|---|
+| `docs/condo-vote-principles.md` | Spec de produto — atores, ciclo de votação, quórum, LGPD |
+| `docs/data-model.md` | ERD, enums, tabelas, índices, política de RLS |
+| `docs/architecture.md` | Decisões arquiteturais (10 seções: auth, backend, banco, jobs, e-mail, infra, segurança, observabilidade) |
+| `docs/coding-patterns.md` | Como implementar — Controller→Service→Repository, Spring Data JDBC, aggregates, DTOs, testes |
 
-Ao responder perguntas sobre o domínio, **leia a spec** antes de deduzir — ela é detalhada e já cobriu muitos edge cases.
+Ao responder sobre o domínio, **leia a spec** antes de deduzir — cobre muitos edge cases.
+
+### Docs contextuais (leitura sob demanda)
+
+| Arquivo | Quando ler |
+|---|---|
+| `docs/context-docs/auth-flow.md` | Mexendo em SecurityConfig, JWT, GoTrue, JWKS |
+| `docs/context-docs/flyway-migrations.md` | Criando/editando migration, debug de checksum, bootstrap |
+| `docs/runbooks/validate-fase-3.md` | Validar Fase 3 manualmente (Blocos 1-7) ou rodar T3.8/T3.9 (Bloco 8) |
 
 ## Invariantes do domínio (não-negociáveis)
 
@@ -62,137 +48,40 @@ Estas decisões parecem de implementação mas são **estruturais**. Não mude s
 - **Não invente alternativas ao que já foi decidido.** Exemplo: hosting é Oracle Cloud `us-ashburn-1` + Coolify (backend) + Cloudflare Pages (frontend) + Cloudflare DNS + Upstash (Redis) — não proponha AWS/Render/Railway/Vercel/etc. sem discussão.
 - **Transferência de titularidade** (venda, herança, inquilino comprando): na v1 é tratada via **remoção + convite/promoção** pelo síndico. Fluxo formal (solicitação iniciada pelo proprietário) fica para v2. Ver `condo-vote-principles.md` seção 4 ("Transferência de titularidade") e ponto 4 em "Pontos em Aberto".
 - Ao propor mudanças em regras de negócio, **atualize a spec** — não só o código. A spec é a fonte da verdade.
+- Ao concluir uma task ou descobrir algo não-óbvio, **atualize `docs/STATUS.md`** no mesmo PR — é o índice navegável de progresso.
 
-## Stack decidida (ainda sem código)
+## Stack
 
-| Camada | Tecnologia | Detalhes |
-|--------|-----------|----------|
-| Backend | Java 21 + Spring Boot | Monolito modular, DDD-lite, package by feature |
-| Frontend | Angular | Supabase JS SDK para auth, HttpInterceptor para JWT + X-Tenant-Id |
-| Banco | PostgreSQL (Supabase) + Flyway | RLS por tenant, migrations SQL versionadas |
-| Auth | Supabase Auth | JWT validado via JWKS, AuthGateway abstrai provider |
-| Redis | Upstash | Apenas invitation tokens (24h TTL) |
-| E-mail | Resend + Thymeleaf | Transactional outbox, EmailSender interface |
-| CI/CD | GitHub Actions | test → build → push imagem GHCR → webhook Coolify. Branching: main ← develop ← feature/* |
-| Hosting backend | Oracle Cloud `us-ashburn-1` (VM ARM Ampere A1 Always Free) + Coolify | Dockerfile multi-stage, push-to-deploy via webhook, Caddy + Cloudflare Origin CA |
-| Hosting frontend | Cloudflare Pages | Bandwidth ilimitado, auto-deploy do repo, SPA via `_redirects` |
-| DNS / edge | Cloudflare (free) | Zona `condovote.com.br`; `api.` (proxied) + `app.` (proxied); DDoS, TLS edge |
-| Artefato backend | GitHub Container Registry (GHCR) | Imagem por SHA + `latest`; backup de rollback independente da VM |
+Java 21 + Spring Boot · Angular · PostgreSQL (Supabase) + Flyway · Supabase Auth (JWT/JWKS) ·
+Redis Upstash · Resend + Thymeleaf · Oracle Cloud + Coolify · Cloudflare Pages/DNS · GHCR + GitHub Actions.
+
+Detalhes, justificativas e trade-offs em `docs/architecture.md`.
 
 ## Comandos
 
-Os comandos abaixo serão populados ao longo das fases 0–3.
-
 ### Backend
 ```bash
-# Desenvolvimento (perfil local — usa application-local.yaml + Supabase CLI)
 cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-
-# Testes (unit + integration via Testcontainers)
-cd backend && ./mvnw verify
-
-# Build Docker (Dockerfile multi-stage builda o jar internamente)
+cd backend && ./mvnw verify                           # unit + integration (Testcontainers)
 docker build -t condo-vote-backend ./backend
-
-# Subir backend em container, conectando ao Supabase CLI já rodando
-# Pré-condição: supabase start deve estar rodando (portas 54321/54322 publicadas no host)
-docker compose up --build backend
-
-# Logs
-docker compose logs -f backend
-
-# Derrubar
-docker compose down
+docker compose up --build backend                     # backend container contra Supabase CLI
 ```
 
-### Frontend
+### Frontend (Fase 4)
 ```bash
-# Desenvolvimento (em fase 4)
 cd frontend && npm install && npm start
-
-# Build produção (em fase 4)
 cd frontend && npm run build
 ```
 
 ### Infraestrutura
 ```bash
-# Supabase local (em fase 1)
 cd infra/supabase && supabase start
-
-# Testar migrate Flyway (em fase 2)
 cd backend && ./mvnw flyway:migrate
 ```
 
-> **Bootstrap de condomínio:** criar migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/architecture.md §1` (Bootstrap operacional v1) + runbook em `docs/runbooks/bootstrap-condominio.md` (Fase 6).
-
-### VM Oracle (acesso SSH)
-
-O acesso à VM de produção é via **Tailscale** — obrigatório estar com o cliente Tailscale ativo no Mac.
-
-```bash
-# Conectar na VM (IP Tailscale em docs/private/phase-1-state.md)
-ssh -i ~/.ssh/condo-vote/oracle.key ubuntu@<VM_TAILSCALE_IP>
-
-# Verificar regras de firewall da VM
-ssh -i ~/.ssh/condo-vote/oracle.key ubuntu@<VM_TAILSCALE_IP> "sudo iptables -L INPUT --line-numbers -n"
-
-# Atualizar Security List OCI (ex: após mudar IP Tailscale)
-oci network security-list update \
-  --security-list-id <DEFAULT_SL_OCID> \
-  --ingress-security-rules file://infra/oci/security-list-rules.json \
-  --force
-```
-
-**IPs e OCIDs:** ver `docs/private/phase-1-state.md` (gitignored)
-
-**Chave SSH:** `~/.ssh/condo-vote/oracle.key` — Bitwarden: `condo-vote-oracle-ssh-private-key`
-
-**Security List versionada em:** `infra/oci/security-list-rules.json` — editar e reaplicar via `oci-cli`. Nunca alterar diretamente no console OCI.
-
-**Tutorial completo de SSH:** `docs/runbooks/ssh-vm.md` (gitignored)
-
-### Coolify (painel de deploy)
-
-- **Acesso normal:** `https://coolify.condovote.com.br` (porta 443 → Caddy → Coolify internamente na 8000)
-- **Acesso direto (fallback):** `http://<VM_TAILSCALE_IP>:8000` via Tailscale — bypassa o Caddy, útil se o domínio estiver com problema
-- **Credenciais:** Bitwarden → `condo-vote-coolify-admin`
-- **Webhook GitHub App:** `https://coolify.condovote.com.br`
-- **Porta 8000 NÃO está aberta na OCI Security List** — acesso direto só funciona via Tailscale.
-
-
-## Bruno API Collection
-
-A collection está em `api-collection/` na raiz do repo. Abrir no Bruno Desktop: File → Open Collection → selecionar a pasta `api-collection/`.
-
-### Setup inicial
-```bash
-# Criar environment local a partir do template
-cp api-collection/environments/environment.bru.example api-collection/environments/local.bru
-
-# Obter a supabase_anon_key local e preencher no local.bru
-cd infra/supabase && supabase status | grep "anon key"
-```
-
-### Fluxo de uso
-1. Selecionar ambiente `local` ou `prod`
-2. Executar `auth / Get Access Token` — o script salva o token automaticamente em `access_token`
-3. Executar qualquer endpoint autenticado
-
-### Convenção obrigatória
-**Toda nova rota adicionada ao backend requer um arquivo `.bru` correspondente** na pasta de feature correta dentro de `api-collection/`. O PR não deve ser mergeado sem o `.bru` da nova rota. Estrutura de pastas espelha o módulo do backend (ex: rotas de `poll` → `api-collection/poll/`).
-
----
-
-## Decisões arquiteturais chave (resumo rápido)
-
-Para detalhes completos, ver `docs/architecture.md`. Aqui o mínimo necessário para não errar ao implementar:
-
-- **Auth:** Supabase Auth gerencia signup/login/senhas/refresh. Spring valida JWT via **JWKS** (chaves públicas assimétricas ECC P-256 em `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`, cache local 1h). **Nenhum segredo de JWT no backend** — zero `SUPABASE_JWT_SECRET`; se a VM for comprometida, atacante não consegue forjar tokens. Interface `AuthGateway` abstrai extração de claims. `app_user.id` = `auth.users.id` (mesmo UUID). Confirmação de email desabilitada no Supabase. Ver `architecture.md` §1 "Por que JWKS em vez de HS256".
-- **Onboarding:** validação pública do convite → signUp no Supabase → POST /register/complete no Spring (na mesma transação: cria app_user + apartment_resident + aceita invitation + DEL Redis token). Endpoint idempotente para user existente (múltiplos apartamentos).
-- **RLS:** `TenantInterceptor` extrai `X-Tenant-Id` do header → `TenantContext` (ThreadLocal) → AOP executa `SET LOCAL app.current_tenant` antes de cada @Transactional. Sem header = cross-tenant (queries explícitas com WHERE user_id).
-- **Jobs:** 6 jobs @Scheduled (PollOpener, PollCloser, AllVotedChecker, InvitationExpirer, EmailSender, ReminderEnqueuer). SELECT FOR UPDATE para idempotência. Sem ShedLock na v1 (1 instância).
-- **E-mail:** Transactional outbox (`email_notification` table). `EmailSender` interface → `ResendEmailSender`. Thymeleaf templates. Retry 3x com backoff.
-- **Branching:** `main` (protegida, 1 approval + CI verde) ← `develop` (CI verde) ← `feature/*`. Coolify auto-deploy de main via webhook (backend); Cloudflare Pages auto-deploy de main (frontend).
+- **Bootstrap de condomínio:** migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/architecture.md §1` (runbook detalhado virá na Fase 6).
+- **Acesso SSH à VM Oracle e painel Coolify:** `docs/runbooks/ssh-vm.md` (gitignored — IPs, OCIDs, fluxos de fallback).
+- **Bruno API Collection:** `api-collection/README.md` (setup, fluxo de uso, convenção `.bru` por rota).
 
 ## Como o Claude deve raciocinar
 

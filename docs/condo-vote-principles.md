@@ -288,7 +288,6 @@ O app coleta dados pessoais (CPF, e-mail, comportamento de voto) e está sujeito
 | Base legal | Consentimento explícito no cadastro (checkbox + link para política de privacidade) |
 | Finalidade | CPF coletado somente para verificar unicidade de vínculo; não exibido a outros moradores |
 | Direito de exclusão | Conta pode ser desativada (login bloqueado), mas os dados são **retidos** integralmente para fins de auditoria condominial. Anonimização e deleção total ficam para v2 sob avaliação caso a caso. |
-| Retenção | Dados de votação retidos por 5 anos (alinhado com prazo de prescrição condominial). Histórico de auditoria (`audit_event`) e votos preservados pelo mesmo período. |
 | Segurança | Senhas gerenciadas pelo Supabase Auth, CPF armazenado criptografado **AES-256-SIV** (determinístico + autenticado) em repouso |
 | Retenção | Dados de votação (`audit_event`, `vote`, `poll_result`) retidos por **5 anos** (prazo de prescrição condominial). `email_notification` com status SENT/BOUNCED: 90 dias após `sent_at`. Jobs de limpeza são placeholder no-op em v1 — ativados em v2 quando volume justificar. |
 

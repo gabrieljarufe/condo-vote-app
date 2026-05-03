@@ -7,11 +7,11 @@
 -- O mesmo UUID deve existir em auth.users do Supabase local (ver infra/supabase/supabase/seed.sql).
 
 -- Limpa dados seed anteriores (R__ é repeatable — roda quando o conteúdo muda)
-DELETE FROM condominium_admin  WHERE condominium_id = '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e';
-DELETE FROM apartment_resident WHERE condominium_id = '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e';
-DELETE FROM apartment          WHERE condominium_id = '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e';
+DELETE FROM condominium_admin  WHERE condominium_id IN ('019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', '019de5e8-a735-757a-a1bc-39af03edee05');
+DELETE FROM apartment_resident WHERE condominium_id IN ('019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', '019de5e8-a735-757a-a1bc-39af03edee05');
+DELETE FROM apartment          WHERE condominium_id IN ('019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', '019de5e8-a735-757a-a1bc-39af03edee05');
 DELETE FROM app_user           WHERE id = 'faa86997-f34c-42c4-98b4-2dac8a40fa34';
-DELETE FROM condominium        WHERE id = '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e';
+DELETE FROM condominium        WHERE id IN ('019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', '019de5e8-a735-757a-a1bc-39af03edee05');
 
 -- Condomínio de teste
 INSERT INTO condominium (id, name, address, created_at) VALUES (
@@ -50,3 +50,30 @@ INSERT INTO apartment (id, condominium_id, block, unit_number, is_delinquent, cr
     ('019dd4f8-57fa-77b1-ace2-c9f78d6fc50c', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '101', false, now()),
     ('019dd4f8-57fa-77b1-ace2-c9f8fb30cb4a', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '102', false, now()),
     ('019dd4f8-57fa-77b1-ace2-c9f99d4168bd', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '103', false, now());
+
+-- ──────────────────────────────────────────────
+-- Condomínio 2 — para testar isolamento RLS
+-- ──────────────────────────────────────────────
+
+-- UUIDs v7 gerados em 2026-05-01 via python3 -c "import uuid; print(uuid.uuid7())"
+
+INSERT INTO condominium (id, name, address, created_at) VALUES (
+    '019de5e8-a735-757a-a1bc-39af03edee05',
+    'Condomínio Teste 2',
+    'Av. Seed Dev, 100 — Rio de Janeiro/RJ',
+    now()
+);
+
+-- Mesmo síndico seed como admin do segundo condomínio
+INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at) VALUES (
+    '019de5e8-a735-757a-a1bc-39b003612508',
+    '019de5e8-a735-757a-a1bc-39af03edee05',
+    'faa86997-f34c-42c4-98b4-2dac8a40fa34',
+    now()
+);
+
+-- Apartamentos de teste (bloco B)
+INSERT INTO apartment (id, condominium_id, block, unit_number, is_delinquent, created_at) VALUES
+    ('019de5e8-a735-757a-a1bc-39b124b95a6a', '019de5e8-a735-757a-a1bc-39af03edee05', 'B', '201', false, now()),
+    ('019de5e8-a735-757a-a1bc-39b24ba6eb15', '019de5e8-a735-757a-a1bc-39af03edee05', 'B', '202', false, now()),
+    ('019de5e8-a735-757a-a1bc-39b305dda261', '019de5e8-a735-757a-a1bc-39af03edee05', 'B', '203', false, now());

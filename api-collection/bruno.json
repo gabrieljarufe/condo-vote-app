@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "Condo Vote API",
+  "type": "collection",
+  "ignore": [".env"]
+}

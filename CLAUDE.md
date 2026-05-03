@@ -85,14 +85,14 @@ Os comandos abaixo serão populados ao longo das fases 0–3.
 
 ### Backend
 ```bash
-# Desenvolvimento (em fase 3)
-cd backend && ./mvnw spring-boot:run
+# Desenvolvimento (perfil local — usa application-local.yaml + Supabase CLI)
+cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 
-# Testes (em fase 3)
+# Testes (unit + integration via Testcontainers)
 cd backend && ./mvnw verify
 
-# Build Docker (em fase 3)
-cd backend && ./mvnw package -DskipTests && docker build -t condo-vote-backend .
+# Build Docker (Dockerfile multi-stage builda o jar internamente)
+docker build -t condo-vote-backend ./backend
 
 # Subir backend em container, conectando ao Supabase CLI já rodando
 # Pré-condição: supabase start deve estar rodando (portas 54321/54322 publicadas no host)

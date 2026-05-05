@@ -11,6 +11,25 @@ let nextId = 0;
 @Component({
   selector: 'app-faq-item',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  styles: [`
+    .faq-body {
+      display: grid;
+      grid-template-rows: 0fr;
+      transition: grid-template-rows 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .faq-body.open {
+      grid-template-rows: 1fr;
+    }
+    .faq-body-inner {
+      overflow: hidden;
+    }
+    .faq-chevron {
+      transition: transform 220ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .faq-chevron.rotate {
+      transform: rotate(180deg);
+    }
+  `],
   template: `
     <div class="border border-outline-variant rounded-xl">
       <button
@@ -22,16 +41,22 @@ let nextId = 0;
       >
         <span class="text-base font-semibold text-on-surface">{{ question() }}</span>
         <span
-          class="material-symbols-outlined text-on-surface-variant transition-transform duration-200"
-          [class.rotate-180]="expanded()"
+          class="material-symbols-outlined text-on-surface-variant faq-chevron"
+          [class.rotate]="expanded()"
           aria-hidden="true"
         >expand_more</span>
       </button>
-      @if (expanded()) {
-        <div [id]="panelId" class="px-6 pb-6 text-sm text-on-surface-variant leading-relaxed">
-          <ng-content />
+      <div
+        class="faq-body"
+        [class.open]="expanded()"
+        [attr.aria-hidden]="expanded() ? null : 'true'"
+      >
+        <div class="faq-body-inner">
+          <div [id]="panelId" class="px-6 pb-6 text-sm text-on-surface-variant leading-relaxed">
+            <ng-content />
+          </div>
         </div>
-      }
+      </div>
     </div>
   `,
 })

@@ -4,8 +4,8 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
   selector: 'app-public-footer',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <footer class="bg-surface-container-low border-t border-outline-variant mt-20">
-      <div class="max-w-7xl mx-auto px-6 py-16 grid gap-12 md:grid-cols-3">
+    <footer class="bg-surface-container-low border-t border-outline-variant">
+      <div class="max-w-7xl mx-auto px-6 pt-12 pb-8 grid gap-12 md:grid-cols-3">
         <div>
           <p class="text-lg font-bold text-on-surface mb-3">Condo Vote</p>
           <p class="text-sm text-on-surface-variant max-w-sm">
@@ -32,7 +32,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
         </div>
       </div>
 
-      <div class="border-t border-outline-variant py-6 px-6 text-center">
+      <div class="border-t border-outline-variant pt-5 pb-5 px-6 text-center">
         <p class="text-xs text-on-surface-variant">
           &copy; 2026 Condo Vote. Em conformidade com a Lei 14.309/22.
         </p>

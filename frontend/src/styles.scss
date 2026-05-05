@@ -96,6 +96,30 @@
   --spacing: 4px;
 }
 
+/* Scrollbar — fina, retangular, tema do app */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-surface-container-low);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-outline);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-secondary);
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-outline) var(--color-surface-container-low);
+}
+
 /* Reset/base mínimo */
 html {
   scroll-behavior: smooth;

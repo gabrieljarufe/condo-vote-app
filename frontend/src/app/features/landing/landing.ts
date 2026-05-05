@@ -136,7 +136,7 @@ interface Step {
         <div class="max-w-3xl mx-auto px-6">
           <h2 class="text-3xl md:text-4xl font-semibold text-on-surface text-center mb-12">Perguntas frequentes</h2>
 
-          <div class="space-y-4">
+          <div class="flex flex-col gap-4">
             <app-faq-item question="A votação online é legalmente válida?">
               Sim. A Lei 14.309/22 autoriza assembleias virtuais em condomínios de forma permanente,
               desde que respeitados requisitos de transparência e auditoria &mdash; que nossa plataforma atende.

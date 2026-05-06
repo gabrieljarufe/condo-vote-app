@@ -41,7 +41,7 @@ Antes de escrever qualquer componente Angular, consulte **[`docs/coding-patterns
   - [ ] Injeta `X-Tenant-Id` se `TenantService.activeCondominiumId()` estiver setado
   - [ ] Exclui `X-Tenant-Id` para paths `/api/me/**` e `/api/register/**`
   - [ ] **Não implementar retry manual de 401** — Supabase JS SDK já faz refresh automático. Se receber 401, deixar passar para o guard redirecionar para `/login`.
-- [ ] `src/app/core/tenant.service.ts`: signal `activeCondominiumId`, persistido em `localStorage`
+- [ ] `src/app/core/tenant/tenant.service.ts`: signal `activeCondominiumId` **em memória** (sem `localStorage`). Reset no refresh é intencional — `architecture.md §6`: força nova seleção explícita após F5, evita confusão entre tenants.
 - [ ] Registrar interceptor em `app.config.ts`
 
 **Aceite:** DevTools mostra requests ao backend com os dois headers corretos.
@@ -57,7 +57,7 @@ Antes de escrever qualquer componente Angular, consulte **[`docs/coding-patterns
 - [ ] Indicador de condo ativo no header + opção de trocar
 - [ ] Placeholder de dashboard após seleção
 
-**Aceite:** user multi-condo vê todas suas opções; seleção persiste entre reloads.
+**Aceite:** user multi-condo vê todas suas opções; seleção fica fixada na sessão atual (reset no refresh é by design — força nova seleção explícita).
 
 ---
 

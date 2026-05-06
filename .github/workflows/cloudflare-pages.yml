@@ -39,11 +39,15 @@ jobs:
 
       - name: Install dependencies
         working-directory: frontend
-        run: npm install
+        run: npm ci
 
       - name: Build
         working-directory: frontend
-        run: npm run build -- --configuration=production
+        env:
+          NG_APP_SUPABASE_URL: ${{ secrets.NG_APP_SUPABASE_URL }}
+          NG_APP_SUPABASE_ANON_KEY: ${{ secrets.NG_APP_SUPABASE_ANON_KEY }}
+          NG_APP_API_URL: ${{ secrets.NG_APP_API_URL }}
+        run: npm run build:prod
 
       - name: Deploy to Cloudflare Pages
         id: deploy

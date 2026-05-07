@@ -3,6 +3,7 @@ name: Auto PR develop → main
 on:
   push:
     branches: [develop]
+  workflow_dispatch:
 
 jobs:
   open-pr:

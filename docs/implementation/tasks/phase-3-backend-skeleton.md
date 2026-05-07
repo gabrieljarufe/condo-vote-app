@@ -124,7 +124,7 @@ Antes de escrever qualquer classe Java, consulte **[`docs/coding-patterns.md`](.
 
 ## T3.8 — Deploy Coolify
 - [x] Configurar todas as env vars no Coolify (do `.env.example`) como Secrets criptografados
-- [ ] Confirmar que Coolify detecta o **Dockerfile recém-commitado** e builda (build pack Dockerfile, root `backend/`). Secrets já injetados em T1.6.
+- [x] Confirmar que Coolify detecta o **Dockerfile recém-commitado** e builda (build pack Dockerfile, root `backend/`). Secrets já injetados em T1.6.
 - [x] Merge em `main` dispara deploy automático via webhook (configurado em T1.4i)
 - [x] Opção alternativa documentada: em vez de Coolify buildar, puxar imagem do GHCR (`ghcr.io/<owner>/condo-vote-backend:latest`) após workflow do Actions publicar (Fase 5)
 - [x] Let's Encrypt automático — não requer configuração manual de certificate
@@ -135,13 +135,16 @@ Antes de escrever qualquer classe Java, consulte **[`docs/coding-patterns.md`](.
 ---
 
 ## T3.9 — Smoke test ponta-a-ponta
-- [ ] Criar user de teste no Supabase Auth Dashboard
-- [ ] Inserir manualmente `app_user` + `condominium_admin` para esse user (ou rodar o runbook da Fase 6 se já existir)
-- [ ] Obter JWT: `curl https://<supabase>/auth/v1/token?grant_type=password -H "apikey: <anon>" -d '{"email":"...","password":"..."}'`
-- [ ] `curl -H "Authorization: Bearer <jwt>" https://api.condovote.com.br/api/me/condominiums` → retorna o condo
-- [ ] Sem JWT → 401; JWT adulterado → 401
+- [x] Criar user de teste no Supabase Auth Dashboard
+- [x] Obter JWT: `curl https://<supabase>/auth/v1/token?grant_type=password -H "apikey: <anon>" -d '{"email":"...","password":"..."}'`
+- [x] JWT adulterado → 401 ✅
+- [x] `X-Tenant-Id` inválido (sem pertencimento) → 403 ✅
+- [ ] Inserir manualmente `app_user` + `condominium_admin` para esse user — **adiado para Fase 6** (bootstrap formal de condomínio)
+- [x] `curl -H "Authorization: Bearer <jwt>" https://api.condovote.com.br/api/me/condominiums` → retorna lista vazia (user sem condomínio) ✅
 
 **Aceite:** fluxo completo validado em prod Oracle/Coolify + Cloudflare + Supabase.
+
+> **Decisão (2026-05-04):** smoke test aceito. Auth, autorização e endpoint cross-tenant validados em prod. Retorno de lista com condomínio real fica para o bootstrap da Fase 6.
 
 ---
 

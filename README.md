@@ -58,6 +58,23 @@ cd frontend && npm install && npm start
 
 Ver `.env.example` para a lista completa. Valores locais ficam em `.env` (gitignored); valores de produção ficam no Dashboard Coolify (backend) e Cloudflare Pages (frontend).
 
+## Deploy
+
+O ciclo de release segue o fluxo:
+
+```
+feature/* → PR → develop   (CI: test + frontend-test obrigatórios)
+develop   → PR → main       (CI: test + frontend-test + 1 approval)
+```
+
+No merge em `main`:
+- **Backend** — `publish-image` builda e publica `ghcr.io/gabrieljarufe/condo-vote-backend:latest` no GHCR; Coolify detecta via webhook e faz pull + restart automático em `api.condovote.com.br`
+- **Frontend** — `frontend.yml` builda e deploya em `app.condovote.com.br` via Cloudflare Pages
+
+Variáveis de produção:
+- Backend: Dashboard Coolify → Environment Variables
+- Frontend: Cloudflare Pages Dashboard → Settings → Environment Variables (repository secrets `NG_APP_*` usados no build via GitHub Actions)
+
 ## Documentação
 
 - [Arquitetura](docs/architecture.md)

@@ -1,8 +1,8 @@
 # Status do projeto
 
-**Fase atual:** Fase 4 — Walking Skeleton Frontend (em andamento — branch `feat/phase-4-frontend`)
+**Fase atual:** Fase 6 — Observabilidade & bootstrap formal de condomínio
 
-**Próximo passo:** T4.6 — config no dashboard Cloudflare Pages e merge para `main` para disparar deploy prod.
+**Próximo passo:** T6.1 — definir escopo de observabilidade (métricas, alertas, runbook bootstrap condomínio).
 
 ---
 
@@ -34,13 +34,14 @@
   - ✅ T4.5 — `LoginComponent` (Reactive Form + `<app-form-field>` reusável), `HomeComponent` com 0/1/N condos, `<app-app-header>` com seletor + sair
   - ✅ Smoke test local: stack completo (Supabase CLI + backend docker-compose + ng serve) → login GoTrue OK, CORS preflight 200, `/api/me/condominiums` retorna 2 condos com Bearer, 401 sem token
   - 🔶 T4.6 — `_redirects` SPA fallback OK no `dist/`. Env vars no dashboard Cloudflare Pages ✅. Workflow GitHub Actions corrigido (`npm ci` + `build:prod` + `NG_APP_*` via repository secrets) ✅. Deploy de preview validado ✅. Pendente: merge em `main` e validar prod
-- 🚧 **Fase 5** — CI/CD (branch `feat/phase-5-cicd`)
+- ✅ **Fase 5** — CI/CD
   - ✅ Pré-requisitos: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GHCR_TOKEN` e `NG_APP_*` configurados em GitHub → Settings → Repository secrets
   - ✅ T5.1 — Job `test` real no `ci.yml` (setup-java, `./mvnw verify`, surefire upload)
   - ✅ T5.2 — Job `frontend-test` no `cloudflare-pages.yml` (nome alinhado com branch protection)
   - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`test` + `frontend-test` obrigatórios) + `README.md` seção Deploy
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
-- ⬜ **Fase 6** — Observabilidade & bootstrap formal de condomínio
+  - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
+- 🚧 **Fase 6** — Observabilidade & bootstrap formal de condomínio
 - ⬜ **Fase 7** — Domain Index
 
 ---

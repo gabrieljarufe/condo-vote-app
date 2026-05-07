@@ -73,7 +73,7 @@ jobs:
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           working-directory: ./frontend
-          json-summary-path: ./frontend/coverage/coverage-summary.json
+          json-summary-path: ./coverage/coverage-summary.json
 
       - name: jscpd
         working-directory: frontend

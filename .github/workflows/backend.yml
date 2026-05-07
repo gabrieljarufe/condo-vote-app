@@ -44,25 +44,12 @@ jobs:
         working-directory: backend
         run: ./mvnw -B verify
 
-      - name: Post unit test coverage comment
+      - name: Post coverage comment
         if: always() && github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JACOCO_XML: backend/target/site/jacoco/jacoco.xml
-          TITLE: 'Backend Coverage — Testes Unitários'
-          MIN_OVERALL: '50'
-          MIN_CHANGED: '70'
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: python3 .github/scripts/post-coverage-comment.py
-
-      - name: Post integration test coverage comment
-        if: always() && github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          JACOCO_XML: backend/target/site/jacoco-it/jacoco.xml
-          TITLE: 'Backend Coverage — Testes de Integração'
+          JACOCO_UNIT_XML: backend/target/site/jacoco/jacoco.xml
+          JACOCO_IT_XML: backend/target/site/jacoco-it/jacoco.xml
           MIN_OVERALL: '50'
           MIN_CHANGED: '70'
           PR_NUMBER: ${{ github.event.pull_request.number }}

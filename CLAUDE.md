@@ -133,3 +133,7 @@ Prefira respostas estruturadas com:
 - Trade-off
 
 Evite respostas genéricas ou superficiais.
+
+## Convenções de git
+
+- **Não adicione co-author nos commits.** Nunca inclua `Co-Authored-By: Claude` ou qualquer variante nas mensagens de commit.

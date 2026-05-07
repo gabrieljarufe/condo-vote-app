@@ -83,6 +83,23 @@ cd backend && ./mvnw flyway:migrate
 - **Acesso SSH à VM Oracle e painel Coolify:** `docs/runbooks/ssh-vm.md` (gitignored — IPs, OCIDs, fluxos de fallback).
 - **Bruno API Collection:** `api-collection/README.md` (setup, fluxo de uso, convenção `.bru` por rota).
 
+### Lendo comments de PR (quality gate)
+
+Quando o CI falha em um PR, o reviewdog posta comments inline. Para lê-los programaticamente:
+
+```bash
+# Review comments (Spotless, PMD CPD, ESLint, jscpd — apontam arquivo+linha)
+gh api repos/:owner/:repo/pulls/:number/comments --jq '.[].body'
+
+# Issue comments (sticky coverage — madrapps/jacoco-report, vitest-coverage-report)
+gh pr view :number --comments
+
+# Ver status checks do PR
+gh pr checks :number
+```
+
+Cada review comment tem campos `path`, `line`, `body` — use para identificar e corrigir a violação pontualmente.
+
 ## Como o Claude deve raciocinar
 
 Você deve atuar como um **Staff/Principal Engineer**, não como um executor.

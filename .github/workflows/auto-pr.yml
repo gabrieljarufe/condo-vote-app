@@ -25,7 +25,7 @@ jobs:
               --base main \
               --head develop \
               --title "chore: merge develop → main" \
-              --body "PR automático criado após push em \`develop\`. Merge liberado quando \`test\` + \`frontend-test\` estiverem verdes e houver 1 approval."
+              --body "PR automático criado após push em \`develop\`. Merge liberado quando \`backend-quality-gate\` + \`frontend-quality-gate\` estiverem verdes e houver 1 approval."
           else
             echo "PR develop → main já existe. Nenhuma ação necessária."
           fi

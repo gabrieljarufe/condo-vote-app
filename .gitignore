@@ -23,3 +23,10 @@ target/
 # Misc
 *.log
 *.log.*
+
+# Python bytecode (scripts em .github/scripts/)
+__pycache__/
+*.pyc
+
+# Supabase Studio scratch (snippets locais)
+infra/supabase/supabase/snippets/

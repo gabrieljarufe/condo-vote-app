@@ -1,0 +1,4 @@
+{ "threshold": 5, "minTokens": 50, "reporters": ["console"],
+  "pattern": "src/**/*.{ts,html}",
+  "ignore": ["**/*.spec.ts", "**/node_modules/**"],
+  "absolute": true, "gitignore": true }

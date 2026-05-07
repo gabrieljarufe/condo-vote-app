@@ -7,7 +7,10 @@
     "build": "ng build",
     "build:prod": "node scripts/inject-env.mjs && ng build --configuration=production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "lint": "eslint 'src/**/*.{ts,html}' --max-warnings 0",
+    "test:ci": "vitest run --coverage",
+    "cpd": "jscpd"
   },
   "private": true,
   "packageManager": "npm@11.11.0",
@@ -23,15 +26,25 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
+    "@angular-eslint/eslint-plugin": "^21.3.1",
+    "@angular-eslint/eslint-plugin-template": "^21.3.1",
+    "@angular-eslint/template-parser": "^21.3.1",
     "@angular/build": "^21.2.9",
     "@angular/cli": "^21.2.9",
     "@angular/compiler-cli": "^21.2.0",
     "@tailwindcss/postcss": "^4.2.4",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
+    "@typescript-eslint/parser": "^8.59.2",
+    "@vitest/coverage-v8": "^4.1.5",
+    "eslint": "^10.3.0",
+    "eslint-plugin-sonarjs": "^4.0.3",
+    "jscpd": "^4.0.5",
     "jsdom": "^28.0.0",
     "postcss": "^8.5.13",
     "prettier": "^3.8.1",
     "tailwindcss": "^4.2.4",
     "typescript": "~5.9.2",
+    "typescript-eslint": "^8.59.2",
     "vitest": "^4.0.8"
   }
 }

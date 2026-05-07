@@ -41,8 +41,42 @@
   - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`test` + `frontend-test` obrigatórios) + `README.md` seção Deploy
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
+- ✅ **Fase 5.5** — Quality Gate (ver seção abaixo)
 - 🚧 **Fase 6** — Observabilidade & bootstrap formal de condomínio
 - ⬜ **Fase 7** — Domain Index
+
+---
+
+## Fase 5.5 — Quality Gate (concluída)
+
+**Motivação:** dar autonomia à IA para escrever código sem revisão linha-a-linha, bloqueando PRs com qualidade abaixo do mínimo.
+
+### O que foi implementado
+
+- **Backend** (`./mvnw verify`):
+  - Spotless check (google-java-format 1.22.0, estilo GOOGLE)
+  - Surefire (testes unitários, exclui `*IT.java`)
+  - Failsafe (testes de integração, Testcontainers)
+  - JaCoCo 0.8.12 (thresholds: 50% linha / 40% branch; exclui dto, config, Application)
+  - PMD CPD 3.22.0 (minimumTokens: 100; exclui fontes de teste)
+
+- **Frontend** (`npm run lint && npm run test:ci && npm run cpd`):
+  - ESLint + @angular-eslint + sonarjs (flat config, max-warnings 0)
+  - Vitest coverage v8 (thresholds: 50% linhas/funções/statements, 40% branches)
+  - jscpd (threshold 5%, minTokens 50)
+
+- **CI** (`.github/workflows/`):
+  - Padrão `changes`/`test-backend`/`test` (backend) e `changes`/`frontend-test` (frontend)
+  - Leaf jobs garantem que branch protection não trava em PRs docs-only
+  - Reviewdog anota violações inline no PR
+  - `madrapps/jacoco-report` e `davelosert/vitest-coverage-report-action` postam sticky comments de coverage
+
+### Não-óbvio
+
+- **Commit isolado de Spotless apply** (antes de ligar o check) é obrigatório — evita misturar mudanças de formatação em massa com mudanças lógicas.
+- **`fetch-depth: 0`** nos jobs de test é obrigatório para o reviewdog mapear o diff do PR. Sem isso, comentários inline não aparecem.
+- **`if: always()`** no leaf job + allowlist `success || skipped` no deploy são necessários — `!= 'failure'` deixa passar runs `cancelled`.
+- **Frontend**: `vitest.config.ts` + `test-setup.ts` criados do zero — o CLI do Angular 21 não gera automaticamente.
 
 ---
 

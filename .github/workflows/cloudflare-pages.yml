@@ -9,7 +9,7 @@ name: Frontend CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'feat/**']
     paths:
       - 'frontend/**'
       - '.github/workflows/cloudflare-pages.yml'
@@ -23,6 +23,8 @@ jobs:
   build-and-deploy:
     name: frontend-test
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       contents: read
       deployments: write
@@ -51,7 +53,7 @@ jobs:
 
       - name: Deploy to Cloudflare Pages
         id: deploy
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

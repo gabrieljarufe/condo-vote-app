@@ -44,15 +44,26 @@ jobs:
         working-directory: backend
         run: ./mvnw -B verify
 
-      - name: Post coverage sticky comment
+      - name: Post unit test coverage comment
         if: always() && github.event_name == 'pull_request'
         uses: madrapps/jacoco-report@v1.7.1
         with:
-          paths: backend/target/site/jacoco-merged/jacoco.xml
+          paths: backend/target/site/jacoco/jacoco.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 50
           min-coverage-changed-files: 70
-          title: 'Backend Coverage'
+          title: 'Backend Coverage — Testes Unitários'
+          update-comment: true
+
+      - name: Post integration test coverage comment
+        if: always() && github.event_name == 'pull_request'
+        uses: madrapps/jacoco-report@v1.7.1
+        with:
+          paths: backend/target/site/jacoco-it/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 50
+          min-coverage-changed-files: 70
+          title: 'Backend Coverage — Testes de Integração'
           update-comment: true
 
       - name: Generate Spotless diff for annotations

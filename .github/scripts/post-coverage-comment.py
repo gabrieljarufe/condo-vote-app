@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 Posta (ou atualiza) um comment de cobertura JaCoCo no PR.
-Sempre exibe arquivos alterados + cobertura, independente de passar ou não no threshold.
+Sempre exibe arquivos Java alterados + cobertura, independente de passar ou não no threshold.
+Arquivos de teste (não presentes no relatório JaCoCo) aparecem com cobertura "—".
 
 Env vars obrigatórias:
-  GH_TOKEN, GITHUB_REPOSITORY, PR_NUMBER, BASE_SHA
+  GH_TOKEN, GITHUB_REPOSITORY, PR_NUMBER, BASE_SHA, HEAD_SHA
   JACOCO_XML, TITLE, MIN_OVERALL, MIN_CHANGED
 """
 import xml.etree.ElementTree as ET
@@ -18,6 +19,7 @@ min_ov   = float(os.environ["MIN_OVERALL"])
 min_ch   = float(os.environ["MIN_CHANGED"])
 pr       = os.environ["PR_NUMBER"]
 base_sha = os.environ["BASE_SHA"]
+head_sha = os.environ["HEAD_SHA"]
 xml_path = os.environ["JACOCO_XML"]
 repo     = os.environ["GITHUB_REPOSITORY"]
 token    = os.environ["GH_TOKEN"]
@@ -66,6 +68,21 @@ def java_to_key(path):
     return None
 
 
+def get_changed_java_files():
+    # Usa merge-base para obter exatamente os arquivos do PR,
+    # evitando ruído de commits que existem na base mas não no PR.
+    merge_base = subprocess.run(
+        ["git", "merge-base", base_sha, head_sha],
+        capture_output=True, text=True,
+    ).stdout.strip() or base_sha
+
+    result = subprocess.run(
+        ["git", "diff", "--name-only", merge_base, head_sha],
+        capture_output=True, text=True,
+    )
+    return [f for f in result.stdout.strip().split("\n") if f.endswith(".java")]
+
+
 def badge(value, threshold):
     return "✅" if value >= threshold else "❌"
 
@@ -79,19 +96,18 @@ if overall is None:
         f"> ⚠️ Relatório não encontrado — o build pode ter falhado antes de gerar o XML."
     )
 else:
-    diff = subprocess.run(
-        ["git", "diff", "--name-only", base_sha, "HEAD"],
-        capture_output=True, text=True,
-    )
-    changed_java = [f for f in diff.stdout.strip().split("\n") if f.endswith(".java")]
+    changed_java = get_changed_java_files()
 
     rows = []
     for java_file in changed_java:
-        key = java_to_key(java_file)
+        key  = java_to_key(java_file)
+        name = (key or java_file).split("/")[-1].replace(".java", "")
         if key and key in file_cov:
-            pct  = file_cov[key]
-            name = key.split("/")[-1].replace(".java", "")
-            rows.append((name, pct, badge(pct, min_ch)))
+            pct = file_cov[key]
+            rows.append((name, f"`{pct:.1f}%`", badge(pct, min_ch)))
+        else:
+            # Classe de teste ou gerada — não medida pelo JaCoCo
+            rows.append((name, "—", "🔵"))
     rows.sort()
 
     lines = [
@@ -108,9 +124,9 @@ else:
             "",
             "| Arquivo | Cobertura | |",
             "|---|---|---|",
-        ] + [f"| `{name}` | `{pct:.1f}%` | {emoji} |" for name, pct, emoji in rows]
+        ] + [f"| `{name}` | {cov} | {emoji} |" for name, cov, emoji in rows]
     else:
-        lines.append("_Nenhum arquivo Java alterado com cobertura registrada._")
+        lines.append("_Nenhum arquivo Java alterado neste PR._")
 
     body = "\n".join(lines)
 

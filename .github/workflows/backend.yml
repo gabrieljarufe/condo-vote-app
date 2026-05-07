@@ -54,6 +54,7 @@ jobs:
           MIN_CHANGED: '70'
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python3 .github/scripts/post-coverage-comment.py
 
       - name: Post integration test coverage comment
@@ -66,6 +67,7 @@ jobs:
           MIN_CHANGED: '70'
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: python3 .github/scripts/post-coverage-comment.py
 
       - name: Generate Spotless diff for annotations

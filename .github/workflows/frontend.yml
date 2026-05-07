@@ -22,7 +22,7 @@ jobs:
               - 'frontend/**'
               - '.github/workflows/frontend.yml'
 
-  run-frontend-tests:
+  frontend-quality-gate-run:
     needs: changes
     if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -97,24 +97,24 @@ jobs:
           name: frontend-coverage
           path: frontend/coverage/
 
-  frontend-test:
-    needs: [changes, run-frontend-tests]
+  frontend-quality-gate:
+    needs: [changes, frontend-quality-gate-run]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Aggregate result
         run: |
-          result="${{ needs.run-frontend-tests.result }}"
+          result="${{ needs.frontend-quality-gate-run.result }}"
           if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then exit 1; fi
-          echo "Quality gate passed (run-frontend-tests: $result)"
+          echo "Quality gate passed (frontend-quality-gate-run: $result)"
 
   build-and-deploy:
-    needs: [changes, frontend-test]
+    needs: [changes, frontend-quality-gate]
     if: >-
       always() &&
       github.event_name == 'push' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') &&
-      (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
+      (needs.frontend-quality-gate.result == 'success' || needs.frontend-quality-gate.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read

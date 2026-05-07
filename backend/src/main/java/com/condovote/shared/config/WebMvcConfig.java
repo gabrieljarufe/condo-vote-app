@@ -8,21 +8,21 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * @EnableTransactionManagement(order = 0): @Transactional proxy vira o wrapper mais externo.
- * TenantTransactionAspect (@Order(10)) roda DENTRO da transação já aberta, garantindo
- * que SET LOCAL seja transaction-scoped e não vaze entre requisições no pool de conexões.
+ * TenantTransactionAspect (@Order(10)) roda DENTRO da transação já aberta, garantindo que SET LOCAL
+ * seja transaction-scoped e não vaze entre requisições no pool de conexões.
  */
 @Configuration
 @EnableTransactionManagement(order = 0)
 public class WebMvcConfig implements WebMvcConfigurer {
 
-    private final TenantInterceptor tenantInterceptor;
+  private final TenantInterceptor tenantInterceptor;
 
-    public WebMvcConfig(TenantInterceptor tenantInterceptor) {
-        this.tenantInterceptor = tenantInterceptor;
-    }
+  public WebMvcConfig(TenantInterceptor tenantInterceptor) {
+    this.tenantInterceptor = tenantInterceptor;
+  }
 
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(tenantInterceptor);
-    }
+  @Override
+  public void addInterceptors(InterceptorRegistry registry) {
+    registry.addInterceptor(tenantInterceptor);
+  }
 }

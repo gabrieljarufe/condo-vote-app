@@ -201,8 +201,16 @@ Decidido em `architecture.md` §9 (JSON structured + MDC). Pattern aqui:
 
 ## Frontend (Angular 20+)
 
-> Frontend ainda não foi implementado (Fase 4). Esta seção define os patterns
-> antes do primeiro código para evitar o mesmo desvio que aconteceu no backend.
+> Esta seção é a fonte da verdade sobre **como** construir frontend neste projeto.
+> Toda nova feature começa lendo esta seção e o `docs/frontend-feature-checklist.md`.
+
+### Princípios fundadores
+
+1. **Standalone-first, signals-first.** Sem NgModule, sem `BehaviorSubject` para estado local, sem NgRx na v1.
+2. **Espelhar o backend.** 1 pasta em `features/<aggregate>/` por aggregate Java; 1 `<Aggregate>ApiService` por package backend. Quando o time abrir uma feature, a estrutura já existe.
+3. **Smart/dumb explícito.** Páginas roteadas são "smart" (injetam services, fazem HTTP); UI em `shared/ui/` é "dumb" (só `input()`/`output()`, sem `inject()` de domínio). Sem essa separação, `shared/` vira lixeira.
+4. **Tokens em CSS, nunca em TS.** Cores/spacing/tipografia vivem em `@theme` (Tailwind v4) e fluem como CSS variables. Componentes referenciam tokens (`bg-secondary`), nunca hex literais.
+5. **Acessibilidade é requisito, não polish.** WCAG AA mínimo, validado com axe DevTools antes de mergear.
 
 ### 1. Componentes
 
@@ -239,27 +247,87 @@ Decidido em `architecture.md` §9 (JSON structured + MDC). Pattern aqui:
 
 ```
 src/app/
-├── core/          singletons globais (interceptors, guards, AuthService)
-├── shared/        componentes/pipes reutilizáveis
-└── features/
-    ├── condominium/   espelha package backend
+├── core/                  singletons globais (providedIn:'root')
+│   ├── auth/                  AuthService, AuthGuard, supabase client
+│   ├── tenant/                TenantService (signal em memória)
+│   ├── http/                  AuthInterceptor, TenantInterceptor
+│   └── api/                   *ApiService cross-tenant (ex: MeApiService)
+├── shared/                singletons de apresentação (sem domínio)
+│   ├── ui/                    Button, Card, FormField, Spinner, EmptyState, FaqItem
+│   ├── layout/                PublicHeader, AppHeader, Footer
+│   └── pipes/
+└── features/              1 pasta por aggregate, espelha packages backend
+    ├── landing/               LandingComponent (rota pública /)
+    ├── auth/                  LoginComponent (e RegisterComponent quando vier)
+    ├── home/                  HomeComponent + ConondominiumSelectorComponent
+    ├── condominium/
     ├── poll/
-    ├── apartment/
-    └── ...
+    └── apartment/
 ```
 
-- **Lazy loading** por feature route.
-- Smart vs dumb components: páginas roteadas são "smart" (injetam services, gerenciam estado);
-  UI components em `shared/` são puros (recebem inputs, emitem outputs).
+- **Lazy loading** por feature route (`loadComponent` ou `loadChildren`).
+- **Smart vs dumb (não-negociável):**
+  - **Smart (page)**: roteado, injeta services com `inject()`, gerencia signals, faz HTTP. Vive em `features/<aggregate>/`.
+  - **Dumb (UI)**: em `shared/ui/`. Apenas `input()` + `output()`. **Não pode** `inject()` services de domínio. Reutilizável em qualquer feature.
+
+### 5.1. SOLID em Angular (regras acionáveis)
+
+| Princípio | Tradução prática |
+|---|---|
+| **S — Single Responsibility** | 1 componente = 1 responsabilidade visual. 1 `*ApiService` = 1 aggregate (`PollApiService` só fala com `/api/polls/**`). Não criar `ApiService` god-object. |
+| **O — Open/Closed** | UI components em `shared/ui/` são estendidos via `input()`s e content projection (`<ng-content>`), nunca editando a fonte. |
+| **L — Liskov** | Inputs tipados estritos (`strict: true`); `unknown` em vez de `any`; nada de "type \| null por preguiça". |
+| **I — Interface Segregation** | Services pequenos por aggregate. Inputs de componente: o mínimo necessário, sem "options object" gigante de 15 campos opcionais. |
+| **D — Dependency Inversion** | Componentes dependem de services injetados via `inject()`, nunca `fetch`/`HttpClient` direto. Testes substituem providers via `TestBed`. |
 
 ### 6. Forms
 
 - **Reactive Forms**, nunca template-driven. Validators tipados.
+- Todo formulário usa `<app-form-field>` (em `shared/ui/`) que recebe `control: FormControl`, `label`, `errors: Record<string, string>` e renderiza estado/erro consistente. **Sem isso, cada feature reinventa UX de erro.**
+- Mensagens de erro com `aria-live="polite"`. `<label for>` em todo input.
 
-### 7. Acessibilidade
+### 7. Acessibilidade (WCAG AA — não-negociável)
 
-- WCAG AA mínimo. `NgOptimizedImage` em todas as imagens estáticas.
+- Contraste verificado para cada cor introduzida em `@theme`.
+- Focus ring visível em todo elemento interativo (não esconder com `outline: none` sem substituto).
+- `NgOptimizedImage` em todas as imagens estáticas.
+- Navegação por teclado testada (Tab, Shift+Tab, Enter, Esc) antes de mergear.
+- `axe DevTools` deve passar zero erros AA antes de mergear.
 
 ### 8. TypeScript
 
 - `strict: true`. Preferir inferência. Evitar `any` (usar `unknown` quando incerto).
+- Sem `console.log` em código mergeado. Sem `TODO` sem issue rastreável.
+
+### 9. Design system — tokens via `@theme` (Tailwind v4)
+
+Tokens vivem em `src/styles.scss` dentro de `@theme { ... }` e viram CSS variables automaticamente. Nova cor/spacing/tipografia → entra no `@theme`, nunca hardcoded em componente.
+
+```scss
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #000000;
+  --color-secondary: #0051d5;
+  --color-on-surface: #191c1e;
+  --color-surface: #f7f9fb;
+  --color-error: #ba1a1a;
+
+  --font-display: "Inter", sans-serif;
+  --text-display-lg: 48px;
+  --text-headline-lg: 32px;
+  --text-body-md: 16px;
+
+  --spacing-xs: 4px;
+  --spacing-md: 24px;
+  --spacing-xl: 80px;
+}
+```
+
+**Hierarquia tipográfica**: 1 `display-lg` por página (hero), 1 `headline-lg` por seção, body em `body-md`/`body-lg`. Sem misturar tamanhos arbitrários.
+
+**Spacing**: padding vertical de seção = `--spacing-xl`. Gutters internos = `--spacing-md`. 8px base grid.
+
+### 10. Definition of Done de uma feature
+
+Toda feature mergeada para `main` precisa passar em `docs/frontend-feature-checklist.md`. Sem o checklist verde, o PR não merge.

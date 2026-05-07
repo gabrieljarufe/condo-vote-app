@@ -58,6 +58,52 @@ cd frontend && npm install && npm start
 
 Ver `.env.example` para a lista completa. Valores locais ficam em `.env` (gitignored); valores de produção ficam no Dashboard Coolify (backend) e Cloudflare Pages (frontend).
 
+## Deploy
+
+O ciclo de release segue o fluxo:
+
+```
+feature/* → PR → develop   (CI: test + frontend-test obrigatórios)
+develop   → PR → main       (CI: test + frontend-test + 1 approval)
+```
+
+No merge em `main`:
+- **Backend** — `publish-image` builda e publica `ghcr.io/gabrieljarufe/condo-vote-backend:latest` no GHCR; Coolify detecta via webhook e faz pull + restart automático em `api.condovote.com.br`
+- **Frontend** — `frontend.yml` builda e deploya em `app.condovote.com.br` via Cloudflare Pages
+
+Variáveis de produção:
+- Backend: Dashboard Coolify → Environment Variables
+- Frontend: Cloudflare Pages Dashboard → Settings → Environment Variables (repository secrets `NG_APP_*` usados no build via GitHub Actions)
+
+## Quality Gates
+
+Todo PR para `develop` ou `main` passa pelo quality gate de CI.
+
+### Rodar localmente
+
+```bash
+# Backend
+cd backend && ./mvnw verify
+
+# Frontend
+cd frontend && npm run lint && npm run test:ci && npm run cpd
+```
+
+### Thresholds
+
+| Métrica | Backend | Frontend |
+|---------|---------|---------|
+| Coverage (linhas) | 50% | 50% |
+| Coverage (branches) | 40% | 40% |
+| Duplicação | mín. 100 tokens | threshold 5% |
+| Lint warnings | 0 | 0 |
+
+### Quando o gate falha
+
+- **Backend**: `./mvnw verify` mostra qual regra quebrou (Spotless, coverage, CPD)
+- **Frontend**: rode cada comando separadamente para isolar a falha
+- Em PRs: o CI posta comentários inline apontando arquivo + linha + regra
+
 ## Documentação
 
 - [Arquitetura](docs/architecture.md)

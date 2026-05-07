@@ -167,18 +167,81 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
                 <configuration>
-                    <!-- Inclui *IT.java além dos padrões default (*Test.java, *Tests.java).
-                         Sem isso, -Dgroups="integration" retorna 0 testes porque
-                         Surefire não escaneia arquivos com sufixo IT por padrão. -->
-                    <includes>
-                        <include>**/*Test.java</include>
-                        <include>**/*Tests.java</include>
-                        <include>**/*IT.java</include>
-                    </includes>
+                    <excludes><exclude>**/*IT.java</exclude></excludes>
                 </configuration>
             </plugin>
-            <!-- Spotless formatação -->
+            <!-- Failsafe — testes de integração (*IT.java) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <includes><include>**/*IT.java</include></includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals><goal>integration-test</goal><goal>verify</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- JaCoCo — cobertura de código -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution><id>prepare-agent</id><goals><goal>prepare-agent</goal></goals></execution>
+                    <execution><id>prepare-agent-it</id><goals><goal>prepare-agent-integration</goal></goals></execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals><goal>report</goal><goal>report-integration</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals><goal>check</goal></goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit><counter>LINE</counter><value>COVEREDRATIO</value><minimum>0.50</minimum></limit>
+                                        <limit><counter>BRANCH</counter><value>COVEREDRATIO</value><minimum>0.40</minimum></limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                            <excludes>
+                                <exclude>**/dto/**</exclude>
+                                <exclude>**/config/**</exclude>
+                                <exclude>**/*Application*</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- PMD CPD — detecção de código duplicado -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-pmd-plugin</artifactId>
+                <version>3.22.0</version>
+                <configuration>
+                    <minimumTokens>100</minimumTokens>
+                    <failOnViolation>true</failOnViolation>
+                    <printFailingErrors>true</printFailingErrors>
+                    <excludeRoots><excludeRoot>${project.build.testSourceDirectory}</excludeRoot></excludeRoots>
+                    <format>xml</format>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals><goal>cpd-check</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Spotless — verificação de formatação -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
@@ -193,7 +256,7 @@
                 <executions>
                     <execution>
                         <phase>validate</phase>
-                        <goals><goal>apply</goal></goals>
+                        <goals><goal>check</goal></goals>
                     </execution>
                 </executions>
             </plugin>

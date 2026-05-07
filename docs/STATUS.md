@@ -33,8 +33,12 @@
   - ✅ T4.4 — `LandingComponent` (rota pública `/`) com refinamento UX: testimonial fake removido, seção administradoras removida, hero com SVG inline (sem CDN externa), FAQ componentizado em `<app-faq-item>`
   - ✅ T4.5 — `LoginComponent` (Reactive Form + `<app-form-field>` reusável), `HomeComponent` com 0/1/N condos, `<app-app-header>` com seletor + sair
   - ✅ Smoke test local: stack completo (Supabase CLI + backend docker-compose + ng serve) → login GoTrue OK, CORS preflight 200, `/api/me/condominiums` retorna 2 condos com Bearer, 401 sem token
-  - 🔶 T4.6 — `_redirects` SPA fallback OK no `dist/`. Pendente: configurar env vars no dashboard Cloudflare Pages (`NG_APP_SUPABASE_URL/ANON_KEY/API_URL`), atualizar build command para `cd frontend && npm ci && npm run build:prod`, merge em `main` e validar prod
-- ⬜ **Fase 5** — CI/CD
+  - 🔶 T4.6 — `_redirects` SPA fallback OK no `dist/`. Env vars no dashboard Cloudflare Pages ✅. Workflow GitHub Actions corrigido (`npm ci` + `build:prod` + `NG_APP_*` via repository secrets) ✅. Deploy de preview validado ✅. Pendente: merge em `main` e validar prod
+- 🚧 **Fase 5** — CI/CD (branch `feat/phase-5-cicd`)
+  - ✅ Pré-requisitos: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GHCR_TOKEN` e `NG_APP_*` configurados em GitHub → Settings → Repository secrets
+  - ⬜ T5.1 — Job `test` real no `ci.yml` (setup-java, `./mvnw verify`, surefire upload, mock JWKS)
+  - ⬜ T5.2 — Job `frontend-test` no `cloudflare-pages.yml` (renomear job para alinhar com branch protection)
+  - ⬜ T5.3 — Job `publish-image` (GHCR), branch protection obrigatória em `main`/`develop`, documentar fluxo no `README.md`
 - ⬜ **Fase 6** — Observabilidade & bootstrap formal de condomínio
 - ⬜ **Fase 7** — Domain Index
 
@@ -88,6 +92,8 @@ Itens que custaram tempo para descobrir e que afetam decisões futuras:
 - **`UserRoleInCondo` retorna `ADMIN | OWNER | TENANT | MULTIPLE`**, não `SINDICO | MORADOR` como assumido. `MULTIPLE` indica usuário com mais de um vínculo no mesmo condomínio (raro).
 - **Output do build Angular 21 é `dist/<project>/browser/`** — alinhado com Cloudflare config existente. O `_redirects` em `frontend/public/` é copiado automaticamente para o output.
 - **`environment.prod.ts` é gerado em build time** por `scripts/inject-env.mjs` a partir de `NG_APP_*` env vars; arquivo fica gitignored. Build falha cedo se var obrigatória estiver ausente — preferimos quebrar do que deployar config quebrada.
+- **GitHub Actions requer repository secrets** (não environment secrets) para jobs sem `environment:` declarado. Secrets configurados em environment (Production/Preview) são ignorados nesses jobs — devem estar em Settings → Secrets → Repository secrets.
+- **`NG_APP_*` vars são públicas por design** — qualquer valor injetado no bundle Angular fica visível no browser. Secrets reais (service role key, DATABASE_URL, CPF_ENCRYPTION_KEY) ficam exclusivamente no backend. A anon key do Supabase é segura no frontend porque a Data API está desabilitada e o RLS cobre todas as tabelas.
 - **`TenantService.activeCondominiumId` em memória** (não localStorage). Reset no F5 é intencional: força nova seleção explícita, evita ambiguidade quando user troca de condomínio. Documentado em `architecture.md §6` (canônico) e atualizado em `phase-4-frontend-skeleton.md`.
 
 ---

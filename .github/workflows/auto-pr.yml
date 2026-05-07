@@ -1,0 +1,32 @@
+name: Auto PR develop → main
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  open-pr:
+    name: open-pr-to-main
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+      - name: Open PR to main if not exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OPEN=$(gh pr list --base main --head develop --state open --json number --jq 'length')
+          if [ "$OPEN" -eq 0 ]; then
+            gh pr create \
+              --base main \
+              --head develop \
+              --title "chore: merge develop → main" \
+              --body "PR automático criado após push em \`develop\`. Merge liberado quando \`test\` + \`frontend-test\` estiverem verdes e houver 1 approval."
+          else
+            echo "PR develop → main já existe. Nenhuma ação necessária."
+          fi

@@ -36,9 +36,10 @@
   - 🔶 T4.6 — `_redirects` SPA fallback OK no `dist/`. Env vars no dashboard Cloudflare Pages ✅. Workflow GitHub Actions corrigido (`npm ci` + `build:prod` + `NG_APP_*` via repository secrets) ✅. Deploy de preview validado ✅. Pendente: merge em `main` e validar prod
 - 🚧 **Fase 5** — CI/CD (branch `feat/phase-5-cicd`)
   - ✅ Pré-requisitos: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GHCR_TOKEN` e `NG_APP_*` configurados em GitHub → Settings → Repository secrets
-  - ⬜ T5.1 — Job `test` real no `ci.yml` (setup-java, `./mvnw verify`, surefire upload, mock JWKS)
-  - ⬜ T5.2 — Job `frontend-test` no `cloudflare-pages.yml` (renomear job para alinhar com branch protection)
-  - ⬜ T5.3 — Job `publish-image` (GHCR), branch protection obrigatória em `main`/`develop`, documentar fluxo no `README.md`
+  - ✅ T5.1 — Job `test` real no `ci.yml` (setup-java, `./mvnw verify`, surefire upload)
+  - ✅ T5.2 — Job `frontend-test` no `cloudflare-pages.yml` (nome alinhado com branch protection)
+  - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`test` + `frontend-test` obrigatórios) + `README.md` seção Deploy
+  - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
 - ⬜ **Fase 6** — Observabilidade & bootstrap formal de condomínio
 - ⬜ **Fase 7** — Domain Index
 

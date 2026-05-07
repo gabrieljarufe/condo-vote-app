@@ -48,7 +48,7 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         uses: madrapps/jacoco-report@v1.7.1
         with:
-          paths: backend/target/site/jacoco/jacoco.xml,backend/target/site/jacoco-it/jacoco.xml
+          paths: backend/target/site/jacoco-merged/jacoco.xml
           token: ${{ secrets.GITHUB_TOKEN }}
           min-coverage-overall: 50
           min-coverage-changed-files: 70

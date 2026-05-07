@@ -38,7 +38,7 @@
   - ✅ Pré-requisitos: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GHCR_TOKEN` e `NG_APP_*` configurados em GitHub → Settings → Repository secrets
   - ✅ T5.1 — Job `test` real no `backend.yml` (setup-java, `./mvnw verify`, surefire upload)
   - ✅ T5.2 — Job `frontend-test` no `frontend.yml` (nome alinhado com branch protection)
-  - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`test` + `frontend-test` obrigatórios) + `README.md` seção Deploy
+  - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`backend-quality-gate` + `frontend-quality-gate` obrigatórios) + `README.md` seção Deploy
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
   - ✅ `release-readiness.yml` — em PRs `develop → main`, posta comment sticky com (a) commits a promover agrupados por tipo conventional commit e (b) migrations Flyway novas (`V*.sql` adicionadas). Reusa o padrão marker HTML do `post-coverage-comment.py` para evitar duplicação. Decisão: quality gates de coverage/duplicação ficam restritos a PRs `feat → develop` (onde são acionáveis); em `develop → main` só vive informação cumulativa que não existe em outro lugar.
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
@@ -67,10 +67,11 @@
   - jscpd (threshold 5%, minTokens 50)
 
 - **CI** (`.github/workflows/`):
-  - Padrão `changes`/`test-backend`/`test` (backend) e `changes`/`frontend-test` (frontend)
+  - Padrão `changes`/`test-backend`/`backend-quality-gate` (backend) e `changes`/`frontend-test`/`frontend-quality-gate` (frontend)
   - Leaf jobs garantem que branch protection não trava em PRs docs-only
   - Reviewdog anota violações inline no PR
-  - `madrapps/jacoco-report` e `davelosert/vitest-coverage-report-action` postam sticky comments de coverage
+  - Backend: script próprio `.github/scripts/post-coverage-comment.py` (UT+IT em tabela adaptativa, marker HTML para evitar duplicação) — substituiu `madrapps/jacoco-report` que escondia arquivos sem cobertura
+  - Frontend: `davelosert/vitest-coverage-report-action` posta sticky comment
 
 ### Não-óbvio
 

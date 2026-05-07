@@ -1045,18 +1045,19 @@ Após login:
 
 ```
 main (produção)
- ↑ PR obrigatório (merge de develop → main)
- │   - Requer: CI verde + 1 approval
+ ↑ PR obrigatório (develop → main, criado automaticamente pelo auto-pr.yml)
+ │   - Requer: test + frontend-test verdes + 1 approval
  │   - Bloqueia: push direto, force push
  │
-develop (integraç��o)
- ↑ PR obrigatório (merge de feature/* → develop)
- │   - Requer: CI verde
+develop (integração)
+ ↑ PR obrigatório (feat/* → develop)
+ │   - Requer: test + frontend-test verdes
  │   - Bloqueia: push direto, force push
  │
-feature/nome-funcional-reduzido
+feat/nome-funcional-reduzido
    └── branches de trabalho do dia-a-dia
-       Naming: feature/invitation-flow, feature/poll-lifecycle, feature/rls-setup
+       Naming: feat/invitation-flow, feat/poll-lifecycle, feat/rls-setup
+       CI roda em push (feedback rápido), sem deploy
 ```
 
 **Branch protection rules (GitHub Settings → Branches):**
@@ -1064,61 +1065,42 @@ feature/nome-funcional-reduzido
 | Branch | Regra | Configuração |
 |--------|-------|-------------|
 | `main` | Require pull request before merging | ON — Require approvals: 1 |
-| `main` | Require status checks to pass | ON — `test` job do GitHub Actions |
-| `main` | Restrict who can push | ON — ninguém (push direto bloqueado) |
+| `main` | Require status checks to pass | ON — `test` + `frontend-test` |
+| `main` | Require branches to be up to date | ON |
 | `main` | Do not allow force pushes | ON |
 | `main` | Do not allow deletions | ON |
-| `develop` | Require pull request before merging | ON — Require approvals: 0 (auto-merge permitido se CI verde, time pequeno) |
-| `develop` | Require status checks to pass | ON — `test` job |
+| `develop` | Require pull request before merging | ON — Require approvals: 0 |
+| `develop` | Require status checks to pass | ON — `test` + `frontend-test` |
 | `develop` | Do not allow force pushes | ON |
 
 **Fluxo de deploy:**
 
 ```
-1. Dev cria feature/poll-lifecycle a partir de develop
-2. Dev faz commits e abre PR: feature/poll-lifecycle → develop
-3. GitHub Actions roda testes no PR
+1. Dev cria feat/poll-lifecycle a partir de develop
+2. Dev faz commits — CI roda test + frontend-test a cada push (feedback rápido, sem deploy)
+3. Dev abre PR: feat/poll-lifecycle → develop
 4. CI verde → merge em develop
-5. Quando pronto para prod: PR develop → main
+5. auto-pr.yml cria PR develop → main automaticamente
 6. CI verde + 1 approval → merge em main
-7. GitHub Actions builda imagem, publica em `ghcr.io/<owner>/condo-vote-backend:<sha>` e `:latest`
-8. Webhook Coolify recebe evento de push em `main` → redeploy do backend (puxa imagem ou buildar do Dockerfile)
-9. Cloudflare Pages detecta push em `main` → redeploy automático do frontend
+7. ci.yml: job test passa → job publish-image builda e publica imagem no GHCR
+8. publish-image chama webhook autenticado do Coolify → Coolify builda do Dockerfile e redeploya backend em api.condovote.com.br
+9. cloudflare-pages.yml: builda Angular e deploya em app.condovote.com.br via wrangler
 ```
 
 ### Pipeline GitHub Actions
 
-```yaml
-# .github/workflows/ci.yml
-name: CI
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+Três workflows:
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with: { java-version: '21', distribution: 'temurin' }
-      - run: ./mvnw verify  # testes + Testcontainers (precisa Docker)
-    services:
-      redis:
-        image: redis:7-alpine
-      - name: Build e push imagem para GHCR
-        if: github.ref == 'refs/heads/main'
-        uses: docker/build-push-action@v5
-        with:
-          push: true
-          tags: |
-            ghcr.io/${{ github.repository }}/condo-vote-backend:${{ github.sha }}
-            ghcr.io/${{ github.repository }}/condo-vote-backend:latest
-  # Deploy backend: webhook Coolify acionado pelo push em main (configurado no Coolify)
-  # Deploy frontend: Cloudflare Pages tem auto-deploy próprio do repo (independente do Actions)
-```
+**`ci.yml`** — backend (roda em `feat/**`, `develop`, `main`):
+- Job `test`: `setup-java@v4` + `./mvnw verify` (Testcontainers) + upload surefire em falha
+- Job `publish-image` (só em push para `main`, depois de `test`): builda Docker, publica `ghcr.io/<owner>/condo-vote-backend:<sha>` e `:latest`, chama webhook do Coolify
+
+**`cloudflare-pages.yml`** — frontend (roda em `feat/**`, `develop`, `main`):
+- Job `frontend-test`: `npm ci` + `npm run build:prod`
+- Deploy via wrangler só em push para `develop` (preview) e `main` (produção)
+
+**`auto-pr.yml`** — automação (roda em push para `develop`):
+- Cria PR `develop → main` automaticamente se não existir um aberto
 
 ### Dockerfile (multi-stage)
 

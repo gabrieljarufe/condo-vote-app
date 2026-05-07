@@ -100,8 +100,9 @@ jobs:
     steps:
       - name: Aggregate result
         run: |
-          if [[ "${{ needs.test-backend.result }}" == "failure" ]]; then exit 1; fi
-          echo "Quality gate passed"
+          result="${{ needs.test-backend.result }}"
+          if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then exit 1; fi
+          echo "Quality gate passed (test-backend: $result)"
 
   publish-image:
     needs: test

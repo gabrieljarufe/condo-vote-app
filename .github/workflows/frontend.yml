@@ -99,7 +99,11 @@ jobs:
 
   build-and-deploy:
     needs: [changes, frontend-test]
-    if: always() && github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') && needs.frontend-test.result != 'failure'
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') &&
+      (needs.frontend-test.result == 'success' || needs.frontend-test.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read

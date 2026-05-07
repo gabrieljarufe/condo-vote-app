@@ -21,7 +21,7 @@ jobs:
               - 'backend/**'
               - '.github/workflows/backend.yml'
 
-  test-backend:
+  backend-quality-gate-run:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
@@ -104,19 +104,19 @@ jobs:
           name: jacoco-report
           path: backend/target/site/jacoco*/
 
-  test:
-    needs: [changes, test-backend]
+  backend-quality-gate:
+    needs: [changes, backend-quality-gate-run]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Aggregate result
         run: |
-          result="${{ needs.test-backend.result }}"
+          result="${{ needs.backend-quality-gate-run.result }}"
           if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then exit 1; fi
-          echo "Quality gate passed (test-backend: $result)"
+          echo "Quality gate passed (backend-quality-gate-run: $result)"
 
   publish-image:
-    needs: test
+    needs: backend-quality-gate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:

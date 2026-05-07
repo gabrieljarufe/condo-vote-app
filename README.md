@@ -69,7 +69,7 @@ develop   → PR → main       (CI: test + frontend-test + 1 approval)
 
 No merge em `main`:
 - **Backend** — `publish-image` builda e publica `ghcr.io/gabrieljarufe/condo-vote-backend:latest` no GHCR; Coolify detecta via webhook e faz pull + restart automático em `api.condovote.com.br`
-- **Frontend** — `cloudflare-pages.yml` builda e deploya em `app.condovote.com.br` via Cloudflare Pages
+- **Frontend** — `frontend.yml` builda e deploya em `app.condovote.com.br` via Cloudflare Pages
 
 Variáveis de produção:
 - Backend: Dashboard Coolify → Environment Variables

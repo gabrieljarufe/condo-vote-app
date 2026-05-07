@@ -1082,20 +1082,20 @@ feat/nome-funcional-reduzido
 4. CI verde → merge em develop
 5. auto-pr.yml cria PR develop → main automaticamente
 6. CI verde + 1 approval → merge em main
-7. ci.yml: job test passa → job publish-image builda e publica imagem no GHCR
+7. backend.yml: job test passa → job publish-image builda e publica imagem no GHCR
 8. publish-image chama webhook autenticado do Coolify → Coolify builda do Dockerfile e redeploya backend em api.condovote.com.br
-9. cloudflare-pages.yml: builda Angular e deploya em app.condovote.com.br via wrangler
+9. frontend.yml: builda Angular e deploya em app.condovote.com.br via wrangler
 ```
 
 ### Pipeline GitHub Actions
 
 Três workflows:
 
-**`ci.yml`** — backend (roda em `feat/**`, `develop`, `main`):
+**`backend.yml`** — backend (roda em `feat/**`, `develop`, `main`):
 - Job `test`: `setup-java@v4` + `./mvnw verify` (Testcontainers) + upload surefire em falha
 - Job `publish-image` (só em push para `main`, depois de `test`): builda Docker, publica `ghcr.io/<owner>/condo-vote-backend:<sha>` e `:latest`, chama webhook do Coolify
 
-**`cloudflare-pages.yml`** — frontend (roda em `feat/**`, `develop`, `main`):
+**`frontend.yml`** — frontend (roda em `feat/**`, `develop`, `main`):
 - Job `frontend-test`: `npm ci` + `npm run build:prod`
 - Deploy via wrangler só em push para `develop` (preview) e `main` (produção)
 

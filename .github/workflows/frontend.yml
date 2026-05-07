@@ -12,7 +12,7 @@ on:
     branches: [main, develop, 'feat/**']
     paths:
       - 'frontend/**'
-      - '.github/workflows/cloudflare-pages.yml'
+      - '.github/workflows/frontend.yml'
   pull_request:
     branches: [main, develop]
     paths:

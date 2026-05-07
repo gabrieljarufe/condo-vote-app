@@ -36,8 +36,8 @@
   - 🔶 T4.6 — `_redirects` SPA fallback OK no `dist/`. Env vars no dashboard Cloudflare Pages ✅. Workflow GitHub Actions corrigido (`npm ci` + `build:prod` + `NG_APP_*` via repository secrets) ✅. Deploy de preview validado ✅. Pendente: merge em `main` e validar prod
 - ✅ **Fase 5** — CI/CD
   - ✅ Pré-requisitos: secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GHCR_TOKEN` e `NG_APP_*` configurados em GitHub → Settings → Repository secrets
-  - ✅ T5.1 — Job `test` real no `ci.yml` (setup-java, `./mvnw verify`, surefire upload)
-  - ✅ T5.2 — Job `frontend-test` no `cloudflare-pages.yml` (nome alinhado com branch protection)
+  - ✅ T5.1 — Job `test` real no `backend.yml` (setup-java, `./mvnw verify`, surefire upload)
+  - ✅ T5.2 — Job `frontend-test` no `frontend.yml` (nome alinhado com branch protection)
   - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`test` + `frontend-test` obrigatórios) + `README.md` seção Deploy
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.

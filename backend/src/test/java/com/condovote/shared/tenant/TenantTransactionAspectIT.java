@@ -1,7 +1,10 @@
 package com.condovote.shared.tenant;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.condovote.AbstractIntegrationTest;
 import com.condovote.shared.UuidV7;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -13,120 +16,112 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * Verifica que TenantTransactionAspect aplica SET LOCAL dentro de uma transação ativa.
  *
- * Usa um serviço de teste (@TestConfiguration) para expor um método @Transactional
- * que lê current_setting('app.current_tenant', true) — valor visível somente enquanto
- * a TX está aberta e SET LOCAL foi aplicado pelo aspecto.
+ * <p>Usa um serviço de teste (@TestConfiguration) para expor um método @Transactional que lê
+ * current_setting('app.current_tenant', true) — valor visível somente enquanto a TX está aberta e
+ * SET LOCAL foi aplicado pelo aspecto.
  */
 @Tag("integration")
 @SpringBootTest
 class TenantTransactionAspectIT extends AbstractIntegrationTest {
 
-    @TestConfiguration
-    static class TenantTestConfig {
-        @Bean
-        TenantSettingReader tenantSettingReader(JdbcTemplate jdbcTemplate) {
-            return new TenantSettingReader(jdbcTemplate);
-        }
-
-        @Bean
-        ClassLevelTransactionalService classLevelTransactionalService(JdbcTemplate jdbcTemplate) {
-            return new ClassLevelTransactionalService(jdbcTemplate);
-        }
+  @TestConfiguration
+  static class TenantTestConfig {
+    @Bean
+    TenantSettingReader tenantSettingReader(JdbcTemplate jdbcTemplate) {
+      return new TenantSettingReader(jdbcTemplate);
     }
 
-    // @Transactional no método — cenário padrão
-    @Service
-    static class TenantSettingReader {
-        private final JdbcTemplate jdbcTemplate;
+    @Bean
+    ClassLevelTransactionalService classLevelTransactionalService(JdbcTemplate jdbcTemplate) {
+      return new ClassLevelTransactionalService(jdbcTemplate);
+    }
+  }
 
-        TenantSettingReader(JdbcTemplate jdbcTemplate) {
-            this.jdbcTemplate = jdbcTemplate;
-        }
+  // @Transactional no método — cenário padrão
+  @Service
+  static class TenantSettingReader {
+    private final JdbcTemplate jdbcTemplate;
 
-        @Transactional
-        public String readCurrentTenantSetting() {
-            return jdbcTemplate.queryForObject(
-                    "SELECT current_setting('app.current_tenant', true)",
-                    String.class);
-        }
+    TenantSettingReader(JdbcTemplate jdbcTemplate) {
+      this.jdbcTemplate = jdbcTemplate;
     }
 
-    // @Transactional na CLASSE — cenário que o pointcut @annotation não pegava antes do fix
     @Transactional
-    static class ClassLevelTransactionalService {
-        private final JdbcTemplate jdbcTemplate;
+    public String readCurrentTenantSetting() {
+      return jdbcTemplate.queryForObject(
+          "SELECT current_setting('app.current_tenant', true)", String.class);
+    }
+  }
 
-        ClassLevelTransactionalService(JdbcTemplate jdbcTemplate) {
-            this.jdbcTemplate = jdbcTemplate;
-        }
+  // @Transactional na CLASSE — cenário que o pointcut @annotation não pegava antes do fix
+  @Transactional
+  static class ClassLevelTransactionalService {
+    private final JdbcTemplate jdbcTemplate;
 
-        public String readCurrentTenantSetting() {
-            return jdbcTemplate.queryForObject(
-                    "SELECT current_setting('app.current_tenant', true)",
-                    String.class);
-        }
+    ClassLevelTransactionalService(JdbcTemplate jdbcTemplate) {
+      this.jdbcTemplate = jdbcTemplate;
     }
 
-    @Autowired
-    TenantSettingReader tenantSettingReader;
-
-    @Autowired
-    ClassLevelTransactionalService classLevelTransactionalService;
-
-    @AfterEach
-    void cleanup() {
-        TenantContext.clear();
+    public String readCurrentTenantSetting() {
+      return jdbcTemplate.queryForObject(
+          "SELECT current_setting('app.current_tenant', true)", String.class);
     }
+  }
 
-    @Test
-    void aspectoAplicaSetLocalQuandoTenantEstaNaContexto() {
-        UUID tenantId = UuidV7.generate();
-        TenantContext.set(tenantId);
+  @Autowired TenantSettingReader tenantSettingReader;
 
-        String setting = tenantSettingReader.readCurrentTenantSetting();
+  @Autowired ClassLevelTransactionalService classLevelTransactionalService;
 
-        assertThat(setting).isEqualTo(tenantId.toString());
-    }
+  @AfterEach
+  void cleanup() {
+    TenantContext.clear();
+  }
 
-    @Test
-    void semTenantNaContextoSettingEhNuloOuVazio() {
-        // TenantContext não setado — aspecto não deve chamar SET LOCAL
-        String setting = tenantSettingReader.readCurrentTenantSetting();
+  @Test
+  void aspectoAplicaSetLocalQuandoTenantEstaNaContexto() {
+    UUID tenantId = UuidV7.generate();
+    TenantContext.set(tenantId);
 
-        assertThat(setting).isNullOrEmpty();
-    }
+    String setting = tenantSettingReader.readCurrentTenantSetting();
 
-    @Test
-    void aspectoInterceptaTransactionalNivelDeClasse() {
-        UUID tenantId = UuidV7.generate();
-        TenantContext.set(tenantId);
+    assertThat(setting).isEqualTo(tenantId.toString());
+  }
 
-        // Método sem @Transactional, mas classe anotada — @within deve interceptar
-        String setting = classLevelTransactionalService.readCurrentTenantSetting();
+  @Test
+  void semTenantNaContextoSettingEhNuloOuVazio() {
+    // TenantContext não setado — aspecto não deve chamar SET LOCAL
+    String setting = tenantSettingReader.readCurrentTenantSetting();
 
-        assertThat(setting).isEqualTo(tenantId.toString());
-    }
+    assertThat(setting).isNullOrEmpty();
+  }
 
-    @Test
-    void tenantNaoVazaEntreTransacoesDiferentes() {
-        UUID tenantA = UuidV7.generate();
-        UUID tenantB = UuidV7.generate();
+  @Test
+  void aspectoInterceptaTransactionalNivelDeClasse() {
+    UUID tenantId = UuidV7.generate();
+    TenantContext.set(tenantId);
 
-        TenantContext.set(tenantA);
-        String settingA = tenantSettingReader.readCurrentTenantSetting();
+    // Método sem @Transactional, mas classe anotada — @within deve interceptar
+    String setting = classLevelTransactionalService.readCurrentTenantSetting();
 
-        TenantContext.set(tenantB);
-        String settingB = tenantSettingReader.readCurrentTenantSetting();
+    assertThat(setting).isEqualTo(tenantId.toString());
+  }
 
-        assertThat(settingA).isEqualTo(tenantA.toString());
-        assertThat(settingB).isEqualTo(tenantB.toString());
-        assertThat(settingA).isNotEqualTo(settingB);
-    }
+  @Test
+  void tenantNaoVazaEntreTransacoesDiferentes() {
+    UUID tenantA = UuidV7.generate();
+    UUID tenantB = UuidV7.generate();
+
+    TenantContext.set(tenantA);
+    String settingA = tenantSettingReader.readCurrentTenantSetting();
+
+    TenantContext.set(tenantB);
+    String settingB = tenantSettingReader.readCurrentTenantSetting();
+
+    assertThat(settingA).isEqualTo(tenantA.toString());
+    assertThat(settingB).isEqualTo(tenantB.toString());
+    assertThat(settingA).isNotEqualTo(settingB);
+  }
 }

@@ -1,18 +1,18 @@
 package com.condovote.condominium;
 
+import java.util.List;
+import java.util.UUID;
 import org.springframework.data.jdbc.repository.query.Query;
 import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.UUID;
-
 public interface CondominiumRepository extends CrudRepository<Condominium, UUID> {
 
-    // UNION (sem ALL) elimina duplicatas: usuário OWNER em dois aptos do mesmo condo
-    // ainda produz apenas uma linha (condo_id, 'OWNER') — COUNT = 1 → role OWNER.
-    // Roles distintas (ex: ADMIN + OWNER) produzem duas linhas → COUNT = 2 → MULTIPLE.
-    @Query("""
+  // UNION (sem ALL) elimina duplicatas: usuário OWNER em dois aptos do mesmo condo
+  // ainda produz apenas uma linha (condo_id, 'OWNER') — COUNT = 1 → role OWNER.
+  // Roles distintas (ex: ADMIN + OWNER) produzem duas linhas → COUNT = 2 → MULTIPLE.
+  @Query(
+      """
             WITH user_roles AS (
                 SELECT condominium_id, 'ADMIN' AS role
                 FROM condominium_admin
@@ -35,5 +35,5 @@ public interface CondominiumRepository extends CrudRepository<Condominium, UUID>
             JOIN condominium c ON c.id = g.condominium_id
             ORDER BY c.name
             """)
-    List<CondominiumSummary> findSummariesForUser(@Param("userId") UUID userId);
+  List<CondominiumSummary> findSummariesForUser(@Param("userId") UUID userId);
 }

@@ -40,6 +40,7 @@
   - ✅ T5.2 — Job `frontend-test` no `frontend.yml` (nome alinhado com branch protection)
   - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`test` + `frontend-test` obrigatórios) + `README.md` seção Deploy
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
+  - ✅ `release-readiness.yml` — em PRs `develop → main`, posta comment sticky com (a) commits a promover agrupados por tipo conventional commit e (b) migrations Flyway novas (`V*.sql` adicionadas). Reusa o padrão marker HTML do `post-coverage-comment.py` para evitar duplicação. Decisão: quality gates de coverage/duplicação ficam restritos a PRs `feat → develop` (onde são acionáveis); em `develop → main` só vive informação cumulativa que não existe em outro lugar.
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
 - ✅ **Fase 5.5** — Quality Gate (ver seção abaixo)
 - 🚧 **Fase 6** — Observabilidade & bootstrap formal de condomínio

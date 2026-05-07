@@ -31,15 +31,16 @@ Como a API do GitHub para branch protection tem limitações via CLI no plano Fr
 Os workflows usam o padrão:
 
 ```
-changes → test-backend → test        (backend.yml)
-changes → frontend-test              (frontend.yml)
+changes → test-backend → test                              (backend.yml)
+changes → run-frontend-tests → frontend-test (leaf)        (frontend.yml)
 ```
 
 O job `changes` detecta quais arquivos foram alterados. PRs que tocam apenas
-`docs/**` ou `infra/**` pulam os jobs de teste (`test-backend`, `frontend-test`),
-mas os jobs **leaf** (`test`, `frontend-test`) são configurados com
-`if: always()` e reportam `success` mesmo quando o antecessor é `skipped`.
-Isso garante que o branch protection é satisfeito em PRs docs-only ✅.
+`docs/**` ou `infra/**` pulam os jobs de teste (`test-backend`,
+`run-frontend-tests`), mas os jobs **leaf** (`test`, `frontend-test`) são
+configurados com `if: always()` e reportam `success` mesmo quando o antecessor
+é `skipped`. Isso garante que o branch protection é satisfeito em PRs
+docs-only.
 
 ---
 

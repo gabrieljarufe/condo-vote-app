@@ -22,7 +22,7 @@ jobs:
               - 'frontend/**'
               - '.github/workflows/frontend.yml'
 
-  frontend-test:
+  run-frontend-tests:
     needs: changes
     if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -96,6 +96,17 @@ jobs:
         with:
           name: frontend-coverage
           path: frontend/coverage/
+
+  frontend-test:
+    needs: [changes, run-frontend-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate result
+        run: |
+          result="${{ needs.run-frontend-tests.result }}"
+          if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then exit 1; fi
+          echo "Quality gate passed (run-frontend-tests: $result)"
 
   build-and-deploy:
     needs: [changes, frontend-test]

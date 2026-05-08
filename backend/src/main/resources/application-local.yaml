@@ -19,6 +19,11 @@ spring:
 app:
   cors:
     allowed-origins: http://localhost:4200
+  actuator:
+    username: admin
+    password: admin
+  redis:
+    url: redis://localhost:6379
 
 management:
   endpoint:

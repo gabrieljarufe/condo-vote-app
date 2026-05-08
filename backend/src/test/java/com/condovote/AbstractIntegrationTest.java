@@ -1,7 +1,11 @@
 package com.condovote;
 
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.sync.RedisCommands;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
@@ -26,6 +30,22 @@ public abstract class AbstractIntegrationTest {
     postgres.start();
   }
 
+  /**
+   * Mocks dos beans Redis — evitam conexão TCP real ao Redis durante testes de integração.
+   *
+   * <p>RedisConfig usa @ConditionalOnMissingBean, então estes mocks substituem todos os três beans
+   * sem que o Lettuce tente estabelecer conexão TCP.
+   */
+  @MockitoBean RedisClient redisClient;
+
+  @MockitoBean
+  @SuppressWarnings("rawtypes")
+  StatefulRedisConnection redisConnection;
+
+  @MockitoBean
+  @SuppressWarnings("rawtypes")
+  RedisCommands redisCommands;
+
   @DynamicPropertySource
   static void overrideProperties(DynamicPropertyRegistry registry) {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -37,5 +57,10 @@ public abstract class AbstractIntegrationTest {
     registry.add(
         "spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
         () -> "http://localhost:9999/auth/v1/.well-known/jwks.json");
+    // Valores dummy para testes — variáveis obrigatórias em prod, mas sem efeito real em testes.
+    registry.add("app.actuator.username", () -> "test-actuator");
+    registry.add("app.actuator.password", () -> "test-password");
+    // URL Redis dummy — beans Redis são mockados via @MockitoBean acima.
+    registry.add("app.redis.url", () -> "redis://localhost:6379");
   }
 }

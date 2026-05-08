@@ -1,0 +1,42 @@
+<configuration>
+
+  <!-- ===== PROFILE: local — padrão humano legível, colorido ===== -->
+  <springProfile name="local">
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan([%thread]) %yellow(%logger{36}) — %msg%n</pattern>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="STDOUT"/>
+    </root>
+
+    <!-- Reduz ruído de libs internas em local -->
+    <logger name="org.flywaydb" level="WARN"/>
+    <logger name="com.zaxxer.hikari" level="WARN"/>
+    <logger name="org.springframework.security" level="WARN"/>
+    <logger name="io.lettuce" level="WARN"/>
+  </springProfile>
+
+  <!-- ===== PROFILE: prod — JSON estruturado via Spring Boot ECS (application-prod.yaml) ===== -->
+  <!-- application-prod.yaml configura logging.structured.format.console=ecs + customizer.   -->
+  <!-- Nenhum appender declarado aqui para não conflitar com a config do Spring Boot.          -->
+  <springProfile name="prod">
+    <!-- appender-ref vazio intencional; Spring Boot gerencia o appender ECS automaticamente -->
+  </springProfile>
+
+  <!-- ===== Fallback: nenhum perfil ativo (ex.: testes sem perfil explícito) ===== -->
+  <springProfile name="!local &amp; !prod">
+    <appender name="STDOUT_PLAIN" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder>
+        <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} — %msg%n</pattern>
+      </encoder>
+    </appender>
+
+    <root level="INFO">
+      <appender-ref ref="STDOUT_PLAIN"/>
+    </root>
+  </springProfile>
+
+</configuration>

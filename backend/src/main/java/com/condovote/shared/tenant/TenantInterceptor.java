@@ -3,7 +3,9 @@ package com.condovote.shared.tenant;
 import com.condovote.auth.AuthGateway;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.MDC;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -52,6 +54,15 @@ public class TenantInterceptor implements HandlerInterceptor {
       return false;
     }
 
+    String requestId =
+        Optional.ofNullable(request.getHeader("X-Request-Id"))
+            .or(() -> Optional.ofNullable(request.getHeader("cf-ray")))
+            .orElseGet(() -> UUID.randomUUID().toString());
+    MDC.put("request_id", requestId);
+    MDC.put("tenant_id", tenantId.toString());
+    MDC.put("user_id", userId.toString());
+    response.setHeader("X-Request-Id", requestId);
+
     TenantContext.set(tenantId);
     return true;
   }
@@ -59,6 +70,10 @@ public class TenantInterceptor implements HandlerInterceptor {
   @Override
   public void afterCompletion(
       HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-    TenantContext.clear();
+    try {
+      TenantContext.clear();
+    } finally {
+      MDC.clear();
+    }
   }
 }

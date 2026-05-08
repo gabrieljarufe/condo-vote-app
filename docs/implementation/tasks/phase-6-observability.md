@@ -8,14 +8,15 @@
 
 ## T6.1 — Logging JSON estruturado
 
-### T6.1a — Logback JSON + pattern local
-- [x] Adicionar `logstash-logback-encoder` no `backend/pom.xml`
+### T6.1a — Spring Boot ECS structured logging + pattern local
+- [x] `backend/src/main/resources/application.yaml`: `logging.structured.format.console: ecs` (Spring Boot 4 nativo — sem `logstash-logback-encoder`)
 - [x] `backend/src/main/resources/logback-spring.xml`:
-  - [x] Profile `prod`: appender console com `LogstashEncoder`, campos custom (`service=condovote-backend`, `environment`)
-  - [x] Profile `local`: pattern humano legível (texto colorido)
+  - [x] Profile `prod`: bloco vazio — Spring Boot gerencia o appender ECS automaticamente
+  - [x] Profile `local`: pattern humano legível colorido
+  - [x] Fallback (sem perfil): pattern plain para testes
 
-### T6.1b — SensitiveDataMaskingConverter + teste
-- [x] `SensitiveDataMaskingConverter` (Logback custom converter): `cpf` → mostra últimos 3 dígitos; `password`/`token`/`authorization` → vazio; `key`/`secret` → primeiros 6 chars + `...`
+### T6.1b — SensitiveDataMaskingCustomizer + teste
+- [x] `SensitiveDataMaskingCustomizer` implementa `StructuredLoggingJsonMembersCustomizer<ILoggingEvent>` (Spring Boot 4 API — não é Logback custom converter): CPF formatado → mascara primeiros 6 dígitos; Bearer token → `Bearer ***`; JWT → `eyJ***`; Supabase keys → primeiros 6 + `***`; MDC paths sensíveis (`cpf`, `password`, `token`, `authorization`, `secret`, `key`) → `[REDACTED]`
 - [x] Teste dedicado: dado log com CPF, output não contém CPF em claro
 
 ### T6.1c — MDC integration
@@ -32,10 +33,10 @@
 - [x] `info`: adicionar `git-commit`, `build-time` via `build-info` do Spring Boot Maven Plugin
 - [x] Health probes: liveness (sem DB, apenas `livenessState`) + readiness (com `db` + `redis`)
 - [x] `git-commit-id-maven-plugin` 9.0.1: branch, commit hash abreviado, timestamp, dirty flag em `/actuator/info`
-- [ ] Configurar **UptimeRobot** (free tier) monitorando `https://api.condovote.com.br/actuator/health` a cada 5 min _(configuração manual no dashboard UptimeRobot — fora do repo)_
-- [ ] Alert: e-mail pessoal do dono quando status down por 2+ checks _(configuração manual)_
+- [ ] Configurar **Better Stack** (free tier) monitorando `https://api.condovote.com.br/actuator/health/liveness` a cada 30s _(configuração manual no dashboard Better Stack — fora do repo)_
+- [ ] Alert: e-mail quando status down _(configuração manual)_
 
-**Aceite:** UptimeRobot mostra 100% uptime após 24h; alerta simulado (parando o container no Coolify) chega por e-mail.
+**Aceite:** Better Stack mostra 100% uptime após 24h; alerta simulado (parando o container no Coolify) chega por e-mail.
 
 ---
 
@@ -83,6 +84,6 @@
 - [ ] Seleciona condo → headers `X-Tenant-Id` começam a ser enviados
 - [ ] RLS isola corretamente (verificar com 2 condos distintos)
 - [ ] JWT expirado → 401 estruturado
-- [ ] Log estruturado com `trace_id` aparece no Coolify
+- [ ] Log estruturado com `request_id` aparece no Coolify (campo MDC — populado pelo `TenantInterceptor` em requests autenticadas com `X-Tenant-Id`)
 
 Com todos os itens acima ✅, a plataforma está pronta para **Fase 7 — primeira feature de domínio** (Convites e Onboarding), que será planejada em seu próprio `tasks/` dedicado.

@@ -1,8 +1,8 @@
 # Status do projeto
 
-**Fase atual:** Fase 6 — Observabilidade & bootstrap formal de condomínio
+**Fase atual:** Fase 7 — Domain Index (Convites e Onboarding)
 
-**Próximo passo:** T6.1 — definir escopo de observabilidade (métricas, alertas, runbook bootstrap condomínio).
+**Próximo passo:** planejar Fase 7 — primeiro aggregate de domínio (Convites).
 
 ---
 
@@ -76,6 +76,10 @@
 - **T6.3b + T6.4 — Runbooks operacionais:**
   - `docs/runbooks/data-api-monthly-check.md`: checklist mensal de verificação que a Data API permanece desabilitada
   - `docs/runbooks/backup-restore.md`: backup manual semanal (Dashboard + CLI), restore step-by-step, critérios de migração para Supabase Pro
+
+### Pendente (Fase 6)
+
+- **Validação do MDC em request real:** o `TenantInterceptor` já popula `tenant_id`, `user_id` e `request_id` no MDC, mas nenhum controller de domínio loga ainda. A validação real acontece quando o primeiro `logger.info(...)` for adicionado em um service/controller na Fase 7 — não é necessário criar log artificial agora.
 
 ### Não-óbvio (Fase 6)
 

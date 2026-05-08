@@ -1283,40 +1283,40 @@ em repouso + CPF_ENCRYPTION_KEY fora do banco. v2: avaliar application-layer sha
 
 | Decisão | Escolha | Justificativa |
 |---------|---------|---------------|
-| Formato de logging | **JSON estruturado (Logback + logstash-logback-encoder)** | Logs em JSON para stdout. Coolify captura stdout de cada container e expõe no dashboard (+ `docker logs` via SSH na VM). Campos: timestamp, level, logger, message, tenant_id (MDC), user_id (MDC), request_id. Sem arquivo de log — stdout only |
+| Formato de logging | **Spring Boot ECS structured logging** | `logging.structured.format.console: ecs` em `application.yaml`. Sem `logstash-logback-encoder`. Profile `local`: `logback-spring.xml` usa padrão colorido human-readable. Profile `prod`: Spring Boot gerencia o appender ECS automaticamente. Campos ECS: `@timestamp`, `log.level`, `log.logger`, `message` + MDC (`tenant_id`, `user_id`, `request_id`). Sem arquivo de log — stdout only |
 | Métricas v1 | **Spring Boot Actuator apenas** | `/actuator/health`, `/actuator/info`, `/actuator/metrics` (JVM, HikariCP, HTTP). Sem Prometheus/Grafana na v1 — overkill para piloto. Adicionar Micrometer + Prometheus quando escalar |
-| Alertas | **UptimeRobot + email** | UptimeRobot (free tier) pinga `GET https://api.condovote.com.br/actuator/health` a cada 5 minutos. Se falhar 2x seguidas → alerta por email para o time. Sem PagerDuty/OpsGenie na v1 |
-| Health checks | **Actuator com checks customizados** | `/actuator/health` verifica: DB (automático via Spring), Redis (custom `HealthIndicator`). Se qualquer um DOWN → status 503. Coolify usa esse endpoint como health check do container (restart automático em falha) |
-| Contexto por request | **MDC (Mapped Diagnostic Context)** | `TenantInterceptor` já existe — adicionar `MDC.put("tenant_id", ...)`, `MDC.put("user_id", ...)` e `MDC.put("request_id", ...)`. Todo log dentro da request carrega o contexto. Limpa no `afterCompletion` |
-| Request tracing | **Correlation ID** | Header `X-Request-Id` (gerado pelo Angular ou pelo Spring se ausente). Propagado via MDC. Permite rastrear uma request do frontend ao log do backend |
-| Mascaramento de dados sensíveis | **`SensitiveDataMaskingConverter`** (Logback custom converter) | `cpf` → mostra últimos 3 dígitos; `password`/`token`/`authorization` → vazio; `key`/`secret` → primeiros 6 chars + `...`. Teste dedicado verifica que output de log não contém CPF em claro. |
+| Alertas | **Better Stack + email** | Better Stack pinga `GET https://api.condovote.com.br/actuator/health/liveness` a cada 30 segundos. Se falhar → alerta por email. Endpoint liveness é público (sem auth) — necessário para monitoramento externo. Sem PagerDuty/OpsGenie na v1 |
+| Health checks | **Actuator com probes separadas** | `liveness` (`/actuator/health/liveness`): verifica apenas `livenessState` — sem DB, público, usado pelo Better Stack e Coolify. `readiness` (`/actuator/health/readiness`): verifica `readinessState` + `db` + `redis` — exige basic auth. `/actuator/health` completo também exige basic auth. `RedisHealthIndicator` customizado: PING → UP; falha ou resposta inesperada → DOWN |
+| Contexto por request | **MDC (Mapped Diagnostic Context)** | `TenantInterceptor` popula `MDC.put("tenant_id", ...)`, `MDC.put("user_id", ...)`, `MDC.put("request_id", ...)`. Todo log dentro da request carrega o contexto automaticamente. Limpa no `afterCompletion`. `request_id`: prioridade `X-Request-Id` → `cf-ray` → UUID gerado |
+| Request tracing | **Correlation ID** | Header `X-Request-Id` (gerado pelo Angular ou pelo Spring se ausente, com fallback para `cf-ray` do Cloudflare). Propagado via MDC. Devolvido no response header `X-Request-Id`. Permite rastrear uma request do frontend ao log do backend |
+| Mascaramento de dados sensíveis | **`SensitiveDataMaskingCustomizer`** (`StructuredLoggingJsonMembersCustomizer`) | Implementa a interface do Spring Boot 4 ECS. CPF formatado (`123.456.789-00`) → `***.***.***-00`; Bearer tokens → `Bearer ***`; JWT (`eyJ...`) → `eyJ***.***.***.***`; Supabase keys (`sb_`, `sk_`, `pk_`) → primeiros 6 chars + `***`. Paths MDC sensíveis (`cpf`, `password`, `token`, `authorization`, `secret`, `key`) → `[REDACTED]`. |
 
 ### Detalhamento: Logging estruturado
 
-```xml
-<!-- logback-spring.xml -->
-<configuration>
-  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-      <includeMdcKeyName>tenant_id</includeMdcKeyName>
-      <includeMdcKeyName>user_id</includeMdcKeyName>
-      <includeMdcKeyName>request_id</includeMdcKeyName>
-    </encoder>
-  </appender>
-
-  <root level="INFO">
-    <appender-ref ref="STDOUT" />
-  </root>
-</configuration>
+Configuração via `application.yaml` (sem XML de encoder manual):
+```yaml
+logging:
+  structured:
+    format:
+      console: ecs
+    json:
+      add:
+        service.name: condovote-backend
+      customizer: com.condovote.shared.logging.SensitiveDataMaskingCustomizer
 ```
 
-Exemplo de log JSON produzido:
+O `logback-spring.xml` separa apenas o padrão visual por profile:
+- **`local`**: padrão colorido human-readable (sem JSON)
+- **`prod`**: bloco vazio — Spring Boot gerencia o appender ECS automaticamente
+
+Exemplo de log ECS produzido em prod:
 ```json
 {
   "@timestamp": "2026-07-15T14:30:22.123Z",
-  "level": "INFO",
-  "logger": "com.condovote.poll.PollService",
+  "log.level": "INFO",
+  "log.logger": "com.condovote.poll.PollService",
   "message": "Poll created: Assembleia Ordinária 2026",
+  "service.name": "condovote-backend",
   "tenant_id": "a1b2c3d4-...",
   "user_id": "e5f6a7b8-...",
   "request_id": "req-xyz-123"

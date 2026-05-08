@@ -71,7 +71,7 @@ Diretriz orientadora: **cada fase termina com algo que roda e pode ser demonstra
 - **Local:** `.env.example` no repo, `.env` no `.gitignore`
 - **CI:** GitHub Actions Secrets para valores de teste (se necessário Testcontainers)
 - **Prod:** variáveis no Dashboard Coolify (backend) + Cloudflare Pages (frontend)
-- Gerar `CPF_ENCRYPTION_KEY` (32 bytes base64) — chave **AES-256-SIV** determinística. Armazenar em cofre pessoal (Bitwarden) + injetar no Coolify
+- Gerar `CPF_ENCRYPTION_KEY` (64 bytes hex, 128 chars): `openssl rand -hex 64` — chave **AES-256-SIV** determinística. Armazenar em cofre pessoal (Bitwarden) + injetar no Coolify
 
 **Critério de saída:** todas as contas provisionadas; README tem a lista de variáveis de ambiente necessárias; `supabase start` local funciona.
 

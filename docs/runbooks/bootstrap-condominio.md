@@ -30,7 +30,7 @@ Anote o **UUID** gerado (coluna `id` em `auth.users`). Esse UUID será o `app_us
 
 ```bash
 # Carregue a chave do cofre (Bitwarden → "CPF_ENCRYPTION_KEY prod")
-export CPF_ENCRYPTION_KEY=<64 hex chars>
+export CPF_ENCRYPTION_KEY=<128 hex chars>  # openssl rand -hex 64
 
 # Cifre o CPF do síndico (somente dígitos)
 ./scripts/encrypt-cpf.sh <CPF_SEM_FORMATACAO>

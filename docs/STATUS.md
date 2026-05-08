@@ -1,8 +1,8 @@
 # Status do projeto
 
-**Fase atual:** Fase 6 — Observabilidade & bootstrap formal de condomínio
+**Fase atual:** Fase 7 — Domain Index (Convites e Onboarding)
 
-**Próximo passo:** T6.1 — definir escopo de observabilidade (métricas, alertas, runbook bootstrap condomínio).
+**Próximo passo:** planejar Fase 7 — primeiro aggregate de domínio (Convites).
 
 ---
 
@@ -42,8 +42,52 @@
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
 - ✅ **Fase 5.5** — Quality Gate (ver seção abaixo)
-- 🚧 **Fase 6** — Observabilidade & bootstrap formal de condomínio
-- ⬜ **Fase 7** — Domain Index
+- ✅ **Fase 6** — Observabilidade & bootstrap formal de condomínio
+- ⬜ **Fase 7** — Domain Index (Convites e Onboarding)
+
+---
+
+## Fase 6 — Observabilidade & Bootstrap (concluída)
+
+### O que foi implementado
+
+- **T6.1 — Logging JSON estruturado:**
+  - `logback-spring.xml`: profile `prod` delega ao ECS do Spring Boot; profile `local` usa padrão colorido human-readable
+  - `SensitiveDataMaskingCustomizer`: mascara CPF (últimos 3 dígitos), Bearer tokens, Supabase keys; paths sensíveis → `[REDACTED]`
+  - `TenantInterceptor`: adiciona `tenant_id`, `user_id`, `request_id` (X-Request-Id → cf-ray → UUID gerado) ao MDC; devolve `X-Request-Id` no response; limpa no `afterCompletion`
+
+- **T6.2 — Actuator:**
+  - Cadeia Spring Security separada (`@Order(1)`) para `/actuator/**`: `/actuator/health` público; demais exigem HTTP Basic
+  - `InMemoryUserDetailsManager` com credenciais `ACTUATOR_USER`/`ACTUATOR_PASSWORD` via env vars
+  - `git-commit-id-maven-plugin` 9.0.1: branch, commit abreviado, timestamp e dirty flag em `/actuator/info`
+  - Health probes: `liveness` (apenas `livenessState`, sem DB) + `readiness` (`readinessState` + `db` + `redis`)
+  - `RedisHealthIndicator`: PING → UP; falha → DOWN
+
+- **T6.3a — CpfEncryptor AES-256-SIV:**
+  - `CpfEncryptor` (@Component): `org.cryptomator:siv-mode:1.6.0`; dois subkeys de 16 bytes (CTR + MAC); ciphertext em hex maiúsculo
+  - `CpfEncryptorCli`: main class standalone (sem Spring) para scripts de bootstrap
+  - `scripts/encrypt-cpf.sh`: localiza JAR em `target/` e invoca a CLI; requer `CPF_ENCRYPTION_KEY` do cofre
+
+- **T6.3 — Bootstrap de condomínio:**
+  - `V1001__bootstrap_TEMPLATE.sql.example`: template com INSERTs para `condominium`, `app_user`, `condominium_admin`, `audit_event`; `cpf_encrypted` via `decode(hex, 'hex')`
+  - `BootstrapTemplateIT`: 2 cenários em @Transactional + @Rollback (SQL completo + hex↔BYTEA)
+  - `docs/runbooks/bootstrap-condominio.md`: 8 passos (Auth → CPF → UUID → template → validate → PR → merge → comunicar)
+
+- **T6.3b + T6.4 — Runbooks operacionais:**
+  - `docs/runbooks/data-api-monthly-check.md`: checklist mensal de verificação que a Data API permanece desabilitada
+  - `docs/runbooks/backup-restore.md`: backup manual semanal (Dashboard + CLI), restore step-by-step, critérios de migração para Supabase Pro
+
+### Pendente (Fase 6)
+
+- **Validação do MDC em request real:** o `TenantInterceptor` já popula `tenant_id`, `user_id` e `request_id` no MDC, mas nenhum controller de domínio loga ainda. A validação real acontece quando o primeiro `logger.info(...)` for adicionado em um service/controller na Fase 7 — não é necessário criar log artificial agora.
+
+### Não-óbvio (Fase 6)
+
+- **Spring Boot 4 + HealthIndicator:** a interface moveu para `org.springframework.boot.health.contributor` (novo módulo `spring-boot-health`). `@MockBean` foi removido; substituto é `@MockitoBean` (`org.springframework.test.context.bean.override.mockito`).
+- **Cadeia Actuator separada com `@Order(1)`** é necessária para coexistir com `oauth2ResourceServer` na cadeia principal — sem ela, o Basic Auth conflita com o JWT resource server.
+- **`git-commit-id-maven-plugin` + `build-info`** exigem que o goal seja declarado explicitamente nas `<executions>` do `spring-boot-maven-plugin` — sem o goal, `/actuator/info` retorna objeto vazio.
+- **`siv-mode` 1.6.0**: `SivMode.encrypt(byte[], byte[], byte[])` não lança checked exceptions; `decrypt` lança `UnauthenticCiphertextException` + `IllegalBlockSizeException` (não `InvalidKeyException`). A chave de 32 bytes é dividida em 2 subkeys de 16 bytes (CTR + MAC) — não em uma única chave de 256 bits.
+- **`docs/runbooks/` é gitignored** (contém runbooks com IPs/OCIDs). O `bootstrap-condominio.md` foi forçado via `git add -f` por não conter dados sensíveis.
 
 ---
 

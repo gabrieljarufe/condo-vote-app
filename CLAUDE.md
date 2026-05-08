@@ -57,31 +57,58 @@ Redis Upstash · Resend + Thymeleaf · Oracle Cloud + Coolify · Cloudflare Page
 
 Detalhes, justificativas e trade-offs em `docs/architecture.md`.
 
-## Comandos
+## Ambiente local — como subir os serviços
 
-### Backend
-```bash
-cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-cd backend && ./mvnw verify                           # unit + integration (Testcontainers)
-docker build -t condo-vote-backend ./backend
-docker compose up --build backend                     # backend container contra Supabase CLI
-```
+**Ordem correta de inicialização:**
 
-### Frontend (Fase 4)
 ```bash
-cd frontend && npm install && npm start
-cd frontend && npm run build
-```
-
-### Infraestrutura
-```bash
+# 1. Supabase (banco + auth local)
 cd infra/supabase && supabase start
-cd backend && ./mvnw flyway:migrate
+
+# 2. Backend + Redis (sempre via docker compose — nunca ./mvnw spring-boot:run em dev)
+docker compose up --build backend
 ```
 
-- **Bootstrap de condomínio:** migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/architecture.md §1` (runbook detalhado virá na Fase 6).
+> `docker compose up --build backend` sobe o Redis automaticamente (dependência declarada).
+> Nunca use `./mvnw spring-boot:run` para desenvolvimento — o compose garante paridade com prod.
+
+### Outros comandos úteis
+```bash
+cd backend && ./mvnw verify                   # roda unit + integration tests (Testcontainers)
+cd frontend && npm install && npm start        # frontend dev server
+cd frontend && npm run build                  # build de produção do frontend
+cd backend && ./mvnw flyway:migrate           # aplica migrations manualmente
+```
+
+- **Bootstrap de condomínio:** migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/runbooks/bootstrap-condominio.md`.
 - **Acesso SSH à VM Oracle e painel Coolify:** `docs/runbooks/ssh-vm.md` (gitignored — IPs, OCIDs, fluxos de fallback).
 - **Bruno API Collection:** `api-collection/README.md` (setup, fluxo de uso, convenção `.bru` por rota).
+  - Para testar endpoints autenticados: executar `auth/get-token.bru` primeiro — ele salva o JWT em `access_token` automaticamente. Depois qualquer request de domínio usa `{{access_token}}`.
+  - Credentials de seed local: `sindico@local.dev` / `password123`, condomínio `019dd4f8-57fa-77b1-ace2-c9f6a3d9811e`.
+  - Não construir curls manuais de auth — usar sempre a collection.
+
+## Fluxo de trabalho com Git
+
+### Ao concluir uma feature
+
+Sempre abrir PR para `develop` via `gh` CLI — **não fazer merge local, não push direto em develop**:
+
+```bash
+git push -u origin <branch>
+gh pr create --base develop --title "<título>" --body "$(cat <<'EOF'
+## O que foi feito
+- <bullet 1>
+- <bullet 2>
+
+## Como validar
+- [ ] <passo 1>
+- [ ] <passo 2>
+EOF
+)"
+```
+
+O PR `develop → main` é criado **automaticamente** pelo workflow `auto-pr.yml` após merge em develop.
+Não crie PR de feature direto para `main`.
 
 > **Quality gate em PR aberto:** workflow versionado como skill `.claude/skills/pr-quality-gates/SKILL.md` (auto-invocada quando o usuário pede análise de comments/coverage/duplicação).
 
@@ -135,6 +162,24 @@ Prefira respostas estruturadas com:
 - Trade-off
 
 Evite respostas genéricas ou superficiais.
+
+## Convenções de testes — obrigatório em toda feature
+
+Toda classe de produção nova ou modificada **deve ter cobertura mínima de 70%** (threshold do CI). Isso exige, sem exceção:
+
+- **Teste unitário (`*Test.java`)** — cobre lógica isolada com mocks. Obrigatório para toda classe com lógica (services, validators, converters, utils). Classes puramente de configuração (`@Configuration`) são exceção.
+- **Teste de integração (`*IT.java`)** — cobre o fluxo real com Testcontainers (banco + Redis). Obrigatório para controllers, repositories e qualquer bean que interaja com infraestrutura.
+
+**Antes de abrir PR, verificar:**
+```bash
+cd backend && ./mvnw verify   # deve passar com UT ≥ 50% overall, arquivos alterados ≥ 70%
+```
+
+O CI bloqueia merge se o threshold não for atingido — não deixar para o CI descobrir.
+
+**Exclusões legítimas do JaCoCo** (não precisam de teste):
+- CLIs standalone sem Spring (`CpfEncryptorCli` e similares) → adicionar em `<excludes>` no `pom.xml`
+- DTOs, records, classes `@Configuration` sem lógica
 
 ## Convenções de git
 

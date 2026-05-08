@@ -160,6 +160,24 @@ Prefira respostas estruturadas com:
 
 Evite respostas genéricas ou superficiais.
 
+## Convenções de testes — obrigatório em toda feature
+
+Toda classe de produção nova ou modificada **deve ter cobertura mínima de 70%** (threshold do CI). Isso exige, sem exceção:
+
+- **Teste unitário (`*Test.java`)** — cobre lógica isolada com mocks. Obrigatório para toda classe com lógica (services, validators, converters, utils). Classes puramente de configuração (`@Configuration`) são exceção.
+- **Teste de integração (`*IT.java`)** — cobre o fluxo real com Testcontainers (banco + Redis). Obrigatório para controllers, repositories e qualquer bean que interaja com infraestrutura.
+
+**Antes de abrir PR, verificar:**
+```bash
+cd backend && ./mvnw verify   # deve passar com UT ≥ 50% overall, arquivos alterados ≥ 70%
+```
+
+O CI bloqueia merge se o threshold não for atingido — não deixar para o CI descobrir.
+
+**Exclusões legítimas do JaCoCo** (não precisam de teste):
+- CLIs standalone sem Spring (`CpfEncryptorCli` e similares) → adicionar em `<excludes>` no `pom.xml`
+- DTOs, records, classes `@Configuration` sem lógica
+
 ## Convenções de git
 
 - **Não adicione co-author nos commits.** Nunca inclua `Co-Authored-By: Claude` ou qualquer variante nas mensagens de commit.

@@ -1,9 +1,0 @@
-logging:
-  structured:
-    format:
-      console: ecs
-    json:
-      add:
-        service.name: condovote-backend
-        service.environment: prod
-      customizer: com.condovote.shared.logging.SensitiveDataMaskingCustomizer

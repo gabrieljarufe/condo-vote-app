@@ -66,5 +66,14 @@ management:
     git:
       enabled: true
 
+logging:
+  structured:
+    format:
+      console: ecs
+    json:
+      add:
+        service.name: condovote-backend
+      customizer: com.condovote.shared.logging.SensitiveDataMaskingCustomizer
+
 server:
   port: ${SERVER_PORT:8080}

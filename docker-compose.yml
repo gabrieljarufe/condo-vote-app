@@ -16,14 +16,30 @@ services:
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
       APP_CORS_ALLOWED_ORIGINS: http://localhost:4200
+      APP_REDIS_URL: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
     extra_hosts:
       # Necessário em Linux (Docker Engine puro); no macOS/Windows Docker Desktop
       # host.docker.internal já é resolvido nativamente. Declarar não prejudica.
       - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
-      interval: 10s
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health/liveness"]
+      interval: 30s
       timeout: 3s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: condo-vote-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 2s
       retries: 5
-      start_period: 30s
     restart: unless-stopped

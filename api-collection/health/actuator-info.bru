@@ -1,0 +1,17 @@
+meta {
+  name: Actuator Info
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/actuator/info
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.git: isDefined
+  res.body.build: isDefined
+}

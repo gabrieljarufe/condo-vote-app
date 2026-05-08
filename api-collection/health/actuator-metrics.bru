@@ -1,0 +1,21 @@
+meta {
+  name: Actuator Metrics
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/actuator/metrics
+  body: none
+  auth: basic
+}
+
+auth:basic {
+  username: {{actuator_user}}
+  password: {{actuator_password}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.names: isDefined
+}

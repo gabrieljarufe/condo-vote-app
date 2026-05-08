@@ -57,31 +57,55 @@ Redis Upstash · Resend + Thymeleaf · Oracle Cloud + Coolify · Cloudflare Page
 
 Detalhes, justificativas e trade-offs em `docs/architecture.md`.
 
-## Comandos
+## Ambiente local — como subir os serviços
 
-### Backend
-```bash
-cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
-cd backend && ./mvnw verify                           # unit + integration (Testcontainers)
-docker build -t condo-vote-backend ./backend
-docker compose up --build backend                     # backend container contra Supabase CLI
-```
+**Ordem correta de inicialização:**
 
-### Frontend (Fase 4)
 ```bash
-cd frontend && npm install && npm start
-cd frontend && npm run build
-```
-
-### Infraestrutura
-```bash
+# 1. Supabase (banco + auth local)
 cd infra/supabase && supabase start
-cd backend && ./mvnw flyway:migrate
+
+# 2. Backend + Redis (sempre via docker compose — nunca ./mvnw spring-boot:run em dev)
+docker compose up --build backend
 ```
 
-- **Bootstrap de condomínio:** migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/architecture.md §1` (runbook detalhado virá na Fase 6).
+> `docker compose up --build backend` sobe o Redis automaticamente (dependência declarada).
+> Nunca use `./mvnw spring-boot:run` para desenvolvimento — o compose garante paridade com prod.
+
+### Outros comandos úteis
+```bash
+cd backend && ./mvnw verify                   # roda unit + integration tests (Testcontainers)
+cd frontend && npm install && npm start        # frontend dev server
+cd frontend && npm run build                  # build de produção do frontend
+cd backend && ./mvnw flyway:migrate           # aplica migrations manualmente
+```
+
+- **Bootstrap de condomínio:** migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/runbooks/bootstrap-condominio.md`.
 - **Acesso SSH à VM Oracle e painel Coolify:** `docs/runbooks/ssh-vm.md` (gitignored — IPs, OCIDs, fluxos de fallback).
 - **Bruno API Collection:** `api-collection/README.md` (setup, fluxo de uso, convenção `.bru` por rota).
+
+## Fluxo de trabalho com Git
+
+### Ao concluir uma feature
+
+Sempre abrir PR para `develop` via `gh` CLI — **não fazer merge local, não push direto em develop**:
+
+```bash
+git push -u origin <branch>
+gh pr create --base develop --title "<título>" --body "$(cat <<'EOF'
+## O que foi feito
+- <bullet 1>
+- <bullet 2>
+
+## Como validar
+- [ ] <passo 1>
+- [ ] <passo 2>
+EOF
+)"
+```
+
+O PR `develop → main` é criado **automaticamente** pelo workflow `auto-pr.yml` após merge em develop.
+Não crie PR de feature direto para `main`.
 
 > **Quality gate em PR aberto:** workflow versionado como skill `.claude/skills/pr-quality-gates/SKILL.md` (auto-invocada quando o usuário pede análise de comments/coverage/duplicação).
 

@@ -1,8 +1,8 @@
 # Status do projeto
 
-**Fase atual:** Fase 6 — Observabilidade & bootstrap formal de condomínio
+**Fase atual:** Fase 7 — Domain Index (Convites e Onboarding)
 
-**Próximo passo:** T6.1 — definir escopo de observabilidade (métricas, alertas, runbook bootstrap condomínio).
+**Próximo passo:** planejar Fase 7 — primeiro aggregate de domínio (Convites).
 
 ---
 

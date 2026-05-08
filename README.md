@@ -87,6 +87,13 @@ Variáveis de produção:
 - Backend: Dashboard Coolify → Environment Variables
 - Frontend: Cloudflare Pages Dashboard → Settings → Environment Variables (repository secrets `NG_APP_*` usados no build via GitHub Actions)
 
+### Observabilidade
+
+- **Health check público** — `GET https://api.condovote.com.br/actuator/health/liveness` (sem auth). Monitorado pelo Better Stack a cada 30s.
+- **Actuator completo** — `/actuator/health`, `/actuator/info`, `/actuator/metrics` exigem HTTP Basic (`ACTUATOR_USER` / `ACTUATOR_PASSWORD`).
+- **Logs** — JSON estruturado ECS em prod (stdout → Coolify Dashboard). Campos: `@timestamp`, `log.level`, `log.logger`, `message`, `tenant_id`, `user_id`, `request_id`, `service.name`.
+- **Cloudflare** — Cache Rule `api.condovote.com.br/actuator/*` → Bypass (evita que outage fique mascarada por cache).
+
 ## Quality Gates
 
 Todo PR para `develop` ou `main` passa pelo quality gate de CI.

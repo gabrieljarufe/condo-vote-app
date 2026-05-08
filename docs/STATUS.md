@@ -77,6 +77,10 @@
   - `docs/runbooks/data-api-monthly-check.md`: checklist mensal de verificação que a Data API permanece desabilitada
   - `docs/runbooks/backup-restore.md`: backup manual semanal (Dashboard + CLI), restore step-by-step, critérios de migração para Supabase Pro
 
+### Pendente (Fase 6)
+
+- **Validação do MDC em request real:** o `TenantInterceptor` já popula `tenant_id`, `user_id` e `request_id` no MDC, mas nenhum controller de domínio loga ainda. A validação real acontece quando o primeiro `logger.info(...)` for adicionado em um service/controller na Fase 7 — não é necessário criar log artificial agora.
+
 ### Não-óbvio (Fase 6)
 
 - **Spring Boot 4 + HealthIndicator:** a interface moveu para `org.springframework.boot.health.contributor` (novo módulo `spring-boot-health`). `@MockBean` foi removido; substituto é `@MockitoBean` (`org.springframework.test.context.bean.override.mockito`).

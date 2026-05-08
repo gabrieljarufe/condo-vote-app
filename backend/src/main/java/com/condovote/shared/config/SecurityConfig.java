@@ -33,10 +33,6 @@ public class SecurityConfig {
   @Value("${app.actuator.password}")
   private String actuatorPassword;
 
-  /**
-   * Cadeia dedicada ao Actuator — prioridade mais alta (Order 1). /actuator/health é público;
-   * /actuator/info e /actuator/metrics exigem HTTP Basic com as credenciais de operação.
-   */
   @Bean
   @Order(1)
   public SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
@@ -46,7 +42,10 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/actuator/health").permitAll().anyRequest().authenticated())
+                auth.requestMatchers("/actuator/health/**", "/actuator/info")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
         .httpBasic(basic -> {});
     return http.build();
   }

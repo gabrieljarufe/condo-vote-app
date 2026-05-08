@@ -1,0 +1,69 @@
+-- V1001__bootstrap_<condo_slug>.sql
+-- Bootstrap: <Nome do Condomínio>, síndico: <Nome do Síndico>
+-- Autorizado por: <operador>, em <YYYY-MM-DD>
+--
+-- INSTRUÇÕES:
+--   1. Renomeie este arquivo para V1001__bootstrap_<condo_slug>.sql
+--      (sem o sufixo .example) e preencha todos os placeholders <...>.
+--   2. Siga o runbook em docs/runbooks/bootstrap-condominio.md para gerar os UUIDs
+--      e o CPF ciphertext.
+--   3. Abra um PR feature/bootstrap-<condo-slug> → develop.
+--      O CI roda Flyway em Testcontainer — a migration deve aplicar sem erro antes do merge.
+--   4. Nunca edite este arquivo após merged. Se houver erro, crie V1002 de correção.
+--
+-- CONVENÇÃO DE NOMES DE ARQUIVO:
+--   V1001, V1002, ... → um arquivo por condomínio.
+--   Faixa V1001–V1999 reservada para bootstraps (ver docs/architecture.md §DB).
+
+-- ============================================================
+-- 1. Condomínio
+-- ============================================================
+INSERT INTO condominium (id, name, address)
+VALUES (
+    '<UUID_V7_CONDOMINIUM>',       -- gerar com UuidV7.generate() ou python: uuid6.uuid7()
+    '<Nome do Condomínio>',
+    '<Endereço completo, número, bairro, cidade, UF>'
+);
+
+-- ============================================================
+-- 2. Usuário do síndico em app_user
+--    id = UUID gerado pelo Supabase Auth (passo 1 do runbook)
+--    cpf_encrypted = hex gerado por scripts/encrypt-cpf.sh (passo 2 do runbook)
+-- ============================================================
+INSERT INTO app_user (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
+VALUES (
+    '<UUID_SUPABASE_AUTH_SINDICO>',
+    '<Nome Completo do Síndico>',
+    '<email@sindico.com>',
+    decode('<HEX_CPF_CIPHERTEXT>', 'hex'),   -- saída de scripts/encrypt-cpf.sh
+    now(),
+    'v1'
+);
+
+-- ============================================================
+-- 3. Vínculo administrador
+-- ============================================================
+INSERT INTO condominium_admin (id, condominium_id, user_id)
+VALUES (
+    '<UUID_V7_ADMIN_LINK>',        -- novo UUID v7 gerado offline
+    '<UUID_V7_CONDOMINIUM>',       -- mesmo ID do passo 1
+    '<UUID_SUPABASE_AUTH_SINDICO>' -- mesmo ID do passo 2
+);
+
+-- ============================================================
+-- 4. Auditoria do bootstrap
+-- ============================================================
+INSERT INTO audit_event (id, condominium_id, actor_user_id, event_type, entity_type, entity_id, payload)
+VALUES (
+    '<UUID_V7_AUDIT_EVENT>',
+    '<UUID_V7_CONDOMINIUM>',
+    '00000000-0000-0000-0000-000000000001',  -- system user (BOOTSTRAP_MIGRATION)
+    'ADMIN_GRANTED',
+    'CONDOMINIUM_ADMIN',
+    '<UUID_SUPABASE_AUTH_SINDICO>',
+    jsonb_build_object(
+        'source',    'BOOTSTRAP_MIGRATION',
+        'migration', 'V1001__bootstrap_<condo_slug>',
+        'operator',  '<nome_do_operador>'
+    )
+);

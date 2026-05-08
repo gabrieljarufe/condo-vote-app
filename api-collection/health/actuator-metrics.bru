@@ -1,11 +1,11 @@
 meta {
-  name: Actuator Health
+  name: Actuator Metrics
   type: http
-  seq: 1
+  seq: 5
 }
 
 get {
-  url: {{base_url}}/actuator/health
+  url: {{base_url}}/actuator/metrics
   body: none
   auth: none
 }
@@ -18,5 +18,5 @@ script:pre-request {
 
 assert {
   res.status: eq 200
-  res.body.status: eq UP
+  res.body.names: isDefined
 }

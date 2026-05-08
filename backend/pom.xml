@@ -94,6 +94,13 @@
             <version>3.0.3</version>
         </dependency>
 
+        <!-- AES-256-SIV — criptografia determinística + autenticada do CPF -->
+        <dependency>
+            <groupId>org.cryptomator</groupId>
+            <artifactId>siv-mode</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+
         <!-- PostgreSQL driver -->
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -163,6 +170,13 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -198,6 +212,13 @@
                         <id>report</id>
                         <phase>verify</phase>
                         <goals><goal>report</goal><goal>report-integration</goal></goals>
+                        <configuration>
+                            <excludes>
+                                <exclude>**/config/**</exclude>
+                                <exclude>**/*Application*</exclude>
+                                <exclude>**/crypto/*Cli*</exclude>
+                            </excludes>
+                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
@@ -217,6 +238,7 @@
                                 <exclude>**/dto/**</exclude>
                                 <exclude>**/config/**</exclude>
                                 <exclude>**/*Application*</exclude>
+                                <exclude>**/crypto/*Cli*</exclude>
                             </excludes>
                         </configuration>
                     </execution>
@@ -240,6 +262,31 @@
                         <goals><goal>cpd-check</goal></goals>
                     </execution>
                 </executions>
+            </plugin>
+            <!-- Spotless — verificação de formatação -->
+            <!-- git-commit-id — expõe branch, commit hash e dirty flag em /actuator/info -->
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.1</version>
+                <executions>
+                    <execution>
+                        <goals><goal>revision</goal></goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                    <includeOnlyProperties>
+                        <includeOnlyProperty>git.branch</includeOnlyProperty>
+                        <includeOnlyProperty>git.commit.id.abbrev</includeOnlyProperty>
+                        <includeOnlyProperty>git.commit.time</includeOnlyProperty>
+                        <includeOnlyProperty>git.dirty</includeOnlyProperty>
+                    </includeOnlyProperties>
+                    <commitIdGenerationMode>full</commitIdGenerationMode>
+                    <!-- sem .git no contexto Docker — não abortar, gerar props com "unknown" -->
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
+                </configuration>
             </plugin>
             <!-- Spotless — verificação de formatação -->
             <plugin>

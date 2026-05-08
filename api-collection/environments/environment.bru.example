@@ -5,9 +5,12 @@ vars {
   access_token:
   test_email: <email-do-usuario-de-teste>
   test_password: <senha-do-usuario-de-teste>
+  actuator_user: admin
+  actuator_password: admin
 }
 
 vars:secret [
   supabase_anon_key,
-  access_token
+  access_token,
+  actuator_password
 ]

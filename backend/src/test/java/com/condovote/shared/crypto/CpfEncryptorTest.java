@@ -28,7 +28,7 @@ class CpfEncryptorTest {
 
   @Test
   void cpfsDiferentesDevemProuzirCiphertextsDiferentes() {
-    assertThat(encryptor.encrypt("11111111111")).isNotEqualTo(encryptor.encrypt("22222222222"));
+    assertThat(encryptor.encrypt("12345678901")).isNotEqualTo(encryptor.encrypt("98765432100"));
   }
 
   @Test
@@ -52,5 +52,27 @@ class CpfEncryptorTest {
     assertThatThrownBy(() -> new CpfEncryptor("0000"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("32 bytes");
+  }
+
+  @Test
+  void deveStripPontuacaoAntesDeEncriptar() {
+    assertThat(encryptor.encrypt("123.456.789-01")).isEqualTo(encryptor.encrypt("12345678901"));
+  }
+
+  @Test
+  void deveLancarExcecaoParaCpfComMenosDe11Digitos() {
+    assertThatThrownBy(() -> encryptor.encrypt("123")).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void deveLancarExcecaoParaCpfComLetras() {
+    assertThatThrownBy(() -> encryptor.encrypt("abc12345678"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void deveLancarExcecaoParaCpfComDigitosIguais() {
+    assertThatThrownBy(() -> encryptor.encrypt("11111111111"))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }

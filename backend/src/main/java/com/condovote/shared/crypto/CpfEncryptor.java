@@ -49,7 +49,14 @@ public class CpfEncryptor {
     if (cpf == null || cpf.isBlank()) {
       throw new IllegalArgumentException("CPF não pode ser nulo ou vazio");
     }
-    byte[] ciphertext = SIV.encrypt(ctrKey, macKey, cpf.getBytes());
+    String digits = cpf.replaceAll("[.\\-]", "");
+    if (!digits.matches("\\d{11}")) {
+      throw new IllegalArgumentException("CPF deve conter 11 dígitos numéricos; recebido: " + cpf);
+    }
+    if (digits.chars().distinct().count() == 1) {
+      throw new IllegalArgumentException("CPF inválido: todos os dígitos são iguais");
+    }
+    byte[] ciphertext = SIV.encrypt(ctrKey, macKey, digits.getBytes());
     return HEX.formatHex(ciphertext).toUpperCase();
   }
 

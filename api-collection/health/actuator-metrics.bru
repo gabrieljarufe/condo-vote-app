@@ -1,18 +1,19 @@
 meta {
   name: Actuator Metrics
   type: http
-  seq: 6
+  seq: 5
 }
 
 get {
   url: {{base_url}}/actuator/metrics
   body: none
-  auth: basic
+  auth: none
 }
 
-auth:basic {
-  username: {{actuator_user}}
-  password: {{actuator_password}}
+script:pre-request {
+  const user = bru.getVar("actuator_user");
+  const pass = bru.getVar("actuator_password");
+  req.setHeader("Authorization", "Basic " + btoa(user + ":" + pass));
 }
 
 assert {

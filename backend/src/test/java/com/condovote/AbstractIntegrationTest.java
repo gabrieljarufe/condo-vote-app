@@ -62,9 +62,11 @@ public abstract class AbstractIntegrationTest {
     registry.add("app.actuator.password", () -> "test-password");
     // URL Redis dummy — beans Redis são mockados via @MockitoBean acima.
     registry.add("app.redis.url", () -> "redis://localhost:6379");
-    // Chave de 32 bytes para AES-256-SIV — dummy seguro para testes (não usada em prod).
+    // Chave de 64 bytes para AES-256-SIV — dummy seguro para testes (não usada em prod).
     registry.add(
         "app.cpf.encryption-key",
-        () -> "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20");
+        () ->
+            "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+                + "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40");
   }
 }

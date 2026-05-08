@@ -86,7 +86,7 @@
 - **Spring Boot 4 + HealthIndicator:** a interface moveu para `org.springframework.boot.health.contributor` (novo módulo `spring-boot-health`). `@MockBean` foi removido; substituto é `@MockitoBean` (`org.springframework.test.context.bean.override.mockito`).
 - **Cadeia Actuator separada com `@Order(1)`** é necessária para coexistir com `oauth2ResourceServer` na cadeia principal — sem ela, o Basic Auth conflita com o JWT resource server.
 - **`git-commit-id-maven-plugin` + `build-info`** exigem que o goal seja declarado explicitamente nas `<executions>` do `spring-boot-maven-plugin` — sem o goal, `/actuator/info` retorna objeto vazio.
-- **`siv-mode` 1.6.0**: `SivMode.encrypt(byte[], byte[], byte[])` não lança checked exceptions; `decrypt` lança `UnauthenticCiphertextException` + `IllegalBlockSizeException` (não `InvalidKeyException`). A chave de 32 bytes é dividida em 2 subkeys de 16 bytes (CTR + MAC) — não em uma única chave de 256 bits.
+- **`siv-mode` 1.6.0**: `SivMode.encrypt(byte[], byte[], byte[])` não lança checked exceptions; `decrypt` lança `UnauthenticCiphertextException` + `IllegalBlockSizeException` (não `InvalidKeyException`). AES-256-SIV requer 64 bytes divididos em 2 subkeys de 32 bytes (CTR + MAC); a chave é fornecida como 128 hex chars via `CPF_ENCRYPTION_KEY`.
 - **`docs/runbooks/` é gitignored** (contém runbooks com IPs/OCIDs). O `bootstrap-condominio.md` foi forçado via `git add -f` por não conter dados sensíveis.
 
 ---

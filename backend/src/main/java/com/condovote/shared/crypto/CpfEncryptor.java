@@ -14,8 +14,9 @@ import org.springframework.stereotype.Component;
  * ciphertext. AES-SIV também garante autenticidade: qualquer alteração no ciphertext é detectada na
  * decriptografia.
  *
- * <p>A chave é configurada via variável de ambiente {@code CPF_ENCRYPTION_KEY} como hex de 64
- * caracteres (32 bytes = 256 bits).
+ * <p>A chave é configurada via variável de ambiente {@code CPF_ENCRYPTION_KEY} como hex de 128
+ * caracteres (64 bytes). AES-256-SIV requer duas subchaves de 32 bytes cada: [0..31] → CTR,
+ * [32..63] → MAC.
  */
 @Component
 public class CpfEncryptor {
@@ -28,15 +29,15 @@ public class CpfEncryptor {
 
   public CpfEncryptor(@Value("${app.cpf.encryption-key}") String hexKey) {
     byte[] raw = HEX.parseHex(hexKey);
-    if (raw.length != 32) {
+    if (raw.length != 64) {
       throw new IllegalArgumentException(
-          "CPF_ENCRYPTION_KEY deve ter 32 bytes (64 hex chars); recebido: " + raw.length);
+          "CPF_ENCRYPTION_KEY deve ter 64 bytes (128 hex chars); recebido: " + raw.length);
     }
-    // SIV usa duas subchaves de 16 bytes: [0..15] → CTR, [16..31] → MAC
-    this.ctrKey = new byte[16];
-    this.macKey = new byte[16];
-    System.arraycopy(raw, 0, this.ctrKey, 0, 16);
-    System.arraycopy(raw, 16, this.macKey, 0, 16);
+    // AES-256-SIV usa duas subchaves de 32 bytes: [0..31] → CTR, [32..63] → MAC
+    this.ctrKey = new byte[32];
+    this.macKey = new byte[32];
+    System.arraycopy(raw, 0, this.ctrKey, 0, 32);
+    System.arraycopy(raw, 32, this.macKey, 0, 32);
   }
 
   /**

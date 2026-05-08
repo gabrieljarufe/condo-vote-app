@@ -24,6 +24,9 @@ app:
     password: admin
   redis:
     url: redis://localhost:6379
+  cpf:
+    # Chave de 32 bytes (64 hex chars) usada apenas em ambiente local — não use em produção
+    encryption-key: 0000000000000000000000000000000000000000000000000000000000000000
 
 management:
   endpoint:

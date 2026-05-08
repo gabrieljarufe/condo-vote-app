@@ -94,6 +94,13 @@
             <version>3.0.3</version>
         </dependency>
 
+        <!-- AES-256-SIV — criptografia determinística + autenticada do CPF -->
+        <dependency>
+            <groupId>org.cryptomator</groupId>
+            <artifactId>siv-mode</artifactId>
+            <version>1.6.0</version>
+        </dependency>
+
         <!-- PostgreSQL driver -->
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -224,6 +231,7 @@
                                 <exclude>**/dto/**</exclude>
                                 <exclude>**/config/**</exclude>
                                 <exclude>**/*Application*</exclude>
+                                <exclude>**/crypto/*Cli*</exclude>
                             </excludes>
                         </configuration>
                     </execution>

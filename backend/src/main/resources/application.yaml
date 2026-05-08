@@ -42,6 +42,8 @@ app:
     password: ${ACTUATOR_PASSWORD}
   redis:
     url: ${REDIS_URL}
+  cpf:
+    encryption-key: ${CPF_ENCRYPTION_KEY}
 
 management:
   endpoints:

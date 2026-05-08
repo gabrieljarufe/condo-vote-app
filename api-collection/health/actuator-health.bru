@@ -7,13 +7,12 @@ meta {
 get {
   url: {{base_url}}/actuator/health
   body: none
-  auth: none
+  auth: basic
 }
 
-script:pre-request {
-  const user = bru.getVar("actuator_user");
-  const pass = bru.getVar("actuator_password");
-  req.setHeader("Authorization", "Basic " + btoa(user + ":" + pass));
+auth:basic {
+  username: {{actuator_user}}
+  password: {{actuator_password}}
 }
 
 assert {

@@ -83,6 +83,9 @@ cd backend && ./mvnw flyway:migrate           # aplica migrations manualmente
 - **Bootstrap de condomínio:** migration Flyway `V1001+` no repo, não SQL ad-hoc no Studio. Ver `docs/runbooks/bootstrap-condominio.md`.
 - **Acesso SSH à VM Oracle e painel Coolify:** `docs/runbooks/ssh-vm.md` (gitignored — IPs, OCIDs, fluxos de fallback).
 - **Bruno API Collection:** `api-collection/README.md` (setup, fluxo de uso, convenção `.bru` por rota).
+  - Para testar endpoints autenticados: executar `auth/get-token.bru` primeiro — ele salva o JWT em `access_token` automaticamente. Depois qualquer request de domínio usa `{{access_token}}`.
+  - Credentials de seed local: `sindico@local.dev` / `password123`, condomínio `019dd4f8-57fa-77b1-ace2-c9f6a3d9811e`.
+  - Não construir curls manuais de auth — usar sempre a collection.
 
 ## Fluxo de trabalho com Git
 

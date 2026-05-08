@@ -172,7 +172,7 @@ Estado atual da zona `condovote.com.br` no Cloudflare:
   - Backend: `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `REDIS_URL`, `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `CPF_ENCRYPTION_KEY`, `CORS_ALLOWED_ORIGINS` — **sem `SUPABASE_JWT_SECRET`**: validação via JWKS (ver `architecture.md` §1)
   - Frontend: `NG_APP_SUPABASE_URL`, `NG_APP_SUPABASE_ANON_KEY`, `NG_APP_API_URL`
 - [x] Criar `.env.local` com valores locais (Supabase local, Redis local, `localhost` URLs) — gitignored
-- [x] Gerar `CPF_ENCRYPTION_KEY` de 32 bytes base64: `openssl rand -base64 32`
+- [x] Gerar `CPF_ENCRYPTION_KEY` de 64 bytes hex (AES-256-SIV): `openssl rand -hex 64`
 - [x] Armazenar chave em cofre pessoal (Bitwarden) — é a única chave capaz de descriptografar CPFs
 - [x] Injetar variáveis no Dashboard Coolify (backend, Secrets criptografados em repouso) e Cloudflare Pages (frontend)
 - [x] GitHub Actions Secrets não necessário na v1

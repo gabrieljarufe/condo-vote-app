@@ -7,9 +7,10 @@ import org.junit.jupiter.api.Test;
 
 class CpfEncryptorTest {
 
-  /** Chave de 32 bytes (64 hex chars) para uso exclusivo em testes. */
+  /** Chave de 64 bytes (128 hex chars) para uso exclusivo em testes. */
   private static final String TEST_KEY =
-      "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20";
+      "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+          + "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40";
 
   private final CpfEncryptor encryptor = new CpfEncryptor(TEST_KEY);
 
@@ -51,7 +52,7 @@ class CpfEncryptorTest {
   void deveLancarExcecaoParaChaveInvalida() {
     assertThatThrownBy(() -> new CpfEncryptor("0000"))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("32 bytes");
+        .hasMessageContaining("64 bytes");
   }
 
   @Test

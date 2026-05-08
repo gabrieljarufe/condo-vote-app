@@ -91,10 +91,27 @@ cd backend && ./mvnw flyway:migrate           # aplica migrations manualmente
 
 ### Ao concluir uma feature
 
-Sempre abrir PR para `develop` via `gh` CLI — **não fazer merge local, não push direto em develop**:
+Sempre abrir PR para `develop` via `gh` CLI — **não fazer merge local, não push direto em develop**.
+
+**Antes de abrir o PR**, verificar se `develop` tem commits novos de outras branches que sua branch ainda não viu:
 
 ```bash
-git push -u origin <branch>
+git fetch origin
+git log --oneline fix/<sua-branch>..origin/develop
+```
+
+- Se a saída estiver **vazia** (ou mostrar apenas o merge commit do PR anterior desta mesma branch): não precisa de rebase — o "out of date" é cosmético.
+- Se tiver **commits reais de outras branches**: fazer rebase para evitar conflitos no CI:
+  ```bash
+  git rebase origin/develop
+  git push --force-with-lease
+  ```
+
+> **Nota:** o branch protection de `main` e `develop` **não exige "up to date"** — o gate real são os quality gates do CI (`backend-quality-gate`, `frontend-quality-gate`). O aviso "out of date" no GitHub não bloqueia o merge.
+
+Abrir o PR:
+
+```bash
 gh pr create --base develop --title "<título>" --body "$(cat <<'EOF'
 ## O que foi feito
 - <bullet 1>

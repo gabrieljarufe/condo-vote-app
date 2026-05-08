@@ -277,6 +277,8 @@
                         <includeOnlyProperty>git.dirty</includeOnlyProperty>
                     </includeOnlyProperties>
                     <commitIdGenerationMode>full</commitIdGenerationMode>
+                    <!-- sem .git no contexto Docker — não abortar, gerar props com "unknown" -->
+                    <failOnNoGitDirectory>false</failOnNoGitDirectory>
                 </configuration>
             </plugin>
             <!-- Spotless — verificação de formatação -->

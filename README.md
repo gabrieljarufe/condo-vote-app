@@ -58,6 +58,18 @@ cd frontend && npm install && npm start
 
 Ver `.env.example` para a lista completa. Valores locais ficam em `.env` (gitignored); valores de produção ficam no Dashboard Coolify (backend) e Cloudflare Pages (frontend).
 
+### Variáveis obrigatórias — backend (Coolify → Environment Variables)
+
+| Variável | Descrição |
+|----------|-----------|
+| `DATABASE_URL` | JDBC URL do banco (Session Pooler do Supabase — IPv4 compatível) |
+| `SUPABASE_URL` | URL do projeto Supabase (`https://<ref>.supabase.co`) |
+| `CORS_ALLOWED_ORIGINS` | Origem permitida pelo CORS (ex.: `https://app.condovote.com.br`) |
+| `ACTUATOR_USER` | Usuário para autenticação HTTP Basic no `/actuator/**` |
+| `ACTUATOR_PASSWORD` | Senha para autenticação HTTP Basic no `/actuator/**` |
+| `REDIS_URL` | URL do Upstash Redis (`redis://...` ou `rediss://...`) |
+| `CPF_ENCRYPTION_KEY` | Chave AES-256-SIV em hex (32 bytes = 64 chars hex) para cifrar CPFs |
+
 ## Deploy
 
 O ciclo de release segue o fluxo:

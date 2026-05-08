@@ -42,7 +42,7 @@ public class SecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/actuator/health/**", "/actuator/info")
+                auth.requestMatchers("/actuator/health/liveness")
                     .permitAll()
                     .anyRequest()
                     .authenticated())

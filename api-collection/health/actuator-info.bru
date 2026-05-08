@@ -10,6 +10,12 @@ get {
   auth: none
 }
 
+script:pre-request {
+  const user = bru.getVar("actuator_user");
+  const pass = bru.getVar("actuator_password");
+  req.setHeader("Authorization", "Basic " + btoa(user + ":" + pass));
+}
+
 assert {
   res.status: eq 200
   res.body.git: isDefined

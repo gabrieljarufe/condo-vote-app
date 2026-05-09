@@ -108,13 +108,13 @@ jobs:
           if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then exit 1; fi
           echo "Quality gate passed (frontend-quality-gate-run: $result)"
 
-  build-and-deploy:
+  deploy-staging:
     needs: [changes, frontend-quality-gate]
     if: >-
       always() &&
       github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') &&
-      (needs.frontend-quality-gate.result == 'success' || needs.frontend-quality-gate.result == 'skipped')
+      github.ref == 'refs/heads/develop' &&
+      needs.frontend-quality-gate.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -127,50 +127,27 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: frontend/package.json
+          cache-dependency-path: frontend/package-lock.json
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
-      - name: Set API URL
-        id: urls
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "api_url=${{ secrets.NG_APP_API_URL }}" >> $GITHUB_OUTPUT
-          else
-            echo "api_url=https://staging.api.condovote.com.br" >> $GITHUB_OUTPUT
-          fi
-      - name: Build
+      - name: Build (staging)
         working-directory: frontend
         env:
           NG_APP_SUPABASE_URL: ${{ secrets.NG_APP_SUPABASE_URL }}
           NG_APP_SUPABASE_ANON_KEY: ${{ secrets.NG_APP_SUPABASE_ANON_KEY }}
-          NG_APP_API_URL: ${{ steps.urls.outputs.api_url }}
+          NG_APP_API_URL: https://staging.api.condovote.com.br
         run: npm run build:prod
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy to Cloudflare Pages (staging)
         id: deploy
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy frontend/dist/frontend/browser --project-name=condo-vote-frontend --branch=${{ github.ref_name }}
-      - name: Publish URL to summary
+          command: pages deploy frontend/dist/frontend/browser --project-name=condo-vote-frontend --branch=develop
+      - name: Summary
         if: steps.deploy.outcome == 'success'
         run: |
-          OUTPUT='${{ steps.deploy.outputs.command-output }}'
-          UNIQUE_URL=$(echo "$OUTPUT" | grep -oE 'https://[a-z0-9]+\.condo-vote-frontend\.pages\.dev' | head -1 || echo "")
-          BRANCH="${{ github.ref_name }}"
-
-          if [ "$BRANCH" = "main" ]; then
-            echo "### 🚀 Deploy de produção — \`main\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **Produção:** https://app.condovote.com.br" >> $GITHUB_STEP_SUMMARY
-            [ -n "$UNIQUE_URL" ] && echo "- **Unique URL:** $UNIQUE_URL" >> $GITHUB_STEP_SUMMARY
-          else
-            ALIAS_URL="https://${BRANCH}.condo-vote-frontend.pages.dev"
-            echo "### 👀 Deploy de preview — \`${BRANCH}\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **Alias URL:** $ALIAS_URL" >> $GITHUB_STEP_SUMMARY
-            [ -n "$UNIQUE_URL" ] && echo "- **Unique URL:** $UNIQUE_URL" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "> ℹ️ Alias URL pode levar alguns minutos pra propagar." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### Deploy de staging — frontend" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Staging:** https://develop.condo-vote-frontend.pages.dev" >> $GITHUB_STEP_SUMMARY

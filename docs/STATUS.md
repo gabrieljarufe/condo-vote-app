@@ -41,6 +41,12 @@
   - ✅ T5.3 — Job `publish-image` (GHCR) + webhook Coolify autenticado + branch protection em `main`/`develop` (`test` + `frontend-test` obrigatórios) + `README.md` seção Deploy
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
+- 🚧 **Fase 5.6** — SemVer com release-please (PR #49 aberto, aguardando merge)
+  - `release-please-config.json` + `.release-please-manifest.json` na raiz (manifest mode, 2 componentes independentes)
+  - `.github/workflows/release.yml` criado: release-please-action v4, jobs condicionais `publish-backend` e `deploy-frontend-prod`
+  - `backend.yml`: job `publish-image` removido (deploy de prod migrou para `release.yml`)
+  - `frontend.yml`: `build-and-deploy` → `deploy-staging`, staging-only, bug do `skipped` corrigido
+  - Secret `RELEASE_PLEASE_TOKEN` criado no repositório (PAT clássico, escopos `repo` + `workflow`)
 - ✅ **Fase 5.5** — Quality Gate (ver seção abaixo)
 - ✅ **Fase 6** — Observabilidade & bootstrap formal de condomínio
 - ⬜ **Fase 7** — Domain Index (Convites e Onboarding)
@@ -175,6 +181,19 @@ Itens que custaram tempo para descobrir e que afetam decisões futuras:
 - **GitHub Actions requer repository secrets** (não environment secrets) para jobs sem `environment:` declarado. Secrets configurados em environment (Production/Preview) são ignorados nesses jobs — devem estar em Settings → Secrets → Repository secrets.
 - **`NG_APP_*` vars são públicas por design** — qualquer valor injetado no bundle Angular fica visível no browser. Secrets reais (service role key, DATABASE_URL, CPF_ENCRYPTION_KEY) ficam exclusivamente no backend. A anon key do Supabase é segura no frontend porque a Data API está desabilitada e o RLS cobre todas as tabelas.
 - **`TenantService.activeCondominiumId` em memória** (não localStorage). Reset no F5 é intencional: força nova seleção explícita, evita ambiguidade quando user troca de condomínio. Documentado em `architecture.md §6` (canônico) e atualizado em `phase-4-frontend-skeleton.md`.
+
+---
+
+## Fase 5.6 — SemVer com release-please (não-óbvios)
+
+- **`googleapis/release-please-action@v4`** — não confundir com `google-github-actions/release-please-action@v4` (nome errado que circula em tutoriais antigos).
+- **`bootstrap-sha` é obrigatório** — sem ele, o release-please considera todos os commits desde o início do repo e gera um Release PR gigantesco na primeira execução. Deve ser preenchido com o SHA do HEAD de `origin/main` no momento da implementação.
+- **Flags pre-major obrigatórias em 0.x** — sem `bump-minor-pre-major: true` e `bump-patch-for-minor-pre-major: true`, qualquer `feat:` em 0.x bumpa direto para 1.0.0 (comportamento padrão do release-please). Com as flags: `fix:` → patch, `feat:` → minor, `feat!:` → major.
+- **`GITHUB_TOKEN` padrão não dispara workflows** — quando o release-please usa o token padrão para criar o Release PR, o evento `pull_request` não dispara `backend.yml`/`frontend.yml` (proteção anti-loop do GitHub). Solução: PAT clássico armazenado como `RELEASE_PLEASE_TOKEN`.
+- **Outputs com bracket notation** — `${{ steps.rp.outputs['backend--release_created'] }}` (dot notation quebra com `--` no nome do output).
+- **Commits fora de `backend/**` e `frontend/**` não geram bump** — mudanças em `.github/`, `docs/`, `infra/` são intencionalmente ignoradas pelo release-please.
+- **Deploy de prod só acontece ao mergear o Release PR** — não é automático. O Release PR acumula commits, gera CHANGELOG, e o desenvolvedor decide quando mergear.
+- **`include-component-in-tag: true` + `separate-pull-requests: true`** — sem o primeiro, tags de backend e frontend colidem; sem o segundo, um único PR acumula ambos os componentes (indesejável para deploys independentes).
 
 ---
 

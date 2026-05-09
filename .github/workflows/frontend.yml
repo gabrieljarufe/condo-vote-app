@@ -109,8 +109,9 @@ jobs:
           echo "Quality gate passed (frontend-quality-gate-run: $result)"
 
   preview-deploy:
-    needs: frontend-quality-gate
+    needs: [changes, frontend-quality-gate]
     if: >-
+      always() &&
       github.event_name == 'pull_request' &&
       github.event.action != 'closed' &&
       (needs.frontend-quality-gate.result == 'success' || needs.frontend-quality-gate.result == 'skipped')

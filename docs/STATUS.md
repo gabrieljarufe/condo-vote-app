@@ -1,8 +1,10 @@
 # Status do projeto
 
-**Fase atual:** Fase 7 — Domain Index (Convites e Onboarding)
+**Fase atual:** Fase 7 — Histórias de Domínio
 
-**Próximo passo:** especificar e planejar Fase 7 (spec → plan → tasks → implement). Começar pelo aggregate de Convites.
+**Próximo passo:** executar **H1 — Login + Home** (formaliza o walking skeleton já em produção; única task pendente é T1.7 smoke test prod, fecha o T3.9 🔶 herdado). Em seguida abrir H2 — Síndico cadastra apartamento, primeira história com código de domínio novo.
+
+> **Mudança de abordagem (2026-05-09):** o antigo `phase-7-domain-index.md` (8 features técnicas F1–F8) foi substituído pela pasta [`docs/implementation/tasks/phase-7/`](implementation/tasks/phase-7/index.md), que organiza o trabalho como **10 histórias de usuário fatiadas verticalmente** (H1–H10). Cada história vira um PR demonstrável; F1–F8 viraram cobertura técnica que cada história consome. Apêndice em `phase-7/index.md` audita que nada caiu na transição.
 
 ---
 
@@ -44,7 +46,17 @@
 - ✅ **Fase 5.5** — Quality Gate (ver seção abaixo)
 - ✅ **Fase 5.6** — SemVer com release-please (ver seção abaixo)
 - ✅ **Fase 6** — Observabilidade & bootstrap formal de condomínio
-- 🚧 **Fase 7** — Domain Index (Convites e Onboarding) — **próxima**
+- 🚧 **Fase 7** — Histórias de Domínio — **em execução**
+  - 🚧 **H1** — Login + Home com seletor de condomínios (T1.1–T1.6 ✅ desde Fase 4; T1.7 smoke prod pendente)
+  - ⏳ H2 — Síndico cadastra apartamento
+  - ⏳ H3 — Síndico convida morador (com e-mail)
+  - ⏳ H4 — Convidado completa cadastro com CPF
+  - ⏳ H5 — Morador vê apartamentos onde reside
+  - ⏳ H6 — Síndico promove morador / delega voto
+  - ⏳ H7 — Síndico cria votação (CRUD + snapshot)
+  - ⏳ H8 — Morador vota e vê resultado
+  - ⏳ H9 — Timeline de auditoria
+  - ⏳ H10 — Jobs residuais (RetentionPruner placeholder)
 
 ---
 

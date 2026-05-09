@@ -2,7 +2,7 @@
 
 **Fase atual:** Fase 7 — Domain Index (Convites e Onboarding)
 
-**Próximo passo:** planejar Fase 7 — primeiro aggregate de domínio (Convites).
+**Próximo passo:** especificar e planejar Fase 7 (spec → plan → tasks → implement). Começar pelo aggregate de Convites.
 
 ---
 
@@ -42,8 +42,9 @@
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
 - ✅ **Fase 5.5** — Quality Gate (ver seção abaixo)
+- ✅ **Fase 5.6** — SemVer com release-please (ver seção abaixo)
 - ✅ **Fase 6** — Observabilidade & bootstrap formal de condomínio
-- ⬜ **Fase 7** — Domain Index (Convites e Onboarding)
+- 🚧 **Fase 7** — Domain Index (Convites e Onboarding) — **próxima**
 
 ---
 
@@ -88,6 +89,39 @@
 - **`git-commit-id-maven-plugin` + `build-info`** exigem que o goal seja declarado explicitamente nas `<executions>` do `spring-boot-maven-plugin` — sem o goal, `/actuator/info` retorna objeto vazio.
 - **`siv-mode` 1.6.0**: `SivMode.encrypt(byte[], byte[], byte[])` não lança checked exceptions; `decrypt` lança `UnauthenticCiphertextException` + `IllegalBlockSizeException` (não `InvalidKeyException`). AES-256-SIV requer 64 bytes divididos em 2 subkeys de 32 bytes (CTR + MAC); a chave é fornecida como 128 hex chars via `CPF_ENCRYPTION_KEY`.
 - **`docs/runbooks/` é gitignored** (contém runbooks com IPs/OCIDs). O `bootstrap-condominio.md` foi forçado via `git add -f` por não conter dados sensíveis.
+
+---
+
+## Fase 5.6 — SemVer com release-please (concluída)
+
+### O que foi implementado
+
+- `release-please-config.json` na raiz: manifest mode, 2 componentes independentes (`backend` Maven + `frontend` Node), `bootstrap-sha` preenchido, flags pre-major ativas
+- `.release-please-manifest.json`: versão inicial `0.0.0` para ambos os componentes
+- `.github/workflows/release.yml`: `googleapis/release-please-action@v4`, jobs condicionais `publish-backend` (imagem Docker com tag semântica + Coolify webhook) e `deploy-frontend-prod` (Cloudflare Pages branch=main)
+- `backend.yml`: job `publish-image` removido — deploy de prod migrou para `release.yml`
+- `frontend.yml`: `build-and-deploy` → `deploy-staging`, staging-only, bug do `skipped` corrigido
+- Secret `RELEASE_PLEASE_TOKEN` criado no repositório (PAT clássico, escopos `repo` + `workflow`)
+
+### Fluxo de deploy de prod (pós-implementação)
+
+1. Commits convencionais em `backend/**` ou `frontend/**` → merge em develop → merge PR #53 (develop→main)
+2. `release.yml` roda → release-please cria Release PR por componente afetado
+3. Desenvolvedor revisa CHANGELOG e mergeia o Release PR quando quiser lançar
+4. Tag criada → `publish-backend` ou `deploy-frontend-prod` dispara automaticamente
+
+### Pendente (operacional, não bloqueia features)
+
+- PR #53 (`develop → main`) aberto — mergear quando a primeira feature de domínio estiver pronta
+- Better Stack configurado monitorando `/actuator/health/liveness` _(manual)_
+- Primeiro backup manual Supabase executado _(manual)_
+
+### Não-óbvios críticos
+
+- `GITHUB_TOKEN` padrão não dispara quality gates no Release PR — por isso usa PAT
+- Para Maven, release-please cria um PR de SNAPSHOT (`autorelease: snapshot`) após cada push em main — isso é housekeeping, não release. Produção só dispara ao mergear PR com label `autorelease: pending`
+- Outputs usam bracket notation: `steps.rp.outputs['backend--release_created']`
+- Commits fora de `backend/**` e `frontend/**` não geram bump de versão
 
 ---
 

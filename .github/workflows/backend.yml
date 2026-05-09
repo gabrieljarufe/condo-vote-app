@@ -106,6 +106,39 @@ jobs:
           if [[ "$result" == "failure" || "$result" == "cancelled" ]]; then exit 1; fi
           echo "Quality gate passed (backend-quality-gate-run: $result)"
 
+  staging-deploy:
+    needs: backend-quality-gate
+    if: >-
+      always() &&
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/develop' &&
+      needs.backend-quality-gate.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+      - name: Build and push (tag develop)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/condo-vote-backend:develop
+      - name: Trigger Coolify staging deploy
+        run: |
+          HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET "${{ secrets.COOLIFY_STAGING_WEBHOOK_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
+          echo "Coolify staging response: $HTTP"
+          [[ "$HTTP" == "2"* ]] || exit 1
+
   publish-image:
     needs: backend-quality-gate
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -133,71 +166,4 @@ jobs:
         run: |
           curl -s -o /dev/null -w "%{http_code}" \
             -X GET "${{ secrets.COOLIFY_WEBHOOK_URL }}" \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
-
-  preview-deploy:
-    needs: [changes, backend-quality-gate]
-    if: >-
-      always() &&
-      github.event_name == 'pull_request' &&
-      github.event.action != 'closed' &&
-      needs.changes.outputs.backend == 'true' &&
-      needs.backend-quality-gate.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
-      - name: Build and push (tag pr-{number})
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/condo-vote-backend:pr-${{ github.event.pull_request.number }}
-      - name: Trigger Coolify preview deploy
-        run: |
-          HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X GET "${{ secrets.COOLIFY_WEBHOOK_URL }}?pull_request_id=${{ github.event.pull_request.number }}" \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}")
-          echo "Coolify response: $HTTP"
-          [[ "$HTTP" == "2"* ]] || exit 1
-      - name: Comment preview URL on PR
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const pr = context.payload.pull_request.number;
-            const url = `https://${pr}.api.condovote.com.br`;
-            const body = `### Backend preview deployado\n\n🔗 ${url}\n\n> Atualizado a cada push neste PR.`;
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner, repo: context.repo.repo, issue_number: pr
-            });
-            const existing = comments.find(c => c.body.includes('Backend preview deployado'));
-            if (existing) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner, repo: context.repo.repo,
-                comment_id: existing.id, body
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner, repo: context.repo.repo,
-                issue_number: pr, body
-              });
-            }
-
-  preview-cleanup:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Stop Coolify preview
-        run: |
-          curl -s -o /dev/null -w "%{http_code}" \
-            -X DELETE "${{ secrets.COOLIFY_API_URL }}/api/v1/applications/qygnlsghzris119vepaychk4/previews/${{ github.event.pull_request.number }}" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"

@@ -136,10 +136,12 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
 
   preview-deploy:
-    needs: backend-quality-gate
+    needs: [changes, backend-quality-gate]
     if: >-
+      always() &&
       github.event_name == 'pull_request' &&
       github.event.action != 'closed' &&
+      needs.changes.outputs.backend == 'true' &&
       needs.backend-quality-gate.result == 'success'
     runs-on: ubuntu-latest
     permissions:

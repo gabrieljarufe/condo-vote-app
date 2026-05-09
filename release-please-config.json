@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "5fe0d788d410a0f95fa719eca0cf23a68eadad19",
+  "include-component-in-tag": true,
+  "separate-pull-requests": true,
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "packages": {
+    "backend": {
+      "release-type": "maven",
+      "component": "backend",
+      "changelog-path": "CHANGELOG.md"
+    },
+    "frontend": {
+      "release-type": "node",
+      "component": "frontend",
+      "changelog-path": "CHANGELOG.md"
+    }
+  }
+}

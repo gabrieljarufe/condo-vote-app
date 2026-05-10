@@ -29,16 +29,33 @@ VALUES (
 -- 2. Usuário do síndico em app_user
 --    id = UUID gerado pelo Supabase Auth (passo 1 do runbook)
 --    cpf_encrypted = hex gerado por scripts/encrypt-cpf.sh (passo 2 do runbook)
+--
+--    Bloco idempotente: suporta síndico que já existe em outro condomínio (cross-condo).
+--    Casos tratados:
+--      a) UUID não existe → INSERT normal
+--      b) UUID existe com mesmo email → noop (síndico legítimo de outro condo)
+--      c) UUID existe com email diferente → EXCEPTION (operador colou UUID errado)
 -- ============================================================
-INSERT INTO app_user (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
-VALUES (
-    '<UUID_SUPABASE_AUTH_SINDICO>',
-    '<Nome Completo do Síndico>',
-    '<email@sindico.com>',
-    decode('<HEX_CPF_CIPHERTEXT>', 'hex'),   -- saída de scripts/encrypt-cpf.sh
-    now(),
-    'v1'
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM app_user WHERE id = '<UUID_SUPABASE_AUTH_SINDICO>'::uuid) THEN
+    INSERT INTO app_user (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
+    VALUES (
+        '<UUID_SUPABASE_AUTH_SINDICO>',
+        '<Nome Completo do Síndico>',
+        '<email@sindico.com>',
+        decode('<HEX_CPF_CIPHERTEXT>', 'hex'),   -- saída de scripts/encrypt-cpf.sh
+        now(),
+        'v1'
+    );
+  ELSIF EXISTS (SELECT 1 FROM app_user WHERE id = '<UUID_SUPABASE_AUTH_SINDICO>'::uuid
+                AND email = '<email@sindico.com>') THEN
+    NULL; -- mesmo UUID, mesmo email → noop (síndico cross-condo)
+  ELSE
+    RAISE EXCEPTION 'UUID % já existe com email diferente — operador colou UUID errado?',
+                    '<UUID_SUPABASE_AUTH_SINDICO>';
+  END IF;
+END $$;
 
 -- ============================================================
 -- 3. Vínculo administrador

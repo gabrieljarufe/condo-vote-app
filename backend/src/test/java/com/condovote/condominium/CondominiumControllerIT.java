@@ -97,7 +97,8 @@ class CondominiumControllerIT extends AbstractIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(condoId.toString()))
         .andExpect(jsonPath("$[0].name").value("Condo Visível"))
-        .andExpect(jsonPath("$[0].role").value("ADMIN"));
+        .andExpect(jsonPath("$[0].roles").isArray())
+        .andExpect(jsonPath("$[0].roles[0]").value("ADMIN"));
   }
 
   @Test
@@ -113,7 +114,26 @@ class CondominiumControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(userId.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[0].role").value("OWNER"));
+        .andExpect(jsonPath("$[0].roles").isArray())
+        .andExpect(jsonPath("$[0].roles[0]").value("OWNER"));
+  }
+
+  @Test
+  void membroAdminEProprietarioRetorna200ComDoisPapeis() throws Exception {
+    UUID userId = UuidV7.generate();
+    UUID condoId = insertCondo("Condo Duplo");
+    UUID aptId = insertApartment(condoId, "101");
+    insertAdmin(condoId, userId);
+    insertResident(condoId, aptId, userId, "OWNER");
+
+    mvc.perform(
+            get("/api/me/condominiums")
+                .accept(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[0].roles").isArray())
+        .andExpect(jsonPath("$[0].roles.length()").value(2));
   }
 
   // --- fixtures ---

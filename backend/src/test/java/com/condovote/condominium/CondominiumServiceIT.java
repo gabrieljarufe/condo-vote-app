@@ -7,6 +7,7 @@ import com.condovote.AbstractIntegrationTest;
 import com.condovote.auth.AuthGateway;
 import com.condovote.shared.UuidV7;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -46,7 +47,7 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     assertThat(result).hasSize(1);
     assertThat(result.get(0).id()).isEqualTo(condoId);
     assertThat(result.get(0).name()).isEqualTo("Condo Alpha");
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.ADMIN);
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.ADMIN));
   }
 
   @Test
@@ -60,7 +61,7 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.OWNER);
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.OWNER));
   }
 
   @Test
@@ -74,11 +75,11 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.TENANT);
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.TENANT));
   }
 
   @Test
-  void userIsAdminAndResident_returnsMultipleRole() {
+  void userIsAdminAndResident_returnsBothRoles() {
     UUID userId = UuidV7.generate();
     UUID condoId = insertCondo("Condo Delta");
     UUID aptId = insertApartment(condoId, "303");
@@ -89,11 +90,12 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.MULTIPLE);
+    assertThat(result.get(0).roles())
+        .isEqualTo(Set.of(UserRoleInCondo.ADMIN, UserRoleInCondo.OWNER));
   }
 
   @Test
-  void userIsOwnerAndTenantInSameCondo_returnsMultipleRole() {
+  void userIsOwnerAndTenantInSameCondo_returnsBothRoles() {
     UUID userId = UuidV7.generate();
     UUID condoId = insertCondo("Condo Epsilon");
     UUID apt1 = insertApartment(condoId, "101");
@@ -105,7 +107,8 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.MULTIPLE);
+    assertThat(result.get(0).roles())
+        .isEqualTo(Set.of(UserRoleInCondo.OWNER, UserRoleInCondo.TENANT));
   }
 
   @Test
@@ -172,7 +175,7 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
 
     // UNION elimina duplicatas — mesmo role em dois aptos = única linha OWNER, não MULTIPLE
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.OWNER);
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.OWNER));
   }
 
   // --- fixtures ---

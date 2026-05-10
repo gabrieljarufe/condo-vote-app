@@ -84,6 +84,8 @@ Edite o arquivo preenchendo todos os placeholders:
 > **Atenção:** o `cpf_encrypted` usa `decode('<HEX>', 'hex')` para converter hex em BYTEA.
 > Use o hex em **letras minúsculas** dentro do `decode()`.
 
+> **Nota (síndico em múltiplos condomínios):** Se o síndico já foi bootstrapado em outro condomínio com o mesmo `auth.users.id`, o bloco `DO $$` detecta o UUID e pula o INSERT em `app_user` sem erro. Se o UUID coincidir com e-mail diferente, o bootstrap falha com mensagem clara — sinaliza que o operador colou o UUID errado.
+
 ---
 
 ## Passo 5 — Validar localmente

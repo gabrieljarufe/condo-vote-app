@@ -70,6 +70,15 @@ class CondominiumRepositoryTest extends AbstractIntegrationTest {
   }
 
   @Test
+  void userWithNoCondos_returnsEmptyList() {
+    UUID userId = UuidV7.generate();
+
+    List<CondominiumSummary> result = repository.findSummariesForUser(userId);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
   void userInTwoCondos_returnsSeparateRoleSets() {
     UUID userId = UuidV7.generate();
     UUID condoAdmin = insertCondo("Condo A Admin");

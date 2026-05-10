@@ -11,6 +11,9 @@ public class StringArrayToUserRoleSetConverter
     implements Converter<String[], Set<UserRoleInCondo>> {
   @Override
   public Set<UserRoleInCondo> convert(String[] source) {
+    if (source == null || source.length == 0) {
+      return Set.of();
+    }
     return Arrays.stream(source).map(UserRoleInCondo::valueOf).collect(Collectors.toSet());
   }
 }

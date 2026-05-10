@@ -20,7 +20,7 @@ public interface CondominiumRepository extends CrudRepository<Condominium, UUID>
                 WHERE user_id = :userId AND ended_at IS NULL
             )
             SELECT c.id, c.name,
-                   array_agg(DISTINCT ur.role ORDER BY ur.role) AS roles
+                   array_agg(DISTINCT ur.role) AS roles
             FROM user_roles ur
             JOIN condominium c ON c.id = ur.condominium_id
             GROUP BY c.id, c.name

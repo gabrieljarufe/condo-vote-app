@@ -314,7 +314,7 @@ A criação de um novo condomínio e seu primeiro síndico **não tem fluxo self
 4. PR `feature/bootstrap-<condo-slug>` → develop → main. CI aplica migration via Flyway em Testcontainer; merge em main → Coolify redeploya → Flyway aplica em prod.
 5. Operador envia credenciais ao síndico; síndico loga e começa a usar o sistema.
 
-> O template é **idempotente** em `app_user` — síndico cross-condo reusa a entrada sem violar PK; UUID coincidente com email divergente faz a migration falhar com mensagem explícita.
+> O template é **idempotente** em `app_user` — síndico de múltiplos condomínios reusa a entrada sem violar PK; UUID coincidente com email divergente faz a migration falhar com mensagem explícita.
 
 Esta decisão garante auditabilidade total (commit git, revisável via PR) e reprodutibilidade (mesma migration em local, CI e prod). Evolução para fluxo self-service fica para v2. Ver runbook detalhado em `docs/runbooks/bootstrap-condominio.md` (Fase 6) e `docs/architecture.md §1`.
 

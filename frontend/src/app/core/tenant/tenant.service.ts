@@ -11,10 +11,14 @@ import { UserRoleInCondo } from '../api/me-api.service';
  */
 @Injectable({ providedIn: 'root' })
 export class TenantService {
+  private static readonly EMPTY_ROLES: ReadonlySet<UserRoleInCondo> = new Set();
+
   private readonly _active = signal<{ id: string; roles: ReadonlySet<UserRoleInCondo> } | null>(null);
 
   readonly activeCondominiumId = computed(() => this._active()?.id ?? null);
-  readonly activeRoles = computed<ReadonlySet<UserRoleInCondo>>(() => this._active()?.roles ?? new Set());
+  readonly activeRoles = computed<ReadonlySet<UserRoleInCondo>>(
+    () => this._active()?.roles ?? TenantService.EMPTY_ROLES
+  );
 
   setActive(id: string, roles: readonly UserRoleInCondo[]): void {
     this._active.set({ id, roles: new Set(roles) });

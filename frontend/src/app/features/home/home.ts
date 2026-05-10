@@ -1,11 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, catchError, map, of, startWith } from 'rxjs';
-import { MeApiService, UserCondominium, UserRoleInCondo } from '../../core/api/me-api.service';
+import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { EmptyState } from '../../shared/ui/empty-state';
 import { Spinner } from '../../shared/ui/spinner';
+import { rolesLabel } from './home-utils';
 
 type LoadResult =
   | { kind: 'loading' }
@@ -136,15 +137,5 @@ export default class Home {
     this.tenant.setActive(c.id, c.roles);
   }
 
-  protected rolesLabel(roles: readonly UserRoleInCondo[]): string {
-    return roles.map(r => this.singleRoleLabel(r)).join(' · ');
-  }
-
-  private singleRoleLabel(role: UserRoleInCondo): string {
-    switch (role) {
-      case 'ADMIN': return 'Síndico';
-      case 'OWNER': return 'Proprietário';
-      case 'TENANT': return 'Inquilino';
-    }
-  }
+  protected readonly rolesLabel = rolesLabel;
 }

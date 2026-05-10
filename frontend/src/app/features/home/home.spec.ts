@@ -6,6 +6,7 @@ import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
 import Home from './home';
+import { rolesLabel } from './home-utils';
 
 const mockSupabase = {
   auth: {
@@ -16,46 +17,20 @@ const mockSupabase = {
 };
 
 describe('Home — rolesLabel', () => {
-  afterEach(() => TestBed.resetTestingModule());
-
-  beforeEach(async () => {
-    const mockMeApi = { getCondominiums: () => of([]) };
-    await TestBed.configureTestingModule({
-      imports: [Home],
-      providers: [
-        provideRouter([]),
-        { provide: MeApiService, useValue: mockMeApi },
-        { provide: SUPABASE_CLIENT, useValue: mockSupabase },
-      ],
-    }).compileComponents();
-  });
-
   it('rolesLabel([ADMIN]) retorna Síndico', () => {
-    const fixture = TestBed.createComponent(Home);
-    const component = fixture.componentInstance;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((component as any).rolesLabel(['ADMIN'])).toBe('Síndico');
+    expect(rolesLabel(['ADMIN'])).toBe('Síndico');
   });
 
   it('rolesLabel([OWNER]) retorna Proprietário', () => {
-    const fixture = TestBed.createComponent(Home);
-    const component = fixture.componentInstance;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((component as any).rolesLabel(['OWNER'])).toBe('Proprietário');
+    expect(rolesLabel(['OWNER'])).toBe('Proprietário');
   });
 
   it('rolesLabel([TENANT]) retorna Inquilino', () => {
-    const fixture = TestBed.createComponent(Home);
-    const component = fixture.componentInstance;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((component as any).rolesLabel(['TENANT'])).toBe('Inquilino');
+    expect(rolesLabel(['TENANT'])).toBe('Inquilino');
   });
 
   it('rolesLabel([ADMIN, OWNER]) retorna Síndico · Proprietário', () => {
-    const fixture = TestBed.createComponent(Home);
-    const component = fixture.componentInstance;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((component as any).rolesLabel(['ADMIN', 'OWNER'])).toBe('Síndico · Proprietário');
+    expect(rolesLabel(['ADMIN', 'OWNER'])).toBe('Síndico · Proprietário');
   });
 });
 

@@ -104,7 +104,7 @@ Antes de escrever qualquer classe Java, consulte **[`docs/coding-patterns.md`](.
 - [x] `condominium/CondominiumService.java`:
   - [x] Query explícita por `user_id` em `condominium_admin` UNION `apartment_resident` (sem RLS — cross-tenant)
   - [x] Retorna `List<CondominiumSummary { id, name, role }>`
-- [x] DTO `CondominiumSummary` com enum `UserRoleInCondo { ADMIN, OWNER, TENANT, MULTIPLE }`
+- [x] DTO `CondominiumSummary` com enum `UserRoleInCondo { ADMIN, OWNER, TENANT, MULTIPLE }` _(refatorado em H0/Fase 7 para `roles: Set<UserRoleInCondo>` — `MULTIPLE` removido)_
 - [x] Endpoint **não exige** header `X-Tenant-Id`
 
 **Aceite:** user seed do `R__seed_dev.sql` chama endpoint e vê o condo do seed com role ADMIN.

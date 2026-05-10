@@ -17,6 +17,8 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 - Um síndico pode simultaneamente ser proprietário de uma unidade no mesmo condomínio
 - Transferência de papel de síndico é operação de superadmin em v1 — sem fluxo self-service
 - Permissões restritas ao condomínio ao qual está vinculado
+- Um `app_user` pode ser `condominium_admin` em N condomínios — sem síndico-mestre cross-condo (permissões são por condomínio)
+- Papéis simultâneos no mesmo condomínio são **aditivos** — nenhum papel suprime outro; o frontend renderiza a junção dos papéis (ex.: 'Síndico · Proprietário'), não escolhe um único chapéu
 - Pode: cadastrar apartamentos, enviar convites por e-mail, criar/cancelar votações, acompanhar resultados, acessar auditoria de votos
 
 **Proprietário**

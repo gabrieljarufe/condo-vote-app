@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Observable, catchError, map, of, startWith } from 'rxjs';
-import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
+import { MeApiService, UserCondominium, UserRoleInCondo } from '../../core/api/me-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { EmptyState } from '../../shared/ui/empty-state';
@@ -66,7 +66,7 @@ type LoadResult =
                   <li>
                     <button
                       type="button"
-                      (click)="selectCondo(c.id)"
+                      (click)="selectCondo(c)"
                       class="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-outline-variant bg-surface-container-lowest hover:border-secondary transition-all text-left"
                     >
                       <span class="flex items-center gap-3">
@@ -75,7 +75,7 @@ type LoadResult =
                         </span>
                         <span>
                           <span class="block text-base font-medium text-on-surface">{{ c.name }}</span>
-                          <span class="block text-xs text-on-surface-variant">{{ roleLabel(c.role) }}</span>
+                          <span class="block text-xs text-on-surface-variant">{{ rolesLabel(c.roles) }}</span>
                         </span>
                       </span>
                       <span class="material-symbols-outlined text-on-surface-variant" aria-hidden="true">arrow_forward</span>
@@ -127,25 +127,24 @@ export default class Home {
     effect(() => {
       const list = this.condominiums();
       if (list.length === 1 && !this.tenant.activeCondominiumId()) {
-        this.tenant.setActive(list[0].id);
+        this.tenant.setActive(list[0].id, list[0].roles);
       }
     });
   }
 
-  protected selectCondo(id: string): void {
-    this.tenant.setActive(id);
+  protected selectCondo(c: UserCondominium): void {
+    this.tenant.setActive(c.id, c.roles);
   }
 
-  protected roleLabel(role: UserCondominium['role']): string {
+  protected rolesLabel(roles: readonly UserRoleInCondo[]): string {
+    return roles.map(r => this.singleRoleLabel(r)).join(' · ');
+  }
+
+  private singleRoleLabel(role: UserRoleInCondo): string {
     switch (role) {
-      case 'ADMIN':
-        return 'Síndico';
-      case 'OWNER':
-        return 'Proprietário';
-      case 'TENANT':
-        return 'Inquilino';
-      case 'MULTIPLE':
-        return 'Múltiplos vínculos';
+      case 'ADMIN': return 'Síndico';
+      case 'OWNER': return 'Proprietário';
+      case 'TENANT': return 'Inquilino';
     }
   }
 }

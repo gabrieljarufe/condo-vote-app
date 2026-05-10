@@ -1,4 +1,5 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
+import { UserRoleInCondo } from '../api/me-api.service';
 
 /**
  * Mantém o condomínio ativo da sessão atual.
@@ -10,14 +11,16 @@ import { Injectable, signal } from '@angular/core';
  */
 @Injectable({ providedIn: 'root' })
 export class TenantService {
-  private readonly _activeCondominiumId = signal<string | null>(null);
-  readonly activeCondominiumId = this._activeCondominiumId.asReadonly();
+  private readonly _active = signal<{ id: string; roles: ReadonlySet<UserRoleInCondo> } | null>(null);
 
-  setActive(condominiumId: string): void {
-    this._activeCondominiumId.set(condominiumId);
+  readonly activeCondominiumId = computed(() => this._active()?.id ?? null);
+  readonly activeRoles = computed<ReadonlySet<UserRoleInCondo>>(() => this._active()?.roles ?? new Set());
+
+  setActive(id: string, roles: readonly UserRoleInCondo[]): void {
+    this._active.set({ id, roles: new Set(roles) });
   }
 
   clear(): void {
-    this._activeCondominiumId.set(null);
+    this._active.set(null);
   }
 }

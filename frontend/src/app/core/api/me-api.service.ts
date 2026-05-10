@@ -6,17 +6,19 @@ import { environment } from '../../../environments/environment';
 /**
  * Resposta de GET /api/me/condominiums.
  * Espelha CondominiumSummary do backend (UserRoleInCondo enum).
- *   ADMIN    — síndico/admin do condomínio
- *   OWNER    — proprietário de unidade
- *   TENANT   — inquilino
- *   MULTIPLE — usuário tem mais de um vínculo no mesmo condomínio (raro)
+ *   ADMIN  — síndico/admin do condomínio
+ *   OWNER  — proprietário de unidade
+ *   TENANT — inquilino
+ *
+ * `roles` é um array porque o usuário pode ter múltiplos papéis
+ * simultaneamente no mesmo condomínio (ex.: ADMIN + OWNER).
  */
-export type UserRoleInCondo = 'ADMIN' | 'OWNER' | 'TENANT' | 'MULTIPLE';
+export type UserRoleInCondo = 'ADMIN' | 'OWNER' | 'TENANT';
 
 export interface UserCondominium {
   readonly id: string;
   readonly name: string;
-  readonly role: UserRoleInCondo;
+  readonly roles: readonly UserRoleInCondo[];
 }
 
 /**

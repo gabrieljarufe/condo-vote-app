@@ -12,7 +12,7 @@ import { environment } from '../../../environments/environment';
  *
  * Sem condomínio ativo → não injeta. Endpoints tenant-bound rejeitam (400).
  */
-const TENANT_EXCLUDED_PREFIXES = ['/api/me/', '/api/register/'];
+const TENANT_EXCLUDED_PREFIXES = ['/api/me/', '/api/register/', '/api/invitations/'];
 
 export const tenantInterceptor: HttpInterceptorFn = (req, next) => {
   if (!req.url.startsWith(environment.apiUrl)) {

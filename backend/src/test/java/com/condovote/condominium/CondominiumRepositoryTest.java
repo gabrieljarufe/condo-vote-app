@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -26,8 +25,6 @@ import org.springframework.transaction.annotation.Transactional;
 class CondominiumRepositoryTest extends AbstractIntegrationTest {
 
   @Autowired CondominiumRepository repository;
-
-  @Autowired JdbcTemplate jdbc;
 
   @Test
   void userIsAdmin_returnsAdminRoleSet() {
@@ -92,44 +89,5 @@ class CondominiumRepositoryTest extends AbstractIntegrationTest {
 
     assertThat(first.roles()).isEqualTo(Set.of(UserRoleInCondo.ADMIN));
     assertThat(second.roles()).isEqualTo(Set.of(UserRoleInCondo.TENANT));
-  }
-
-  // --- fixtures ---
-
-  private UUID insertCondo(String name) {
-    UUID id = UuidV7.generate();
-    jdbc.update(
-        "INSERT INTO condominium (id, name, address, created_at) VALUES (?, ?, 'Rua Test, 1', now())",
-        id,
-        name);
-    return id;
-  }
-
-  private UUID insertApartment(UUID condoId, String unit) {
-    UUID id = UuidV7.generate();
-    jdbc.update(
-        "INSERT INTO apartment (id, condominium_id, unit_number, is_delinquent, created_at) VALUES (?, ?, ?, false, now())",
-        id,
-        condoId,
-        unit);
-    return id;
-  }
-
-  private void insertAdmin(UUID condoId, UUID userId) {
-    jdbc.update(
-        "INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at) VALUES (?, ?, ?, now())",
-        UuidV7.generate(),
-        condoId,
-        userId);
-  }
-
-  private void insertResident(UUID condoId, UUID aptId, UUID userId, String role) {
-    jdbc.update(
-        "INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at) VALUES (?, ?, ?, ?, ?::resident_role, now())",
-        UuidV7.generate(),
-        condoId,
-        aptId,
-        userId,
-        role);
   }
 }

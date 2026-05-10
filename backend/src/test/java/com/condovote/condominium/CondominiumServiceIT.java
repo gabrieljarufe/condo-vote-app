@@ -13,7 +13,6 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 class CondominiumServiceIT extends AbstractIntegrationTest {
 
   @Autowired CondominiumService service;
-
-  @Autowired JdbcTemplate jdbc;
 
   @MockitoBean AuthGateway authGateway;
 
@@ -176,64 +173,5 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     // UNION elimina duplicatas — mesmo role em dois aptos = única linha OWNER, não MULTIPLE
     assertThat(result).hasSize(1);
     assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.OWNER));
-  }
-
-  // --- fixtures ---
-
-  private UUID insertCondo(String name) {
-    UUID id = UuidV7.generate();
-    jdbc.update(
-        "INSERT INTO condominium (id, name, address, created_at) VALUES (?, ?, 'Rua Test, 1', now())",
-        id,
-        name);
-    return id;
-  }
-
-  private UUID insertApartment(UUID condoId, String unit) {
-    UUID id = UuidV7.generate();
-    jdbc.update(
-        "INSERT INTO apartment (id, condominium_id, unit_number, is_delinquent, created_at) VALUES (?, ?, ?, false, now())",
-        id,
-        condoId,
-        unit);
-    return id;
-  }
-
-  private void insertAdmin(UUID condoId, UUID userId) {
-    jdbc.update(
-        "INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at) VALUES (?, ?, ?, now())",
-        UuidV7.generate(),
-        condoId,
-        userId);
-  }
-
-  private void insertRevokedAdmin(UUID condoId, UUID userId) {
-    jdbc.update(
-        "INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at, revoked_at, revoked_by_user_id) VALUES (?, ?, ?, now(), now(), ?)",
-        UuidV7.generate(),
-        condoId,
-        userId,
-        UuidV7.generate());
-  }
-
-  private void insertResident(UUID condoId, UUID aptId, UUID userId, String role) {
-    jdbc.update(
-        "INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at) VALUES (?, ?, ?, ?, ?::resident_role, now())",
-        UuidV7.generate(),
-        condoId,
-        aptId,
-        userId,
-        role);
-  }
-
-  private void insertEndedResident(UUID condoId, UUID aptId, UUID userId, String role) {
-    jdbc.update(
-        "INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at, ended_at, ended_by_user_id, end_reason) VALUES (?, ?, ?, ?, ?::resident_role, now(), now(), ?, 'REMOVED_BY_ADMIN'::resident_end_reason)",
-        UuidV7.generate(),
-        condoId,
-        aptId,
-        userId,
-        role,
-        UuidV7.generate());
   }
 }

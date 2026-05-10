@@ -203,7 +203,7 @@ Itens que custaram tempo para descobrir e que afetam decisões futuras:
 
 - **Angular CLI default mudou para v21.2** — patterns documentados como "Angular 20+" continuam válidos, mas o CLI agora gera arquivos sem sufixo `.component` (`app.ts` em vez de `app.component.ts`) e usa **Vitest** em vez de Karma/Jasmine. Seguimos a convenção do CLI; o `coding-patterns.md` não exige sufixo.
 - **Tailwind v4 + Angular** integra via `.postcssrc.json` com `@tailwindcss/postcss` — não precisa `tailwind.config.js`. Tokens vivem em `@theme { ... }` direto no `styles.scss` e viram CSS variables runtime.
-- **`CondominiumSummary` retorna `roles: Set<UserRoleInCondo>`** — `MULTIPLE` foi eliminado em H0/Fase 7; papéis aditivos agora são contrato explícito.
+- **`CondominiumSummary` retorna `roles: Set<UserRoleInCondo>`** — `MULTIPLE` foi eliminado em H0 (história zero de Fase 7); papéis aditivos agora são contrato explícito.
 - **Output do build Angular 21 é `dist/<project>/browser/`** — alinhado com Cloudflare config existente. O `_redirects` em `frontend/public/` é copiado automaticamente para o output.
 - **`environment.prod.ts` é gerado em build time** por `scripts/inject-env.mjs` a partir de `NG_APP_*` env vars; arquivo fica gitignored. Build falha cedo se var obrigatória estiver ausente — preferimos quebrar do que deployar config quebrada.
 - **GitHub Actions requer repository secrets** (não environment secrets) para jobs sem `environment:` declarado. Secrets configurados em environment (Production/Preview) são ignorados nesses jobs — devem estar em Settings → Secrets → Repository secrets.

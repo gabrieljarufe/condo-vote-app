@@ -155,6 +155,8 @@ class BootstrapTemplateIT extends AbstractIntegrationTest {
         DO $$
         BEGIN
           IF NOT EXISTS (SELECT 1 FROM app_user WHERE id = '%s'::uuid) THEN
+            -- esta INSERT nunca executa no caminho noop: o síndico já foi pré-inserido acima.
+            -- O valor '\\x00'::bytea é apenas um placeholder; o CPF autoritativo é o da linha pré-existente.
             INSERT INTO app_user (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
             VALUES ('%s', 'Síndico Existente', 'sindico-teste@condovote.test', '\\x00'::bytea, now(), 'v1');
           ELSIF EXISTS (SELECT 1 FROM app_user WHERE id = '%s'::uuid
@@ -182,6 +184,13 @@ class BootstrapTemplateIT extends AbstractIntegrationTest {
   /**
    * Mesmo UUID já existe em app_user mas com email diferente — operador colou UUID errado. O bloco
    * DO $$ deve lançar DataAccessException contendo a mensagem de erro explícita.
+   *
+   * <p><strong>Atenção para futuros mantenedores:</strong> após o bloco {@code assertThatThrownBy},
+   * a transação PostgreSQL já está em estado ABORTED (o {@code RAISE EXCEPTION} do DO $$ abortou a
+   * transação no nível do banco). Qualquer chamada JDBC subsequente neste teste lançará {@code
+   * PSQLException: ERROR: current transaction is aborted}. Não adicione assertions ou operações
+   * JDBC depois do {@code assertThatThrownBy} sem antes emitir um SAVEPOINT/ROLLBACK TO SAVEPOINT
+   * para recuperar a transação.
    */
   @Test
   void bootstrapTemplateSyndicoComUuidColidindoComEmailDivergente_deveLancarExcecao() {

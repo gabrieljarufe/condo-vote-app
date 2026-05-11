@@ -9,7 +9,8 @@
     "backend": {
       "release-type": "maven",
       "component": "backend",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.0.1"
     },
     "frontend": {
       "release-type": "node",

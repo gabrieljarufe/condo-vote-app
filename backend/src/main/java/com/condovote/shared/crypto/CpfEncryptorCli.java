@@ -41,16 +41,16 @@ public class CpfEncryptorCli {
 
     HexFormat hex = HexFormat.of();
     byte[] raw = hex.parseHex(hexKey);
-    if (raw.length != 32) {
+    if (raw.length != 64) {
       System.err.println(
-          "Erro: CPF_ENCRYPTION_KEY deve ter 32 bytes (64 hex chars); recebido: " + raw.length);
+          "Erro: CPF_ENCRYPTION_KEY deve ter 64 bytes (128 hex chars); recebido: " + raw.length);
       System.exit(4);
     }
 
-    byte[] ctrKey = new byte[16];
-    byte[] macKey = new byte[16];
-    System.arraycopy(raw, 0, ctrKey, 0, 16);
-    System.arraycopy(raw, 16, macKey, 0, 16);
+    byte[] ctrKey = new byte[32];
+    byte[] macKey = new byte[32];
+    System.arraycopy(raw, 0, ctrKey, 0, 32);
+    System.arraycopy(raw, 32, macKey, 0, 32);
 
     SivMode siv = new SivMode();
     byte[] ciphertext = siv.encrypt(ctrKey, macKey, cpf.getBytes());

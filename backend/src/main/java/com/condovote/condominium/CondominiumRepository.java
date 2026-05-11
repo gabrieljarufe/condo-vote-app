@@ -8,9 +8,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface CondominiumRepository extends CrudRepository<Condominium, UUID> {
 
-  // UNION (sem ALL) elimina duplicatas: usuário OWNER em dois aptos do mesmo condo
-  // ainda produz apenas uma linha (condo_id, 'OWNER') — COUNT = 1 → role OWNER.
-  // Roles distintas (ex: ADMIN + OWNER) produzem duas linhas → COUNT = 2 → MULTIPLE.
   @Query(
       """
             WITH user_roles AS (
@@ -21,18 +18,12 @@ public interface CondominiumRepository extends CrudRepository<Condominium, UUID>
                 SELECT condominium_id, role::text
                 FROM apartment_resident
                 WHERE user_id = :userId AND ended_at IS NULL
-            ),
-            grouped AS (
-                SELECT condominium_id,
-                       COUNT(*)  AS role_count,
-                       MIN(role) AS single_role
-                FROM user_roles
-                GROUP BY condominium_id
             )
             SELECT c.id, c.name,
-                CASE WHEN g.role_count > 1 THEN 'MULTIPLE' ELSE g.single_role END AS role
-            FROM grouped g
-            JOIN condominium c ON c.id = g.condominium_id
+                   array_agg(DISTINCT ur.role) AS roles
+            FROM user_roles ur
+            JOIN condominium c ON c.id = ur.condominium_id
+            GROUP BY c.id, c.name
             ORDER BY c.name
             """)
   List<CondominiumSummary> findSummariesForUser(@Param("userId") UUID userId);

@@ -52,28 +52,28 @@ boolean existsByApartmentIdAndPollId(UUID aptId, UUID pollId);
 **Queries complexas** (UNION, CTE, window functions, projeções customizadas) com `@Query`:
 ```java
 @Query("""
-        WITH user_roles AS (
-            SELECT condominium_id, 'ADMIN' AS role
-            FROM condominium_admin
-            WHERE user_id = :userId AND revoked_at IS NULL
-            UNION
-            SELECT condominium_id, role::text
-            FROM apartment_resident
-            WHERE user_id = :userId AND ended_at IS NULL
-        ),
-        grouped AS (
-            SELECT condominium_id, COUNT(*) AS role_count, MIN(role) AS single_role
-            FROM user_roles GROUP BY condominium_id
-        )
-        SELECT c.id, c.name,
-            CASE WHEN g.role_count > 1 THEN 'MULTIPLE' ELSE g.single_role END AS role
-        FROM grouped g JOIN condominium c ON c.id = g.condominium_id
-        ORDER BY c.name
-        """)
+    WITH user_roles AS (
+        SELECT condominium_id, 'ADMIN' AS role
+        FROM condominium_admin
+        WHERE user_id = :userId AND revoked_at IS NULL
+        UNION
+        SELECT condominium_id, role::text
+        FROM apartment_resident
+        WHERE user_id = :userId AND ended_at IS NULL
+    )
+    SELECT c.id, c.name,
+          array_agg(DISTINCT ur.role) AS roles
+    FROM user_roles ur
+    JOIN condominium c ON c.id = ur.condominium_id
+    GROUP BY c.id, c.name
+    ORDER BY c.name
+    """)
 List<CondominiumSummary> findSummariesForUser(@Param("userId") UUID userId);
 ```
 
 Exemplo canônico completo: `backend/src/main/java/com/condovote/condominium/CondominiumRepository.java`
+
+> **Nota:** o campo `roles` é do tipo `String[]` no SQL (`array_agg`) e convertido para `Set<UserRoleInCondo>` via `@ReadingConverter` registrado no `JdbcConfig`. Sem o converter, Spring Data JDBC não sabe mapear o array PostgreSQL para o `Set` do record.
 
 **Projeções de leitura (DTO):** records no pacote da feature. Spring Data JDBC mapeia o
 `ResultSet` direto no construtor do record — a ordem das colunas no SELECT deve casar com

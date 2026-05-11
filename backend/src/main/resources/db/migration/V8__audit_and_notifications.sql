@@ -13,7 +13,10 @@ CREATE TABLE audit_event (
     CONSTRAINT fk_audit_event_condominium FOREIGN KEY (condominium_id) REFERENCES condominium (id)
 );
 
-CREATE INDEX idx_audit_event_condominium_id ON audit_event (condominium_id, occurred_at DESC);
+-- timeline cursor-based (H9): WHERE condominium_id=? AND (occurred_at, id) < (?, ?)
+-- ORDER BY occurred_at DESC, id DESC LIMIT 50. Inclui id como desempate para
+-- evitar skip/dup em eventos com mesmo occurred_at (bulk em now()).
+CREATE INDEX idx_audit_event_condominium_id ON audit_event (condominium_id, occurred_at DESC, id DESC);
 CREATE INDEX idx_audit_event_entity         ON audit_event (entity_type, entity_id);
 CREATE INDEX idx_audit_event_event_type     ON audit_event (event_type);
 

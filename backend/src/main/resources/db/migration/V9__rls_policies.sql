@@ -43,29 +43,43 @@ ALTER TABLE audit_event            ENABLE ROW LEVEL SECURITY;
 -- app_user e email_notification são cross-tenant — sem RLS
 -- condominium é cross-tenant (superadmin) — sem RLS
 
+-- WITH CHECK espelha USING — defesa em profundidade contra INSERT/UPDATE
+-- gravando linha com condominium_id diferente do tenant ativo. Importante para
+-- H6 (UPDATE em apartment/condominium_admin), H7 (INSERT em poll/snapshot) e
+-- H8 (INSERT em vote/poll_result). Sem WITH CHECK, USING só filtra leitura.
+
 CREATE POLICY tenant_isolation ON apartment
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON apartment_resident
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON condominium_admin
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON invitation
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON poll
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON poll_eligible_snapshot
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON vote
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON poll_result
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
 
 CREATE POLICY tenant_isolation ON audit_event
-    USING (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));
+    USING      (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid))
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant', true)::uuid));

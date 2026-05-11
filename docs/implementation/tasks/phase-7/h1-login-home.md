@@ -21,7 +21,7 @@ A história também materializa a **paridade de síndicos** ([`condo-vote-princi
 - [x] **Dado** um usuário com 0 condomínios administrados **quando** entra na home **então** vê estado vazio explicando que precisa ser bootstrapado.
 - [x] **Dado** um usuário com N ≥ 1 condomínios **quando** entra na home **então** vê um seletor com todos eles e pode escolher o ativo no header.
 - [x] **Dado** um usuário com condomínio ativo selecionado **quando** dá F5 (refresh) **então** o seletor volta ao estado vazio (não persistido em `localStorage` por design — força nova seleção explícita).
-- [ ] **Dado** o condomínio piloto bootstrapado em prod **quando** o síndico real loga em `https://condovote.com.br` **então** vê o condomínio listado (smoke test prod, fecha T3.9 🔶).
+- [x] **Dado** o condomínio piloto bootstrapado em prod **quando** o síndico real loga em `https://condovote.com.br` **então** vê o condomínio listado (smoke test prod executado 2026-05-11, fecha T3.9).
 
 ## Escopo técnico
 
@@ -67,24 +67,21 @@ A história também materializa a **paridade de síndicos** ([`condo-vote-princi
 - [x] T1.4 — `MeApiService` + `GET /api/me/condominiums` no backend (concluída em T3.6/T4.3)
 - [x] T1.5 — `HomeComponent` com 0 / 1 / N condomínios (concluída em T4.5)
 - [x] T1.6 — `<app-app-header>` com seletor + sair + `TenantService` em memória (concluída em T4.5)
-- [ ] **T1.7 — Smoke test prod com condomínio piloto** _(pendente — fecha T3.9 🔶)_
-  - Pré-requisito: condomínio piloto bootstrapado em prod via runbook (Fase 6 já preparou o template).
-  - Executar via Bruno: rodar `api-collection/auth/get-token.bru` apontando para `https://api.condovote.com.br` com credenciais reais → token salvo em `access_token`.
-  - Em seguida `api-collection/me/list-condominiums.bru` → esperar 200 com array contendo `{ id, name }` do condomínio piloto.
-  - Validar UI: login em `https://condovote.com.br` → home renderiza o condomínio → seletor aparece → sair desloga.
-  - Documentar evidência (status, timestamp) em `docs/STATUS.md`.
-- [ ] T1.8 — Atualizar `docs/STATUS.md`: marcar T3.9 como ✅ concluída (deixou de ser 🔶), adicionar H1 como história concluída na nova seção "Fase 7 — Histórias".
-- [ ] T1.9 — Marcar com ✅ as linhas correspondentes no apêndice de [`index.md`](index.md) (nada a marcar — H1 não consome F1–F8).
-- [ ] T1.10 — Marcar com `[x]` o último critério de aceitação desta história após T1.7 verde.
+- [x] **T1.7 — Smoke test prod com condomínio piloto** _(concluída 2026-05-11 — fecha T3.9)_
+  - Pré-requisito: condomínio piloto Pitufos bootstrapado em prod via runbook (V1001).
+  - Smoke executado: login OK em `https://condovote.com.br`, condomínio Pitufos renderizado na home, seletor funcional, sair desloga corretamente.
+- [x] T1.8 — Atualizar `docs/STATUS.md`: T3.9 marcada como ✅, H1 marcada como ✅.
+- [x] T1.9 — Marcar com ✅ as linhas correspondentes no apêndice de [`index.md`](index.md) (nada a marcar — H1 não consome F1–F8).
+- [x] T1.10 — Critério 8 de aceitação marcado.
 
 ## Definition of Done
 
 - [x] Critérios 1–7 de aceitação cobertos por testes existentes:
   - Backend: `MeControllerIT`, `RlsIsolationIT`.
   - Frontend: Vitest unitários de `auth.guard`, `auth.service`, `home`.
-- [ ] Critério 8 (smoke prod) executado e documentado em STATUS.md.
+- [x] Critério 8 (smoke prod) executado e documentado em STATUS.md.
 - [x] Quality gates verdes no CI da Fase 4 (Spotless, JaCoCo ≥ 50% overall, PMD CPD, ESLint, jscpd).
-- [ ] PR `docs/fase-7-historias` → `develop` aberto via `gh pr create` (este PR estabelece a estrutura `phase-7/` + H1; T1.7/T1.8 podem entrar em PR posterior dedicado a fechar T3.9 se preferir).
+- [x] H1 fechada via PR de foundations da Fase 7.
 
 ## Como executar (delegação ao Sonnet)
 

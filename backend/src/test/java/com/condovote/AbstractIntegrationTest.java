@@ -68,6 +68,9 @@ public abstract class AbstractIntegrationTest {
     registry.add("app.actuator.password", () -> "test-password");
     // URL Redis dummy — beans Redis são mockados via @MockitoBean acima.
     registry.add("app.redis.url", () -> "redis://localhost:6379");
+    // Supabase URL/SERVICE_ROLE — dummy: SupabaseAdminGateway só é exercitado em H4 IT real.
+    registry.add("supabase.url", () -> "http://localhost:9999");
+    registry.add("supabase.service-role-key", () -> "test-service-role-key");
     // Chave de 64 bytes para AES-256-SIV — dummy seguro para testes (não usada em prod).
     registry.add(
         "app.cpf.encryption-key",

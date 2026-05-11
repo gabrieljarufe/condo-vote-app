@@ -2,6 +2,8 @@
 
 > **Status:** Em execução. Cada história é fatiada **verticalmente** (migration + repository + service + controller + tela + testes) e vira um PR demonstrável.
 
+> 📖 **Antes de iniciar qualquer história, leia [`workflow.md`](workflow.md)** — guia canônico das 6 fases de desenvolvimento (escrever história → audit de coerência → tasks → plano → implementar → PR). Destilado da experiência da H0 (PRs #56 + #57).
+
 **Pré-requisitos:** Fases 0–6 completas (walking skeleton verde ponta-a-ponta: backend deployado, migrations aplicadas, auth ligada, CI/CD verde, observabilidade ativa, bootstrap formal de condomínio).
 
 ---

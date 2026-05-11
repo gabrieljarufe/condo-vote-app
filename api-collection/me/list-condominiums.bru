@@ -10,12 +10,12 @@ get {
   auth: bearer
 }
 
-auth:bearer {
-  token: {{access_token}}
-}
-
 headers {
   ~X-Tenant-Id: <condominium-uuid>
+}
+
+auth:bearer {
+  token: {{access_token}}
 }
 
 assert {

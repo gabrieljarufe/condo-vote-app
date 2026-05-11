@@ -25,7 +25,7 @@
   - ✅ T3.6 — `GET /api/me/condominiums` + Spring Data JDBC + `Condominium` aggregate (13 testes)
   - ✅ T3.7 — `Dockerfile` multi-stage validado localmente
   - ✅ T3.8 — Deploy Coolify + Let's Encrypt + `api.condovote.com.br` respondendo
-  - 🔶 T3.9 — Smoke test prod: JWT auth via Supabase Cloud ✅; endpoint `/api/me/condominiums` pendente (sem condomínio de teste em prod ainda — fluxo real será testado no bootstrap formal da Fase 6)
+  - ✅ T3.9 — Smoke test prod: condomínio piloto Pitufos bootstrapado em prod, síndico real loga em `https://condovote.com.br`, home renderiza Pitufos, `/api/me/condominiums` retorna 200 (validado 2026-05-11)
   - ✅ T3.10 — Comandos do `CLAUDE.md` atualizados
 - 🚧 **Fase 4** — Frontend Skeleton (branch `feat/phase-4-frontend`)
   - ✅ T4.0 — Fundamentos: `coding-patterns.md` §Frontend expandido (SOLID, smart/dumb, design tokens, DoD), `frontend-feature-checklist.md` criado
@@ -47,7 +47,8 @@
 - ✅ **Fase 5.6** — SemVer com release-please (ver seção abaixo)
 - ✅ **Fase 6** — Observabilidade & bootstrap formal de condomínio
 - 🚧 **Fase 7** — Histórias de Domínio — **em execução**
-  - 🚧 **H1** — Login + Home com seletor de condomínios (T1.1–T1.6 ✅ desde Fase 4; T1.7 smoke prod pendente)
+  - ✅ **H1** — Login + Home com seletor de condomínios (smoke prod com piloto Pitufos validado 2026-05-11)
+  - ✅ **Foundations Fase 7** — edição inline V6 (índice parcial invitation), V7 (triggers write-once snapshot + immutable vote), V8 (índice composto audit cursor `(condo, occurred DESC, id DESC)`), V9 (WITH CHECK em policies); `AuditEventPublisher` e `SupabaseAdminGateway`; `SecurityConfig` permitAll `/api/public/**`. Requer `supabase db reset` local e DROP/CREATE schema em prod antes do próximo deploy. Decisão: `CPF_ENCRYPTION_KEY` deve ser **idêntica** em staging↔prod (sem rotação v1 — ciphertext determinístico não decifra cross-env se chaves divergirem)
   - ⏳ H2 — Síndico cadastra apartamento
   - ⏳ H3 — Síndico convida morador (com e-mail)
   - ⏳ H4 — Convidado completa cadastro com CPF

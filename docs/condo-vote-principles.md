@@ -17,6 +17,8 @@ O problema central que resolve é a baixa adesão em assembleias presenciais, di
 - Um síndico pode simultaneamente ser proprietário de uma unidade no mesmo condomínio
 - Transferência de papel de síndico é operação de superadmin em v1 — sem fluxo self-service
 - Permissões restritas ao condomínio ao qual está vinculado
+- Um `app_user` pode ser `condominium_admin` em N condomínios — sem síndico-mestre cross-condo (permissões são por condomínio)
+- Papéis simultâneos no mesmo condomínio são **aditivos** — nenhum papel suprime outro; o frontend renderiza a junção dos papéis (ex.: 'Síndico · Proprietário'), não escolhe um único chapéu
 - Pode: cadastrar apartamentos, enviar convites por e-mail, criar/cancelar votações, acompanhar resultados, acessar auditoria de votos
 
 **Proprietário**
@@ -313,6 +315,8 @@ A criação de um novo condomínio e seu primeiro síndico **não tem fluxo self
 3. Operador cria `backend/src/main/resources/db/migration/bootstrap/V1001__bootstrap_<condo>.sql` com os INSERTs de `condominium`, `app_user` e `condominium_admin`. Naming `V1001+` reservado para bootstraps (evita conflito com migrations DDL V1–V999).
 4. PR `feature/bootstrap-<condo-slug>` → develop → main. CI aplica migration via Flyway em Testcontainer; merge em main → Coolify redeploya → Flyway aplica em prod.
 5. Operador envia credenciais ao síndico; síndico loga e começa a usar o sistema.
+
+> O template é **idempotente** em `app_user` — síndico de múltiplos condomínios reusa a entrada sem violar PK; UUID coincidente com email divergente faz a migration falhar com mensagem explícita.
 
 Esta decisão garante auditabilidade total (commit git, revisável via PR) e reprodutibilidade (mesma migration em local, CI e prod). Evolução para fluxo self-service fica para v2. Ver runbook detalhado em `docs/runbooks/bootstrap-condominio.md` (Fase 6) e `docs/architecture.md §1`.
 

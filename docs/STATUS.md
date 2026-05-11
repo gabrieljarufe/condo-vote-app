@@ -1,8 +1,10 @@
 # Status do projeto
 
-**Fase atual:** Fase 7 — Domain Index (Convites e Onboarding)
+**Fase atual:** Fase 7 — Histórias de Domínio
 
-**Próximo passo:** planejar Fase 7 — primeiro aggregate de domínio (Convites).
+**Próximo passo:** executar **H1 — Login + Home** (formaliza o walking skeleton já em produção; única task pendente é T1.7 smoke test prod, fecha o T3.9 🔶 herdado). Em seguida abrir H2 — Síndico cadastra apartamento, primeira história com código de domínio novo.
+
+> **Mudança de abordagem (2026-05-09):** o antigo `phase-7-domain-index.md` (8 features técnicas F1–F8) foi substituído pela pasta [`docs/implementation/tasks/phase-7/`](implementation/tasks/phase-7/index.md), que organiza o trabalho como **10 histórias de usuário fatiadas verticalmente** (H1–H10). Cada história vira um PR demonstrável; F1–F8 viraram cobertura técnica que cada história consome. Apêndice em `phase-7/index.md` audita que nada caiu na transição.
 
 ---
 
@@ -42,8 +44,19 @@
   - ✅ `auto-pr.yml` — PR `develop → main` criado automaticamente após push em `develop`
   - ✅ Rollback de container — Coolify retém automaticamente as últimas N imagens buildadas localmente (configurável em Rollback → "Images to keep"). UI: Deployments → versão anterior → Redeploy (~30s). GHCR (`:sha` + `:latest` publicados a cada push em `main`) funciona como backup extra caso as imagens locais não alcancem a versão desejada. Migração para pull-from-GHCR adiada conscientemente para v2.
 - ✅ **Fase 5.5** — Quality Gate (ver seção abaixo)
+- ✅ **Fase 5.6** — SemVer com release-please (ver seção abaixo)
 - ✅ **Fase 6** — Observabilidade & bootstrap formal de condomínio
-- ⬜ **Fase 7** — Domain Index (Convites e Onboarding)
+- 🚧 **Fase 7** — Histórias de Domínio — **em execução**
+  - 🚧 **H1** — Login + Home com seletor de condomínios (T1.1–T1.6 ✅ desde Fase 4; T1.7 smoke prod pendente)
+  - ⏳ H2 — Síndico cadastra apartamento
+  - ⏳ H3 — Síndico convida morador (com e-mail)
+  - ⏳ H4 — Convidado completa cadastro com CPF
+  - ⏳ H5 — Morador vê apartamentos onde reside
+  - ⏳ H6 — Síndico promove morador / delega voto
+  - ⏳ H7 — Síndico cria votação (CRUD + snapshot)
+  - ⏳ H8 — Morador vota e vê resultado
+  - ⏳ H9 — Timeline de auditoria
+  - ⏳ H10 — Jobs residuais (RetentionPruner placeholder)
 
 ---
 
@@ -88,6 +101,39 @@
 - **`git-commit-id-maven-plugin` + `build-info`** exigem que o goal seja declarado explicitamente nas `<executions>` do `spring-boot-maven-plugin` — sem o goal, `/actuator/info` retorna objeto vazio.
 - **`siv-mode` 1.6.0**: `SivMode.encrypt(byte[], byte[], byte[])` não lança checked exceptions; `decrypt` lança `UnauthenticCiphertextException` + `IllegalBlockSizeException` (não `InvalidKeyException`). AES-256-SIV requer 64 bytes divididos em 2 subkeys de 32 bytes (CTR + MAC); a chave é fornecida como 128 hex chars via `CPF_ENCRYPTION_KEY`.
 - **`docs/runbooks/` é gitignored** (contém runbooks com IPs/OCIDs). O `bootstrap-condominio.md` foi forçado via `git add -f` por não conter dados sensíveis.
+
+---
+
+## Fase 5.6 — SemVer com release-please (concluída)
+
+### O que foi implementado
+
+- `release-please-config.json` na raiz: manifest mode, 2 componentes independentes (`backend` Maven + `frontend` Node), `bootstrap-sha` preenchido, flags pre-major ativas
+- `.release-please-manifest.json`: versão inicial `0.0.0` para ambos os componentes
+- `.github/workflows/release.yml`: `googleapis/release-please-action@v4`, jobs condicionais `publish-backend` (imagem Docker com tag semântica + Coolify webhook) e `deploy-frontend-prod` (Cloudflare Pages branch=main)
+- `backend.yml`: job `publish-image` removido — deploy de prod migrou para `release.yml`
+- `frontend.yml`: `build-and-deploy` → `deploy-staging`, staging-only, bug do `skipped` corrigido
+- Secret `RELEASE_PLEASE_TOKEN` criado no repositório (PAT clássico, escopos `repo` + `workflow`)
+
+### Fluxo de deploy de prod (pós-implementação)
+
+1. Commits convencionais em `backend/**` ou `frontend/**` → merge em develop → merge PR #53 (develop→main)
+2. `release.yml` roda → release-please cria Release PR por componente afetado
+3. Desenvolvedor revisa CHANGELOG e mergeia o Release PR quando quiser lançar
+4. Tag criada → `publish-backend` ou `deploy-frontend-prod` dispara automaticamente
+
+### Pendente (operacional, não bloqueia features)
+
+- PR #53 (`develop → main`) aberto — mergear quando a primeira feature de domínio estiver pronta
+- Better Stack configurado monitorando `/actuator/health/liveness` _(manual)_
+- Primeiro backup manual Supabase executado _(manual)_
+
+### Não-óbvios críticos
+
+- `GITHUB_TOKEN` padrão não dispara quality gates no Release PR — por isso usa PAT
+- Para Maven, release-please cria um PR de SNAPSHOT (`autorelease: snapshot`) após cada push em main — isso é housekeeping, não release. Produção só dispara ao mergear PR com label `autorelease: pending`
+- Outputs usam bracket notation: `steps.rp.outputs['backend--release_created']`
+- Commits fora de `backend/**` e `frontend/**` não geram bump de versão
 
 ---
 
@@ -169,7 +215,7 @@ Itens que custaram tempo para descobrir e que afetam decisões futuras:
 
 - **Angular CLI default mudou para v21.2** — patterns documentados como "Angular 20+" continuam válidos, mas o CLI agora gera arquivos sem sufixo `.component` (`app.ts` em vez de `app.component.ts`) e usa **Vitest** em vez de Karma/Jasmine. Seguimos a convenção do CLI; o `coding-patterns.md` não exige sufixo.
 - **Tailwind v4 + Angular** integra via `.postcssrc.json` com `@tailwindcss/postcss` — não precisa `tailwind.config.js`. Tokens vivem em `@theme { ... }` direto no `styles.scss` e viram CSS variables runtime.
-- **`UserRoleInCondo` retorna `ADMIN | OWNER | TENANT | MULTIPLE`**, não `SINDICO | MORADOR` como assumido. `MULTIPLE` indica usuário com mais de um vínculo no mesmo condomínio (raro).
+- **`CondominiumSummary` retorna `roles: Set<UserRoleInCondo>`** — `MULTIPLE` foi eliminado em H0 (história zero de Fase 7); papéis aditivos agora são contrato explícito.
 - **Output do build Angular 21 é `dist/<project>/browser/`** — alinhado com Cloudflare config existente. O `_redirects` em `frontend/public/` é copiado automaticamente para o output.
 - **`environment.prod.ts` é gerado em build time** por `scripts/inject-env.mjs` a partir de `NG_APP_*` env vars; arquivo fica gitignored. Build falha cedo se var obrigatória estiver ausente — preferimos quebrar do que deployar config quebrada.
 - **GitHub Actions requer repository secrets** (não environment secrets) para jobs sem `environment:` declarado. Secrets configurados em environment (Production/Preview) são ignorados nesses jobs — devem estar em Settings → Secrets → Repository secrets.

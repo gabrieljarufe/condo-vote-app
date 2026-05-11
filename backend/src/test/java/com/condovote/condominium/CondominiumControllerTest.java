@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,13 +29,15 @@ class CondominiumControllerTest {
   void listReturnsCondominiumsFromService() throws Exception {
     UUID id = UUID.fromString("019dd4f8-57fa-77b1-ace2-c9f6a3d9811e");
     when(service.listForCurrentUser())
-        .thenReturn(List.of(new CondominiumSummary(id, "Condo Teste", UserRoleInCondo.ADMIN)));
+        .thenReturn(
+            List.of(new CondominiumSummary(id, "Condo Teste", Set.of(UserRoleInCondo.ADMIN))));
 
     mvc.perform(get("/api/me/condominiums").accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$[0].id").value(id.toString()))
         .andExpect(jsonPath("$[0].name").value("Condo Teste"))
-        .andExpect(jsonPath("$[0].role").value("ADMIN"));
+        .andExpect(jsonPath("$[0].roles").isArray())
+        .andExpect(jsonPath("$[0].roles[0]").value("ADMIN"));
   }
 
   @Test
@@ -52,15 +55,15 @@ class CondominiumControllerTest {
         .thenReturn(
             List.of(
                 new CondominiumSummary(
-                    UuidV7Reference.randomUUID(), "Condo A", UserRoleInCondo.OWNER),
+                    UuidV7Reference.randomUUID(), "Condo A", Set.of(UserRoleInCondo.OWNER)),
                 new CondominiumSummary(
-                    UuidV7Reference.randomUUID(), "Condo B", UserRoleInCondo.TENANT)));
+                    UuidV7Reference.randomUUID(), "Condo B", Set.of(UserRoleInCondo.TENANT))));
 
     mvc.perform(get("/api/me/condominiums").accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
-        .andExpect(jsonPath("$[0].role").value("OWNER"))
-        .andExpect(jsonPath("$[1].role").value("TENANT"));
+        .andExpect(jsonPath("$[0].roles[0]").value("OWNER"))
+        .andExpect(jsonPath("$[1].roles[0]").value("TENANT"));
   }
 
   // evita dependência de UuidV7 (gerador com estado) nos testes de unidade

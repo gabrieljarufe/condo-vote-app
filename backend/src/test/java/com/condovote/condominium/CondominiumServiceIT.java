@@ -7,12 +7,12 @@ import com.condovote.AbstractIntegrationTest;
 import com.condovote.auth.AuthGateway;
 import com.condovote.shared.UuidV7;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,8 +30,6 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
 
   @Autowired CondominiumService service;
 
-  @Autowired JdbcTemplate jdbc;
-
   @MockitoBean AuthGateway authGateway;
 
   @Test
@@ -46,7 +44,7 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     assertThat(result).hasSize(1);
     assertThat(result.get(0).id()).isEqualTo(condoId);
     assertThat(result.get(0).name()).isEqualTo("Condo Alpha");
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.ADMIN);
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.ADMIN));
   }
 
   @Test
@@ -60,7 +58,7 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.OWNER);
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.OWNER));
   }
 
   @Test
@@ -74,11 +72,11 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.TENANT);
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.TENANT));
   }
 
   @Test
-  void userIsAdminAndResident_returnsMultipleRole() {
+  void userIsAdminAndResident_returnsBothRoles() {
     UUID userId = UuidV7.generate();
     UUID condoId = insertCondo("Condo Delta");
     UUID aptId = insertApartment(condoId, "303");
@@ -89,11 +87,12 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.MULTIPLE);
+    assertThat(result.get(0).roles())
+        .isEqualTo(Set.of(UserRoleInCondo.ADMIN, UserRoleInCondo.OWNER));
   }
 
   @Test
-  void userIsOwnerAndTenantInSameCondo_returnsMultipleRole() {
+  void userIsOwnerAndTenantInSameCondo_returnsBothRoles() {
     UUID userId = UuidV7.generate();
     UUID condoId = insertCondo("Condo Epsilon");
     UUID apt1 = insertApartment(condoId, "101");
@@ -105,7 +104,8 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
     List<CondominiumSummary> result = service.listForCurrentUser();
 
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.MULTIPLE);
+    assertThat(result.get(0).roles())
+        .isEqualTo(Set.of(UserRoleInCondo.OWNER, UserRoleInCondo.TENANT));
   }
 
   @Test
@@ -172,65 +172,6 @@ class CondominiumServiceIT extends AbstractIntegrationTest {
 
     // UNION elimina duplicatas — mesmo role em dois aptos = única linha OWNER, não MULTIPLE
     assertThat(result).hasSize(1);
-    assertThat(result.get(0).role()).isEqualTo(UserRoleInCondo.OWNER);
-  }
-
-  // --- fixtures ---
-
-  private UUID insertCondo(String name) {
-    UUID id = UuidV7.generate();
-    jdbc.update(
-        "INSERT INTO condominium (id, name, address, created_at) VALUES (?, ?, 'Rua Test, 1', now())",
-        id,
-        name);
-    return id;
-  }
-
-  private UUID insertApartment(UUID condoId, String unit) {
-    UUID id = UuidV7.generate();
-    jdbc.update(
-        "INSERT INTO apartment (id, condominium_id, unit_number, is_delinquent, created_at) VALUES (?, ?, ?, false, now())",
-        id,
-        condoId,
-        unit);
-    return id;
-  }
-
-  private void insertAdmin(UUID condoId, UUID userId) {
-    jdbc.update(
-        "INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at) VALUES (?, ?, ?, now())",
-        UuidV7.generate(),
-        condoId,
-        userId);
-  }
-
-  private void insertRevokedAdmin(UUID condoId, UUID userId) {
-    jdbc.update(
-        "INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at, revoked_at, revoked_by_user_id) VALUES (?, ?, ?, now(), now(), ?)",
-        UuidV7.generate(),
-        condoId,
-        userId,
-        UuidV7.generate());
-  }
-
-  private void insertResident(UUID condoId, UUID aptId, UUID userId, String role) {
-    jdbc.update(
-        "INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at) VALUES (?, ?, ?, ?, ?::resident_role, now())",
-        UuidV7.generate(),
-        condoId,
-        aptId,
-        userId,
-        role);
-  }
-
-  private void insertEndedResident(UUID condoId, UUID aptId, UUID userId, String role) {
-    jdbc.update(
-        "INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at, ended_at, ended_by_user_id, end_reason) VALUES (?, ?, ?, ?, ?::resident_role, now(), now(), ?, 'REMOVED_BY_ADMIN'::resident_end_reason)",
-        UuidV7.generate(),
-        condoId,
-        aptId,
-        userId,
-        role,
-        UuidV7.generate());
+    assertThat(result.get(0).roles()).isEqualTo(Set.of(UserRoleInCondo.OWNER));
   }
 }

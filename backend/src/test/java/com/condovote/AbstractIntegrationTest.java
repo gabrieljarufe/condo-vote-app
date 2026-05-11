@@ -1,8 +1,12 @@
 package com.condovote;
 
+import com.condovote.shared.UuidV7;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
+import java.util.UUID;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -22,6 +26,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * use @Transactional (Spring faz rollback automático).
  */
 public abstract class AbstractIntegrationTest {
+
+  @Autowired protected JdbcTemplate jdbc;
 
   static final PostgreSQLContainer<?> postgres;
 
@@ -68,5 +74,64 @@ public abstract class AbstractIntegrationTest {
         () ->
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
                 + "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40");
+  }
+
+  // --- fixtures compartilhadas ---
+
+  protected UUID insertCondo(String name) {
+    UUID id = UuidV7.generate();
+    jdbc.update(
+        "INSERT INTO condominium (id, name, address, created_at) VALUES (?, ?, 'Rua Test, 1', now())",
+        id,
+        name);
+    return id;
+  }
+
+  protected UUID insertApartment(UUID condoId, String unit) {
+    UUID id = UuidV7.generate();
+    jdbc.update(
+        "INSERT INTO apartment (id, condominium_id, unit_number, is_delinquent, created_at) VALUES (?, ?, ?, false, now())",
+        id,
+        condoId,
+        unit);
+    return id;
+  }
+
+  protected void insertAdmin(UUID condoId, UUID userId) {
+    jdbc.update(
+        "INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at) VALUES (?, ?, ?, now())",
+        UuidV7.generate(),
+        condoId,
+        userId);
+  }
+
+  protected void insertRevokedAdmin(UUID condoId, UUID userId) {
+    jdbc.update(
+        "INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at, revoked_at, revoked_by_user_id) VALUES (?, ?, ?, now(), now(), ?)",
+        UuidV7.generate(),
+        condoId,
+        userId,
+        UuidV7.generate());
+  }
+
+  protected void insertResident(UUID condoId, UUID aptId, UUID userId, String role) {
+    jdbc.update(
+        "INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at) VALUES (?, ?, ?, ?, ?::resident_role, now())",
+        UuidV7.generate(),
+        condoId,
+        aptId,
+        userId,
+        role);
+  }
+
+  protected void insertEndedResident(UUID condoId, UUID aptId, UUID userId, String role) {
+    jdbc.update(
+        "INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at, ended_at, ended_by_user_id, end_reason) VALUES (?, ?, ?, ?, ?::resident_role, now(), now(), ?, 'REMOVED_BY_ADMIN'::resident_end_reason)",
+        UuidV7.generate(),
+        condoId,
+        aptId,
+        userId,
+        role,
+        UuidV7.generate());
   }
 }

@@ -2,7 +2,7 @@
 # encrypt-cpf.sh — Cifra um CPF com AES-256-SIV usando a mesma lógica do backend.
 #
 # Uso:
-#   export CPF_ENCRYPTION_KEY=<64 hex chars>
+#   export CPF_ENCRYPTION_KEY=<128 hex chars>
 #   ./scripts/encrypt-cpf.sh 12345678901
 #
 # Saída: ciphertext em hex maiúsculo, pronto para uso em migrations Flyway.
@@ -33,5 +33,6 @@ fi
 
 exec java \
   -cp "$JAR" \
-  com.condovote.shared.crypto.CpfEncryptorCli \
+  -Dloader.main=com.condovote.shared.crypto.CpfEncryptorCli \
+  org.springframework.boot.loader.launch.PropertiesLauncher \
   "$1"

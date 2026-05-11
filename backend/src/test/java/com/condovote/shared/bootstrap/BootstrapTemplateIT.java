@@ -2,12 +2,14 @@ package com.condovote.shared.bootstrap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.condovote.AbstractIntegrationTest;
 import com.condovote.shared.crypto.CpfEncryptor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
@@ -122,6 +124,115 @@ class BootstrapTemplateIT extends AbstractIntegrationTest {
             .query(Integer.class)
             .single();
     assertThat(auditCount).isEqualTo(1);
+  }
+
+  /**
+   * Síndico já existe em app_user com o mesmo UUID e mesmo email (cenário cross-condo legítimo). O
+   * bloco DO $$ deve ser noop — sem exception, COUNT permanece 1.
+   */
+  @Test
+  void bootstrapTemplateSyndicoJaExisteComMesmoEmail_deveSerNoop() {
+    String cpfHex = cpfEncryptor.encrypt(TEST_CPF);
+
+    // Pré-inserir o síndico como se já estivesse bootstrapado em outro condo
+    jdbcClient
+        .sql(
+            """
+            INSERT INTO app_user
+              (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
+            VALUES (?, ?, ?, decode(?, 'hex'), now(), 'v1')
+            """)
+        .params(
+            java.util.UUID.fromString(USER_ID),
+            "Síndico Existente",
+            "sindico-teste@condovote.test",
+            cpfHex.toLowerCase())
+        .update();
+
+    // Executar o bloco DO $$ com mesmo UUID e mesmo email → deve ser noop
+    String doBlock =
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM app_user WHERE id = '%s'::uuid) THEN
+            -- esta INSERT nunca executa no caminho noop: o síndico já foi pré-inserido acima.
+            -- O valor '\\x00'::bytea é apenas um placeholder; o CPF autoritativo é o da linha pré-existente.
+            INSERT INTO app_user (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
+            VALUES ('%s', 'Síndico Existente', 'sindico-teste@condovote.test', '\\x00'::bytea, now(), 'v1');
+          ELSIF EXISTS (SELECT 1 FROM app_user WHERE id = '%s'::uuid
+                        AND email = 'sindico-teste@condovote.test') THEN
+            NULL; -- mesmo UUID, mesmo email → noop (síndico cross-condo)
+          ELSE
+            RAISE EXCEPTION 'UUID %% já existe com email diferente — operador colou UUID errado?',
+                            '%s';
+          END IF;
+        END $$;
+        """
+            .formatted(USER_ID, USER_ID, USER_ID, USER_ID);
+
+    assertThatCode(() -> jdbcClient.sql(doBlock).update()).doesNotThrowAnyException();
+
+    int count =
+        jdbcClient
+            .sql("SELECT COUNT(*) FROM app_user WHERE id = ?::uuid")
+            .param(USER_ID)
+            .query(Integer.class)
+            .single();
+    assertThat(count).isEqualTo(1);
+  }
+
+  /**
+   * Mesmo UUID já existe em app_user mas com email diferente — operador colou UUID errado. O bloco
+   * DO $$ deve lançar DataAccessException contendo a mensagem de erro explícita.
+   *
+   * <p><strong>Atenção para futuros mantenedores:</strong> após o bloco {@code assertThatThrownBy},
+   * a transação PostgreSQL já está em estado ABORTED (o {@code RAISE EXCEPTION} do DO $$ abortou a
+   * transação no nível do banco). Qualquer chamada JDBC subsequente neste teste lançará {@code
+   * PSQLException: ERROR: current transaction is aborted}. Não adicione assertions ou operações
+   * JDBC depois do {@code assertThatThrownBy} sem antes emitir um SAVEPOINT/ROLLBACK TO SAVEPOINT
+   * para recuperar a transação.
+   */
+  @Test
+  void bootstrapTemplateSyndicoComUuidColidindoComEmailDivergente_deveLancarExcecao() {
+    String cpfHex = cpfEncryptor.encrypt(TEST_CPF);
+
+    // Pré-inserir o síndico com email A
+    jdbcClient
+        .sql(
+            """
+            INSERT INTO app_user
+              (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
+            VALUES (?, ?, ?, decode(?, 'hex'), now(), 'v1')
+            """)
+        .params(
+            java.util.UUID.fromString(USER_ID),
+            "Síndico Original",
+            "email-original@condovote.test",
+            cpfHex.toLowerCase())
+        .update();
+
+    // Executar o bloco DO $$ com mesmo UUID mas email diferente (email B) → deve lançar exception
+    String doBlock =
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM app_user WHERE id = '%s'::uuid) THEN
+            INSERT INTO app_user (id, name, email, cpf_encrypted, consent_accepted_at, consent_policy_version)
+            VALUES ('%s', 'Outro Síndico', 'email-diferente@condovote.test', '\\x00'::bytea, now(), 'v1');
+          ELSIF EXISTS (SELECT 1 FROM app_user WHERE id = '%s'::uuid
+                        AND email = 'email-diferente@condovote.test') THEN
+            NULL;
+          ELSE
+            RAISE EXCEPTION 'UUID %% já existe com email diferente — operador colou UUID errado?',
+                            '%s';
+          END IF;
+        END $$;
+        """
+            .formatted(USER_ID, USER_ID, USER_ID, USER_ID);
+
+    assertThatThrownBy(() -> jdbcClient.sql(doBlock).update())
+        .isInstanceOf(DataAccessException.class)
+        .hasMessageContaining("operador colou UUID errado");
   }
 
   @Test

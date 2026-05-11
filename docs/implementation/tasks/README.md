@@ -21,9 +21,11 @@ Roadmap executável derivado de [`../plan.md`](../plan.md). Cada arquivo abaixo 
 | 4 | [phase-4-frontend-skeleton.md](phase-4-frontend-skeleton.md) | 5 | 2 dias | ⏳ |
 | 5 | [phase-5-cicd.md](phase-5-cicd.md) | 3 | 0,5–1 dia | ⏳ |
 | 6 | [phase-6-observability.md](phase-6-observability.md) | 4 | 0,5 dia | ⏳ |
-| 7 | [phase-7-domain-index.md](phase-7-domain-index.md) | 8 features (índice) | ~3–4 semanas | 📋 Planejada |
+| 7 | [phase-7/](phase-7/index.md) | 10 histórias (índice) | ~3–4 semanas | 🚧 Em execução (H1) |
 
-**Total:** 44 tasks de fundação (Fases 0–6) + 8 features de domínio indexadas (Fase 7), ~10–14 dias úteis de trabalho focado para fundação.
+**Total:** 44 tasks de fundação (Fases 0–6) + 10 histórias de domínio indexadas (Fase 7), ~10–14 dias úteis de trabalho focado para fundação.
+
+> **Fase 7 mudou de formato:** antes era um índice de 8 features técnicas (F1–F8); agora é um índice de **10 histórias de usuário** fatiadas verticalmente (cada uma vira um PR demonstrável). Os antigos F1–F8 viraram cobertura técnica que cada história consome — o apêndice em `phase-7/index.md` audita que nada caiu na transição. Histórias seguem o template canônico em `phase-7/template.md`.
 
 ## Patterns de implementação
 

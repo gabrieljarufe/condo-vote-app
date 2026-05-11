@@ -30,3 +30,8 @@ __pycache__/
 
 # Supabase Studio scratch (snippets locais)
 infra/supabase/supabase/snippets/
+
+# Bootstrap local — contém dados pessoais (emails reais de operadores)
+# carregados em ambiente local para replicar o estado de prod sem expor PII no git.
+backend/src/main/resources/db/bootstrap-local/
+infra/supabase/supabase/bootstrap-local/

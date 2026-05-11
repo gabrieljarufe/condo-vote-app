@@ -1,3 +1,4 @@
 .env
 environments/local.bru
 environments/prod.bru
+environments/staging.bru

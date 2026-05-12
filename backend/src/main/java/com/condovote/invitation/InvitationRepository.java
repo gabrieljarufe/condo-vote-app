@@ -79,6 +79,17 @@ public interface InvitationRepository extends CrudRepository<Invitation, UUID> {
   @Query(
       """
           UPDATE invitation
+          SET status = 'REVOKED'::invitation_status,
+              revoked_at = now(),
+              revoked_by_user_id = :revokedByUserId
+          WHERE id = :id
+          """)
+  int revokeAny(@Param("id") UUID id, @Param("revokedByUserId") UUID revokedByUserId);
+
+  @Modifying
+  @Query(
+      """
+          UPDATE invitation
           SET status = 'BOUNCED'::invitation_status
           WHERE id = :id AND status = 'PENDING'::invitation_status
           """)

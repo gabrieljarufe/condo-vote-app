@@ -104,9 +104,9 @@ describe('ApartmentsPage', () => {
   it('clicar "+ Novo apartamento" mostra o chooser, não o form', async () => {
     const { fixture, component } = await setup();
     expect(component.showChooser()).toBe(false);
-    const buttons = Array.from(fixture.nativeElement.querySelectorAll<HTMLButtonElement>('button[type="button"]'));
-    const newBtn = buttons.find((b: HTMLButtonElement) => b.textContent?.includes('Novo apartamento'));
-    newBtn?.click();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button[type="button"]')) as HTMLButtonElement[];
+    const newBtn = buttons.find((b) => b.textContent?.includes('Novo apartamento'));
+    (newBtn as HTMLButtonElement | undefined)?.click();
     fixture.detectChanges();
     expect(component.showChooser()).toBe(true);
     expect(component.showForm()).toBe(false);

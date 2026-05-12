@@ -217,9 +217,9 @@ describe('ApartmentsBulkPage', () => {
   });
 
   it('onSubmitBatch retorna imediatamente se condoId for null', async () => {
-    const tenantNull = { ...mockTenant, activeCondominiumId: () => null };
+    const tenantNull = { ...mockTenant, activeCondominiumId: () => null as string | null };
     const api = makeApi();
-    const { component } = await setup(api, tenantNull);
+    const { component } = await setup(api, tenantNull as typeof mockTenant);
     component.onSubmitBatch(sampleApartments);
     expect(api.createBatch).not.toHaveBeenCalled();
   });

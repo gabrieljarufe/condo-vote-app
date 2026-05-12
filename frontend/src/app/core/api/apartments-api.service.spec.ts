@@ -21,7 +21,7 @@ describe('ApartmentsApiService', () => {
   beforeEach(() => {
     httpMock = { get: vi.fn(), post: vi.fn(), patch: vi.fn() };
     TestBed.configureTestingModule({
-      providers: [{ provide: HttpClient, useValue: httpMock }],
+      providers: [{ provide: HttpClient, useValue: httpMock as unknown as HttpClient }],
     });
     service = TestBed.inject(ApartmentsApiService);
   });
@@ -42,7 +42,7 @@ describe('ApartmentsApiService', () => {
       expect.stringContaining('/condominiums/condo-1/apartments'),
       { unitNumber: '101', block: 'A' },
     );
-    expect(result?.unitNumber).toBe('101');
+    expect((result as Apartment | null)?.unitNumber).toBe('101');
   });
 
   it('setDelinquent faz PATCH com flag', () => {
@@ -53,6 +53,6 @@ describe('ApartmentsApiService', () => {
       expect.stringContaining('/apartments/apt-1/delinquent'),
       { isDelinquent: true },
     );
-    expect(result?.isDelinquent).toBe(true);
+    expect((result as Apartment | null)?.isDelinquent).toBe(true);
   });
 });

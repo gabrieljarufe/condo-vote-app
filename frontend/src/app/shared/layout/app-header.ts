@@ -74,6 +74,7 @@ export class AppHeader {
 
   protected switchCondo(): void {
     this.tenant.clear();
+    void this.router.navigateByUrl('/app');
   }
 
   protected async signOut(): Promise<void> {

@@ -173,6 +173,7 @@ export class ApartmentBulkPreviewGrid {
   // que não suporta setInput em signal inputs. Usando default vazio mantém o mesmo contrato
   // de uso (caller sempre fornece o array) sem quebrar os testes.
   readonly apartments = input<GeneratedApartment[]>([]);
+  readonly disabled = input<boolean>(false);
 
   readonly apartmentsChange = output<GeneratedApartment[]>();
   readonly submitBatch = output<GeneratedApartment[]>();

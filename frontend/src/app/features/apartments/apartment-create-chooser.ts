@@ -59,7 +59,7 @@ export class ApartmentCreateChooser implements AfterViewInit {
   readonly close = output<void>();
 
   ngAfterViewInit(): void {
-    const firstCard = this.el.nativeElement.querySelector<HTMLElement>('button');
+    const firstCard = this.el.nativeElement.querySelector('button') as HTMLElement | null;
     firstCard?.focus();
   }
 

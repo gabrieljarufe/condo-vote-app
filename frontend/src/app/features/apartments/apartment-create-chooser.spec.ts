@@ -18,7 +18,7 @@ describe('ApartmentCreateChooser', () => {
     const { fixture, component } = await setup();
     const spy = vi.fn();
     component.chooseOne.subscribe(spy);
-    const buttons = fixture.nativeElement.querySelectorAll<HTMLButtonElement>('button');
+    const buttons = fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
     buttons[0].click();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -27,7 +27,7 @@ describe('ApartmentCreateChooser', () => {
     const { fixture, component } = await setup();
     const spy = vi.fn();
     component.chooseBulk.subscribe(spy);
-    const buttons = fixture.nativeElement.querySelectorAll<HTMLButtonElement>('button');
+    const buttons = fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>;
     buttons[1].click();
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -36,7 +36,7 @@ describe('ApartmentCreateChooser', () => {
     const { fixture, component } = await setup();
     const spy = vi.fn();
     component.close.subscribe(spy);
-    const overlay = fixture.nativeElement.querySelector<HTMLElement>('[role="dialog"]');
+    const overlay = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
     overlay.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     expect(spy).toHaveBeenCalledTimes(1);
   });
@@ -45,7 +45,7 @@ describe('ApartmentCreateChooser', () => {
     const { fixture, component } = await setup();
     const spy = vi.fn();
     component.close.subscribe(spy);
-    const overlay = fixture.nativeElement.querySelector<HTMLElement>('[role="dialog"]');
+    const overlay = fixture.nativeElement.querySelector('[role="dialog"]') as HTMLElement;
     // Dispara o evento diretamente no overlay (simula click no fundo)
     const event = new MouseEvent('click', { bubbles: true });
     Object.defineProperty(event, 'target', { value: overlay });

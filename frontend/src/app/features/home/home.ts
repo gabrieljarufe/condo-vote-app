@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, effect, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { Observable, catchError, map, of, startWith } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
@@ -43,23 +44,11 @@ type LoadResult =
               title="Você ainda não está vinculado a nenhum condomínio"
               description="Peça ao síndico do seu condomínio para vincular sua conta a uma unidade."
             />
-          } @else if (activeId()) {
-            <section>
-              <h1 class="text-2xl font-semibold text-on-surface mb-2">{{ activeCondoName() }}</h1>
-              <p class="text-sm text-on-surface-variant mb-8">
-                Seu painel será exibido aqui conforme as próximas funcionalidades forem implementadas.
-              </p>
-
-              <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">
-                <span class="material-symbols-outlined mb-3" style="font-size: 36px;" aria-hidden="true">construction</span>
-                <p class="text-sm">Painel em construção</p>
-              </div>
-            </section>
           } @else {
             <section>
               <h1 class="text-2xl font-semibold text-on-surface mb-2">Selecione um condomínio</h1>
               <p class="text-sm text-on-surface-variant mb-8">
-                Você está vinculado a {{ condominiums().length }} condomínios. Escolha em qual deseja entrar agora.
+                Você está vinculado a {{ condominiums().length }} condomínio(s). Escolha em qual deseja entrar agora.
               </p>
 
               <ul class="flex flex-col gap-3">
@@ -94,6 +83,7 @@ type LoadResult =
 export default class Home {
   private readonly meApi = inject(MeApiService);
   private readonly tenant = inject(TenantService);
+  private readonly router = inject(Router);
 
   private readonly state$: Observable<LoadResult> = this.meApi.getCondominiums().pipe(
     map((data): LoadResult => ({ kind: 'success', data })),
@@ -111,14 +101,6 @@ export default class Home {
     return s.kind === 'success' ? s.data : [];
   });
 
-  protected readonly activeId = this.tenant.activeCondominiumId;
-
-  protected readonly activeCondoName = computed(() => {
-    const id = this.activeId();
-    if (!id) return null;
-    return this.condominiums().find((c) => c.id === id)?.name ?? null;
-  });
-
   protected readonly errorMessage = computed(() => {
     const s = this.state();
     return s.kind === 'error' ? s.message : '';
@@ -128,13 +110,18 @@ export default class Home {
     effect(() => {
       const list = this.condominiums();
       if (list.length === 1 && !this.tenant.activeCondominiumId()) {
-        this.tenant.setActive(list[0].id, list[0].roles);
+        this.navigateToCondo(list[0]);
       }
     });
   }
 
   protected selectCondo(c: UserCondominium): void {
+    this.navigateToCondo(c);
+  }
+
+  private navigateToCondo(c: UserCondominium): void {
     this.tenant.setActive(c.id, c.roles);
+    void this.router.navigate(['/app/condominiums', c.id]);
   }
 
   protected readonly rolesLabel = rolesLabel;

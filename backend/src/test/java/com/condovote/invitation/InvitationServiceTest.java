@@ -30,7 +30,6 @@ import com.condovote.shared.exception.NotFoundException;
 import com.condovote.shared.notification.EmailNotificationRepository;
 import com.condovote.shared.tenant.TenantContext;
 import com.condovote.shared.tenant.TenantMembershipRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Instant;
 import java.util.List;
@@ -78,7 +77,6 @@ class InvitationServiceTest {
             membershipRepository,
             authGateway,
             redisCommands,
-            new ObjectMapper(),
             24,
             "http://localhost:4200");
 

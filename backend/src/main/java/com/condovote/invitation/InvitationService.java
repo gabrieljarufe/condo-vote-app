@@ -19,6 +19,7 @@ import com.condovote.shared.tenant.TenantContext;
 import com.condovote.shared.tenant.TenantMembershipRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -45,7 +46,7 @@ public class InvitationService {
   private final TenantMembershipRepository membershipRepository;
   private final AuthGateway authGateway;
   private final RedisCommands<String, String> redisCommands;
-  private final ObjectMapper objectMapper;
+  private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
   private final int tokenTtlHours;
   private final String acceptBaseUrl;
 
@@ -58,7 +59,6 @@ public class InvitationService {
       TenantMembershipRepository membershipRepository,
       AuthGateway authGateway,
       RedisCommands<String, String> redisCommands,
-      ObjectMapper objectMapper,
       @Value("${app.invitation.token-ttl-hours:24}") int tokenTtlHours,
       @Value("${app.email.accept-base-url}") String acceptBaseUrl) {
     this.invitationRepository = invitationRepository;
@@ -69,7 +69,6 @@ public class InvitationService {
     this.membershipRepository = membershipRepository;
     this.authGateway = authGateway;
     this.redisCommands = redisCommands;
-    this.objectMapper = objectMapper;
     this.tokenTtlHours = tokenTtlHours;
     this.acceptBaseUrl = acceptBaseUrl;
   }

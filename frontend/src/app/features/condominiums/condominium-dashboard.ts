@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, map, of, startWith } from 'rxjs';
+import { RouterLink } from '@angular/router';
+import { catchError, map, startWith } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
@@ -10,7 +11,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
 
 @Component({
   selector: 'app-condominium-dashboard',
-  imports: [AppHeader, Spinner],
+  imports: [AppHeader, Spinner, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header [condominiums]="condominiums()" />
@@ -26,9 +27,35 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
           Seu painel será exibido aqui conforme as próximas funcionalidades forem implementadas.
         </p>
 
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <a
+            [routerLink]="['/app/condominiums', condoId(), 'apartments']"
+            class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+          >
+            <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">apartment</span>
+            <div>
+              <p class="font-semibold text-on-surface">Apartamentos</p>
+              <p class="text-xs text-on-surface-variant mt-0.5">Gerencie unidades e inadimplência</p>
+            </div>
+          </a>
+
+          @if (isAdmin()) {
+            <a
+              [routerLink]="['/app/condominiums', condoId(), 'invitations']"
+              class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+            >
+              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">mail</span>
+              <div>
+                <p class="font-semibold text-on-surface">Convites</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Convide moradores por e-mail</p>
+              </div>
+            </a>
+          }
+        </div>
+
         <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">
           <span class="material-symbols-outlined mb-3" style="font-size: 36px;" aria-hidden="true">construction</span>
-          <p class="text-sm">Painel em construção</p>
+          <p class="text-sm">Mais funcionalidades em breve</p>
         </div>
       }
     </main>
@@ -55,4 +82,8 @@ export default class CondominiumDashboard {
     const id = this.tenant.activeCondominiumId();
     return this.condominiums().find((c) => c.id === id)?.name ?? '';
   });
+
+  protected readonly condoId = computed(() => this.tenant.activeCondominiumId() ?? '');
+
+  protected readonly isAdmin = computed(() => this.tenant.activeRoles().has('ADMIN'));
 }

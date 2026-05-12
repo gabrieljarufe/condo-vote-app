@@ -22,6 +22,11 @@ const routes: Routes = [
     loadComponent: () => import('../apartments/apartments-bulk-page'),
   },
   {
+    path: 'condominiums/:condoId/invitations',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../invitations/invitations-page'),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

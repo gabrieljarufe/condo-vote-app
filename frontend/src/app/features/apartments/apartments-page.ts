@@ -3,14 +3,16 @@ import {
   Component,
   OnInit,
   ViewChild,
+  computed,
   inject,
   signal,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { Apartment, ApartmentsApiService, CreateApartmentRequest } from '../../core/api/apartments-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
+import { ApartmentCreateChooser } from './apartment-create-chooser';
 import { ApartmentForm } from './apartment-form';
 import { ApartmentList } from './apartment-list';
 
@@ -18,14 +20,14 @@ type PageState = 'loading' | 'error' | 'ready';
 
 @Component({
   selector: 'app-apartments-page',
-  imports: [AppHeader, Spinner, ApartmentList, ApartmentForm, RouterLink],
+  imports: [AppHeader, Spinner, ApartmentList, ApartmentForm, ApartmentCreateChooser, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
 
     <main class="max-w-4xl mx-auto px-6 py-12">
       <div class="flex items-center gap-3 mb-8">
-        <a routerLink="/app" class="text-sm text-on-surface-variant hover:text-on-surface">
+        <a [routerLink]="dashboardLink()" class="text-sm text-on-surface-variant hover:text-on-surface">
           ← Início
         </a>
         <span class="text-on-surface-variant">/</span>
@@ -54,7 +56,7 @@ type PageState = 'loading' | 'error' | 'ready';
             <div class="flex justify-end">
               <button
                 type="button"
-                (click)="showForm.set(true)"
+                (click)="showChooser.set(true)"
                 class="px-5 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:opacity-90"
               >
                 + Novo apartamento
@@ -72,6 +74,14 @@ type PageState = 'loading' | 'error' | 'ready';
               />
             </section>
           }
+
+        @if (showChooser()) {
+          <app-apartment-create-chooser
+            (chooseOne)="onChooseOne()"
+            (chooseBulk)="onChooseBulk()"
+            (close)="showChooser.set(false)"
+          />
+        }
         </div>
       }
     </main>
@@ -82,19 +92,20 @@ export default class ApartmentsPage implements OnInit {
 
   private readonly api = inject(ApartmentsApiService);
   private readonly tenant = inject(TenantService);
+  private readonly router = inject(Router);
 
   protected readonly pageState = signal<PageState>('loading');
   protected readonly apartments = signal<readonly Apartment[]>([]);
   protected readonly errorMessage = signal('');
   protected readonly showForm = signal(false);
+  protected readonly showChooser = signal(false);
+  protected readonly dashboardLink = computed(() => {
+    const id = this.tenant.activeCondominiumId();
+    return id ? `/app/condominiums/${id}` : '/app';
+  });
 
   ngOnInit(): void {
-    const condoId = this.tenant.activeCondominiumId();
-    if (!condoId) {
-      this.errorMessage.set('Nenhum condomínio ativo. Volte e selecione um condomínio.');
-      this.pageState.set('error');
-      return;
-    }
+    const condoId = this.tenant.activeCondominiumId()!;
     this.api.list(condoId).subscribe({
       next: (data) => {
         this.apartments.set(data);
@@ -105,6 +116,17 @@ export default class ApartmentsPage implements OnInit {
         this.pageState.set('error');
       },
     });
+  }
+
+  protected onChooseOne(): void {
+    this.showChooser.set(false);
+    this.showForm.set(true);
+  }
+
+  protected onChooseBulk(): void {
+    const condoId = this.tenant.activeCondominiumId();
+    this.showChooser.set(false);
+    void this.router.navigate(['/app/condominiums', condoId, 'apartments', 'bulk']);
   }
 
   protected onCreateApartment(request: CreateApartmentRequest): void {

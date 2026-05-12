@@ -18,6 +18,21 @@ export interface CreateApartmentRequest {
   readonly block?: string;
 }
 
+export interface BatchCreateRequest {
+  readonly items: ReadonlyArray<CreateApartmentRequest>;
+}
+
+export interface SkippedItem {
+  readonly unitNumber: string;
+  readonly block: string | null;
+  readonly reason: 'DUPLICATE';
+}
+
+export interface BatchCreateResponse {
+  readonly created: ReadonlyArray<Apartment>;
+  readonly skipped: ReadonlyArray<SkippedItem>;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ApartmentsApiService {
   private readonly http = inject(HttpClient);
@@ -31,6 +46,13 @@ export class ApartmentsApiService {
   create(condominiumId: string, request: CreateApartmentRequest): Observable<Apartment> {
     return this.http.post<Apartment>(
       `${environment.apiUrl}/api/condominiums/${condominiumId}/apartments`,
+      request,
+    );
+  }
+
+  createBatch(condominiumId: string, request: BatchCreateRequest): Observable<BatchCreateResponse> {
+    return this.http.post<BatchCreateResponse>(
+      `${environment.apiUrl}/api/condominiums/${condominiumId}/apartments/batch`,
       request,
     );
   }

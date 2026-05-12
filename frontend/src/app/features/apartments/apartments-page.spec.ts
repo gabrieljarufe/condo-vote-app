@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { Apartment, ApartmentsApiService } from '../../core/api/apartments-api.service';
@@ -41,14 +41,19 @@ function makeApi(overrides: Partial<{ list: unknown; create: unknown; setDelinqu
   };
 }
 
+const mockRouter = { navigate: vi.fn(), navigateByUrl: vi.fn() };
+
+const mockActivatedRoute = { snapshot: {}, params: { subscribe: vi.fn() }, queryParams: { subscribe: vi.fn() } };
+
 async function setup(api = makeApi(), tenant = mockTenant) {
   await TestBed.configureTestingModule({
     imports: [ApartmentsPage],
     providers: [
-      provideRouter([]),
       { provide: ApartmentsApiService, useValue: api },
       { provide: TenantService, useValue: tenant },
       { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+      { provide: Router, useValue: mockRouter },
+      { provide: ActivatedRoute, useValue: mockActivatedRoute },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(ApartmentsPage);
@@ -65,12 +70,6 @@ describe('ApartmentsPage', () => {
     const { component } = await setup();
     expect(component.pageState()).toBe('ready');
     expect(component.apartments()).toHaveLength(1);
-  });
-
-  it('exibe estado de erro quando sem condomínio ativo', async () => {
-    const noActiveTenant = { ...mockTenant, activeCondominiumId: () => null };
-    const { component } = await setup(makeApi(), noActiveTenant);
-    expect(component.pageState()).toBe('error');
   });
 
   it('exibe estado de erro quando API falha', async () => {
@@ -100,5 +99,38 @@ describe('ApartmentsPage', () => {
     const { component } = await setup();
     component.onToggleDelinquent(mockApartment);
     expect(component.apartments()[0].isDelinquent).toBe(true);
+  });
+
+  it('clicar "+ Novo apartamento" mostra o chooser, não o form', async () => {
+    const { fixture, component } = await setup();
+    expect(component.showChooser()).toBe(false);
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll<HTMLButtonElement>('button[type="button"]'));
+    const newBtn = buttons.find((b: HTMLButtonElement) => b.textContent?.includes('Novo apartamento'));
+    newBtn?.click();
+    fixture.detectChanges();
+    expect(component.showChooser()).toBe(true);
+    expect(component.showForm()).toBe(false);
+  });
+
+  it('escolher "1 apartamento" no chooser mostra o form inline', async () => {
+    const { component } = await setup();
+    component.showChooser.set(true);
+    component.onChooseOne();
+    expect(component.showChooser()).toBe(false);
+    expect(component.showForm()).toBe(true);
+  });
+
+  it('escolher "vários" navega para a rota /bulk', async () => {
+    const { component } = await setup();
+    mockRouter.navigate.mockClear();
+    component.showChooser.set(true);
+    component.onChooseBulk();
+    expect(component.showChooser()).toBe(false);
+    expect(mockRouter.navigate).toHaveBeenCalledWith([
+      '/app/condominiums',
+      'condo-1',
+      'apartments',
+      'bulk',
+    ]);
   });
 });

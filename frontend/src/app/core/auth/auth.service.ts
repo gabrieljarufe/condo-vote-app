@@ -21,8 +21,10 @@ export class AuthService {
   readonly session = this._session.asReadonly();
   readonly isAuthenticated = computed(() => this._session() !== null);
 
+  readonly initPromise: Promise<void>;
+
   constructor() {
-    void this.supabase.auth.getSession().then(({ data }) => {
+    this.initPromise = this.supabase.auth.getSession().then(({ data }) => {
       this._session.set(data.session);
     });
 

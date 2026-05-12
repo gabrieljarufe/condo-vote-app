@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
@@ -59,11 +59,50 @@ describe('Home — auto-seleção de condomínio único', () => {
     }).compileComponents();
   });
 
-  it('chama setActive com id e roles quando há exatamente 1 condomínio', () => {
+  it('chama setActive e navega para /app/condominiums/:id quando há exatamente 1 condomínio', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+
     const fixture = TestBed.createComponent(Home);
     fixture.detectChanges();
 
     expect(mockTenant.setActive).toHaveBeenCalledWith('condo-1', ['ADMIN']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/app/condominiums', 'condo-1']);
+  });
+});
+
+describe('Home — selectCondo', () => {
+  afterEach(() => TestBed.resetTestingModule());
+
+  const condos: UserCondominium[] = [
+    { id: 'condo-1', name: 'Pitufos', roles: ['ADMIN'] },
+    { id: 'condo-2', name: 'Smurfs', roles: ['OWNER'] },
+  ];
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [Home],
+      providers: [
+        provideRouter([]),
+        { provide: MeApiService, useValue: { getCondominiums: () => of(condos) } },
+        { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+      ],
+    }).compileComponents();
+  });
+
+  it('chama setActive e navega para /app/condominiums/:id ao selecionar', () => {
+    const router = TestBed.inject(Router);
+    const navigateSpy = vi.spyOn(router, 'navigate');
+    const tenant = TestBed.inject(TenantService);
+    const setActiveSpy = vi.spyOn(tenant, 'setActive');
+
+    const fixture = TestBed.createComponent(Home);
+    fixture.detectChanges();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (fixture.componentInstance as any).selectCondo(condos[0]);
+
+    expect(setActiveSpy).toHaveBeenCalledWith('condo-1', ['ADMIN']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/app/condominiums', 'condo-1']);
   });
 });
 

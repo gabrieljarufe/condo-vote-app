@@ -17,6 +17,11 @@ spring:
           jwk-set-uri: http://localhost:54321/auth/v1/.well-known/jwks.json
           jws-algorithms: ES256
 
+supabase:
+  url: http://localhost:54321
+  # Service role key local do supabase start — só vale para o stack local
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:eyJhbGciOiJIUzI1NiIsImtpZCI6IiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.local}
+
 app:
   cors:
     allowed-origins: http://localhost:4200

@@ -28,3 +28,9 @@ CREATE UNIQUE INDEX uq_invitation_pending
     WHERE status = 'PENDING';
 
 CREATE INDEX idx_invitation_condominium_id ON invitation (condominium_id);
+
+-- index parcial para o InvitationExpirerJob: cobre WHERE status='PENDING' AND expires_at < now()
+-- em uma única index walk (mesmo padrão do idx_email_pending_fifo em V8).
+CREATE INDEX idx_invitation_pending_expiring
+    ON invitation (expires_at)
+    WHERE status = 'PENDING';

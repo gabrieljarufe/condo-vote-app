@@ -95,6 +95,21 @@ CREATE TABLE poll_eligible_snapshot (
 CREATE INDEX idx_poll_eligible_snapshot_poll_id         ON poll_eligible_snapshot (poll_id);
 CREATE INDEX idx_poll_eligible_snapshot_condominium_id  ON poll_eligible_snapshot (condominium_id);
 
+-- snapshot é write-once: fixado na transição SCHEDULED→OPEN e nunca alterado.
+-- Trigger no banco protege contra qualquer caminho (psql manual, jobs, batches),
+-- não confiar só no código de aplicação. Invariante registrada em CLAUDE.md.
+CREATE OR REPLACE FUNCTION prevent_poll_eligible_snapshot_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'poll_eligible_snapshot is write-once: % not allowed', TG_OP
+        USING ERRCODE = 'check_violation';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_poll_eligible_snapshot_immutable
+    BEFORE UPDATE OR DELETE ON poll_eligible_snapshot
+    FOR EACH ROW EXECUTE FUNCTION prevent_poll_eligible_snapshot_mutation();
+
 -- vote ---------------------------------------------------------------------
 CREATE TABLE vote (
     id              UUID        NOT NULL,
@@ -117,6 +132,22 @@ CREATE TABLE vote (
 CREATE INDEX idx_vote_condominium_id  ON vote (condominium_id);
 CREATE INDEX idx_vote_poll_id         ON vote (poll_id);
 CREATE INDEX idx_vote_voter_user_id   ON vote (voter_user_id);
+
+-- vote é imutável: UNIQUE(poll_id, apartment_id) impede duplicata, e o trigger
+-- abaixo impede DELETE+INSERT (que driblaria o UNIQUE). Alinhado ao Código Civil
+-- — voto pertence ao apartamento, não ao usuário. Invariante registrada em
+-- CLAUDE.md.
+CREATE OR REPLACE FUNCTION prevent_vote_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE EXCEPTION 'vote is immutable once cast: % not allowed', TG_OP
+        USING ERRCODE = 'check_violation';
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_vote_immutable
+    BEFORE UPDATE OR DELETE ON vote
+    FOR EACH ROW EXECUTE FUNCTION prevent_vote_mutation();
 
 -- poll_result --------------------------------------------------------------
 CREATE TABLE poll_result (

@@ -1,12 +1,23 @@
-import { Component } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
+import { Component, Input } from '@angular/core';
+import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { ApartmentForm } from './apartment-form';
 
-@Component({ selector: 'app-form-field', template: '', standalone: true })
-class FormFieldStub {}
+let stubNextId = 0;
+
+@Component({
+  selector: 'app-form-field',
+  template: '<label [for]="fieldId">{{ label }}</label><ng-content />',
+  standalone: true,
+})
+class FormFieldStub {
+  @Input() label = '';
+  @Input() control: AbstractControl | null = null;
+  @Input() errors: Record<string, string> = {};
+  readonly fieldId = `ff-stub-${stubNextId++}`;
+}
 
 async function setup() {
   await TestBed.configureTestingModule({
@@ -67,5 +78,41 @@ describe('ApartmentForm', () => {
     component.ngOnInit();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((component as any).errorMessage()).toBeNull();
+  });
+
+  it('renderiza input para unitNumber no DOM', async () => {
+    const { fixture } = await setup();
+    const input = fixture.nativeElement.querySelector('input[formcontrolname="unitNumber"]');
+    expect(input).not.toBeNull();
+  });
+
+  it('renderiza input para block no DOM', async () => {
+    const { fixture } = await setup();
+    const input = fixture.nativeElement.querySelector('input[formcontrolname="block"]');
+    expect(input).not.toBeNull();
+  });
+
+  it('label[for] do unitNumber coincide com input[id]', async () => {
+    const { fixture } = await setup();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[formcontrolname="unitNumber"]',
+    );
+    expect(input).not.toBeNull();
+    const label: HTMLLabelElement = fixture.nativeElement.querySelector(
+      `label[for="${input.id}"]`,
+    );
+    expect(label).not.toBeNull();
+  });
+
+  it('label[for] do block coincide com input[id]', async () => {
+    const { fixture } = await setup();
+    const input: HTMLInputElement = fixture.nativeElement.querySelector(
+      'input[formcontrolname="block"]',
+    );
+    expect(input).not.toBeNull();
+    const label: HTMLLabelElement = fixture.nativeElement.querySelector(
+      `label[for="${input.id}"]`,
+    );
+    expect(label).not.toBeNull();
   });
 });

@@ -16,15 +16,33 @@ import { FormField } from '../../shared/ui/form-field';
   template: `
     <form (ngSubmit)="submit()" [formGroup]="form" class="flex flex-col gap-4">
       <app-form-field
+        #unitField
         label="Número da unidade"
         [control]="unitNumber"
         [errors]="{ required: 'Obrigatório', maxlength: 'Máximo 20 caracteres' }"
-      />
+      >
+        <input
+          [id]="unitField.fieldId"
+          type="text"
+          formControlName="unitNumber"
+          maxlength="20"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+        />
+      </app-form-field>
       <app-form-field
+        #blockField
         label="Bloco"
         [control]="block"
         [errors]="{ maxlength: 'Máximo 50 caracteres' }"
-      />
+      >
+        <input
+          [id]="blockField.fieldId"
+          type="text"
+          formControlName="block"
+          maxlength="50"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+        />
+      </app-form-field>
 
       @if (errorMessage()) {
         <p class="text-sm text-error" role="alert">{{ errorMessage() }}</p>

@@ -47,18 +47,19 @@ public class CpfEncryptor {
    * @return ciphertext em hex
    */
   public String encrypt(String cpf) {
-    if (cpf == null || cpf.isBlank()) {
-      throw new IllegalArgumentException("CPF não pode ser nulo ou vazio");
-    }
-    String digits = cpf.replaceAll("[.\\-]", "");
-    if (!digits.matches("\\d{11}")) {
-      throw new IllegalArgumentException("CPF deve conter 11 dígitos numéricos; recebido: " + cpf);
-    }
-    if (digits.chars().distinct().count() == 1) {
-      throw new IllegalArgumentException("CPF inválido: todos os dígitos são iguais");
-    }
-    byte[] ciphertext = SIV.encrypt(ctrKey, macKey, digits.getBytes());
+    byte[] ciphertext = SIV.encrypt(ctrKey, macKey, validateCpf(cpf).getBytes());
     return HEX.formatHex(ciphertext).toUpperCase();
+  }
+
+  /**
+   * Versão byte[] de {@link #encrypt(String)}. Use para popular colunas BYTEA via Spring Data JDBC,
+   * que mapeia byte[] ↔ BYTEA automaticamente sem conversão hex.
+   *
+   * @param cpf CPF em claro (somente dígitos, sem formatação)
+   * @return ciphertext como byte[]
+   */
+  public byte[] encryptToBytes(String cpf) {
+    return SIV.encrypt(ctrKey, macKey, validateCpf(cpf).getBytes());
   }
 
   /**
@@ -79,5 +80,43 @@ public class CpfEncryptor {
     } catch (UnauthenticCiphertextException | IllegalBlockSizeException e) {
       throw new IllegalArgumentException("Ciphertext inválido ou corrompido", e);
     }
+  }
+
+  /**
+   * Versão byte[] de {@link #decrypt(String)}. Use ao ler BYTEA do banco via Spring Data JDBC.
+   *
+   * @param ciphertext ciphertext como byte[] (produzido por {@link #encryptToBytes})
+   * @return CPF em claro (somente dígitos)
+   * @throws IllegalArgumentException se o ciphertext for nulo, vazio ou corrompido
+   */
+  public String decryptFromBytes(byte[] ciphertext) {
+    if (ciphertext == null || ciphertext.length == 0) {
+      throw new IllegalArgumentException("Ciphertext não pode ser nulo ou vazio");
+    }
+    try {
+      byte[] plain = SIV.decrypt(ctrKey, macKey, ciphertext);
+      return new String(plain);
+    } catch (UnauthenticCiphertextException | IllegalBlockSizeException e) {
+      throw new IllegalArgumentException("Ciphertext inválido ou corrompido", e);
+    }
+  }
+
+  /**
+   * Valida e normaliza o CPF, retornando somente os 11 dígitos.
+   *
+   * @throws IllegalArgumentException se o CPF for inválido
+   */
+  private String validateCpf(String cpf) {
+    if (cpf == null || cpf.isBlank()) {
+      throw new IllegalArgumentException("CPF não pode ser nulo ou vazio");
+    }
+    String digits = cpf.replaceAll("[.\\-]", "");
+    if (!digits.matches("\\d{11}")) {
+      throw new IllegalArgumentException("CPF deve conter 11 dígitos numéricos; recebido: " + cpf);
+    }
+    if (digits.chars().distinct().count() == 1) {
+      throw new IllegalArgumentException("CPF inválido: todos os dígitos são iguais");
+    }
+    return digits;
   }
 }

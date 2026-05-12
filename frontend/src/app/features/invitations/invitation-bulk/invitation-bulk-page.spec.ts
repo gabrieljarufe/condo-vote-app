@@ -12,9 +12,7 @@ import {
 import { TenantService } from '../../../core/tenant/tenant.service';
 import { SUPABASE_CLIENT } from '../../../core/auth/supabase.client';
 import InvitationBulkPage from './invitation-bulk-page';
-import { AppHeader } from '../../../shared/layout/app-header';
-import { InvitationBulkUploadForm, ParsedRow } from './invitation-bulk-upload-form';
-import { InvitationBulkPreviewGrid } from './invitation-bulk-preview-grid';
+import { ParsedRow } from './invitation-bulk-upload-form';
 
 @Component({ selector: 'app-app-header', template: '', standalone: true })
 class AppHeaderStub {}

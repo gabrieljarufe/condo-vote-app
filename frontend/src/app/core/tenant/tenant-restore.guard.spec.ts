@@ -16,10 +16,7 @@ function makeRoute(condoId: string): ActivatedRouteSnapshot {
   } as unknown as ActivatedRouteSnapshot;
 }
 
-async function runGuard(
-  route: ActivatedRouteSnapshot,
-  meApi: Partial<MeApiService>,
-): Promise<boolean | UrlTree> {
+async function runGuard(route: ActivatedRouteSnapshot): Promise<boolean | UrlTree> {
   return TestBed.runInInjectionContext(() =>
     tenantRestoreGuard(route, {} as RouterStateSnapshot),
   ) as Promise<boolean | UrlTree>;
@@ -37,7 +34,7 @@ describe('tenantRestoreGuard', () => {
     });
 
     it('retorna true sem chamar a API', async () => {
-      const result = await runGuard(makeRoute(CONDO_ID), {});
+      const result = await runGuard(makeRoute(CONDO_ID));
       expect(result).toBe(true);
     });
   });
@@ -53,13 +50,13 @@ describe('tenantRestoreGuard', () => {
     });
 
     it('restaura o tenant e retorna true', async () => {
-      const result = await runGuard(makeRoute(CONDO_ID), {});
+      const result = await runGuard(makeRoute(CONDO_ID));
       expect(result).toBe(true);
       expect(TestBed.inject(TenantService).activeCondominiumId()).toBe(CONDO_ID);
     });
 
     it('seta os roles corretos ao restaurar', async () => {
-      await runGuard(makeRoute(CONDO_ID), {});
+      await runGuard(makeRoute(CONDO_ID));
       expect(TestBed.inject(TenantService).activeRoles().has('ADMIN')).toBe(true);
     });
   });
@@ -75,7 +72,7 @@ describe('tenantRestoreGuard', () => {
     });
 
     it('redireciona para /app quando user não tem acesso ao condoId', async () => {
-      const result = await runGuard(makeRoute(CONDO_ID), {});
+      const result = await runGuard(makeRoute(CONDO_ID));
       expect(result).toBeInstanceOf(UrlTree);
       expect((result as UrlTree).toString()).toBe('/app');
     });
@@ -95,7 +92,7 @@ describe('tenantRestoreGuard', () => {
     });
 
     it('redireciona para /app em caso de erro de rede', async () => {
-      const result = await runGuard(makeRoute(CONDO_ID), {});
+      const result = await runGuard(makeRoute(CONDO_ID));
       expect(result).toBeInstanceOf(UrlTree);
       expect((result as UrlTree).toString()).toBe('/app');
     });

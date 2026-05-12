@@ -17,6 +17,11 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
       APP_CORS_ALLOWED_ORIGINS: http://localhost:4200
       APP_REDIS_URL: redis://redis:6379
+      MAIL_HOST: host.docker.internal
+      MAIL_PORT: "54325"
+      EMAIL_PROVIDER: smtp
+      EMAIL_FROM: dev@condovote.local
+      EMAIL_ACCEPT_BASE_URL: http://localhost:4200
     depends_on:
       redis:
         condition: service_healthy

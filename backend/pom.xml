@@ -69,6 +69,18 @@
             <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
 
+        <!-- Email — SMTP (Mailpit em dev/test) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- WebClient — usado pelo ResendEmailGateway em prod (HTTP POST para api.resend.com) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <!-- Flyway PostgreSQL -->
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -160,6 +172,14 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- GreenMail — servidor SMTP in-memory para ITs de envio de email -->
+        <dependency>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
+            <version>2.1.5</version>
             <scope>test</scope>
         </dependency>
 

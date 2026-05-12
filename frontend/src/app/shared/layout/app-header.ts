@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 
@@ -9,7 +9,7 @@ import { TenantService } from '../../core/tenant/tenant.service';
  */
 @Component({
   selector: 'app-app-header',
-  imports: [RouterLink],
+  imports: [RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="h-16 bg-surface-container-lowest border-b border-outline-variant">
@@ -22,6 +22,15 @@ import { TenantService } from '../../core/tenant/tenant.service';
               <span class="material-symbols-outlined text-base" aria-hidden="true">apartment</span>
               {{ condoName }}
             </span>
+            @if (isAdmin() && apartmentsLink()) {
+              <a
+                [routerLink]="apartmentsLink()"
+                routerLinkActive="text-secondary font-semibold"
+                class="text-sm text-on-surface-variant hover:text-on-surface"
+              >
+                Apartamentos
+              </a>
+            }
             <button
               type="button"
               (click)="switchCondo()"
@@ -54,6 +63,13 @@ export class AppHeader {
     const id = this.tenant.activeCondominiumId();
     if (!id) return null;
     return this.condominiums().find((c) => c.id === id)?.name ?? null;
+  });
+
+  protected readonly isAdmin = computed(() => this.tenant.activeRoles().has('ADMIN'));
+
+  protected readonly apartmentsLink = computed(() => {
+    const condoId = this.tenant.activeCondominiumId();
+    return condoId ? `/app/condominiums/${condoId}/apartments` : null;
   });
 
   protected switchCondo(): void {

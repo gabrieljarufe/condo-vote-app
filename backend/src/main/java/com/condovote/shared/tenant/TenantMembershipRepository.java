@@ -13,6 +13,21 @@ public class TenantMembershipRepository {
     this.jdbcTemplate = jdbcTemplate;
   }
 
+  public boolean isAdminOfTenant(UUID userId, UUID tenantId) {
+    Boolean result =
+        jdbcTemplate.queryForObject(
+            """
+                SELECT EXISTS (
+                    SELECT 1 FROM condominium_admin
+                    WHERE user_id = ? AND condominium_id = ? AND revoked_at IS NULL
+                )
+                """,
+            Boolean.class,
+            userId,
+            tenantId);
+    return Boolean.TRUE.equals(result);
+  }
+
   public boolean userBelongsToTenant(UUID userId, UUID tenantId) {
     Boolean result =
         jdbcTemplate.queryForObject(

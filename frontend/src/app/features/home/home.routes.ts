@@ -6,6 +6,10 @@ const routes: Routes = [
     loadComponent: () => import('./home'),
   },
   {
+    path: 'condominiums/:condoId/apartments',
+    loadComponent: () => import('../apartments/apartments-page'),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

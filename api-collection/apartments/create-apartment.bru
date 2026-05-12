@@ -1,0 +1,39 @@
+meta {
+  name: Create Apartment
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/api/condominiums/{{condo_id}}/apartments
+  body: json
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{condo_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "unitNumber": "101",
+    "block": "A"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isDefined
+  res.body.condominiumId: isDefined
+  res.body.unitNumber: isDefined
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("apartment_id", res.body.id);
+  }
+}

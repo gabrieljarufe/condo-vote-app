@@ -1,0 +1,23 @@
+meta {
+  name: List Apartments
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/api/condominiums/{{condo_id}}/apartments
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{condo_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+assert {
+  res.status: eq 200
+}

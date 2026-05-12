@@ -9,9 +9,9 @@ import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.exception.ForbiddenException;
 import com.condovote.shared.exception.NotFoundException;
 import com.condovote.shared.tenant.TenantMembershipRepository;
-import java.sql.Timestamp;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -84,6 +84,10 @@ public class ApartmentService {
       throw new ForbiddenException("Apenas síndicos podem cadastrar apartamentos");
     }
 
+    if (items.isEmpty()) {
+      return new BatchCreateApartmentResponse(List.of(), List.of());
+    }
+
     StringBuilder sql =
         new StringBuilder(
             "INSERT INTO apartment (id, condominium_id, block, unit_number, is_delinquent, created_at) VALUES ");
@@ -118,18 +122,17 @@ public class ApartmentService {
                     rs.getString("block"),
                     rs.getBoolean("is_delinquent"),
                     (UUID) rs.getObject("eligible_voter_user_id"),
-                    rs.getObject("created_at", Timestamp.class) != null
-                        ? rs.getObject("created_at", Timestamp.class).toInstant()
-                        : null));
+                    rs.getObject("created_at", java.time.OffsetDateTime.class).toInstant()));
 
-    Set<String> createdKeys =
+    Set<ApartmentKey> createdKeys =
         created.stream()
-            .map(r -> apartmentKey(r.block(), r.unitNumber()))
+            .map(r -> new ApartmentKey(r.block(), r.unitNumber()))
             .collect(Collectors.toSet());
 
     List<BatchCreateApartmentResponse.SkippedItem> skipped =
         items.stream()
-            .filter(item -> !createdKeys.contains(apartmentKey(item.block(), item.unitNumber())))
+            .filter(
+                item -> !createdKeys.contains(new ApartmentKey(item.block(), item.unitNumber())))
             .map(
                 item ->
                     new BatchCreateApartmentResponse.SkippedItem(
@@ -151,8 +154,10 @@ public class ApartmentService {
     return new BatchCreateApartmentResponse(created, skipped);
   }
 
-  private static String apartmentKey(String block, String unit) {
-    return (block == null ? "" : block) + "||" + unit;
+  private record ApartmentKey(String block, String unitNumber) {
+    ApartmentKey {
+      block = Objects.toString(block, "");
+    }
   }
 
   @Transactional

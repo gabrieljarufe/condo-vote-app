@@ -7,6 +7,9 @@
 docs/runbooks/
 docs/private/
 
+# Whitelist: runbooks públicos (não contêm dados sensíveis)
+!docs/runbooks/resend-dns-setup.md
+
 # IDE
 .vscode/
 .idea/

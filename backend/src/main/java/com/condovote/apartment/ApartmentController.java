@@ -1,6 +1,8 @@
 package com.condovote.apartment;
 
 import com.condovote.apartment.dto.ApartmentResponse;
+import com.condovote.apartment.dto.BatchCreateApartmentRequest;
+import com.condovote.apartment.dto.BatchCreateApartmentResponse;
 import com.condovote.apartment.dto.CreateApartmentRequest;
 import com.condovote.apartment.dto.SetDelinquentRequest;
 import jakarta.validation.Valid;
@@ -31,6 +33,13 @@ public class ApartmentController {
   public ApartmentResponse create(
       @PathVariable UUID condominiumId, @Valid @RequestBody CreateApartmentRequest request) {
     return service.create(condominiumId, request);
+  }
+
+  @PostMapping("/condominiums/{condominiumId}/apartments/batch")
+  @ResponseStatus(HttpStatus.OK)
+  public BatchCreateApartmentResponse createBatch(
+      @PathVariable UUID condominiumId, @Valid @RequestBody BatchCreateApartmentRequest request) {
+    return service.createBatch(condominiumId, request.items());
   }
 
   @GetMapping("/condominiums/{condominiumId}/apartments")

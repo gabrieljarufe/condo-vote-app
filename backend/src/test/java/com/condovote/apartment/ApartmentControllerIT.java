@@ -149,6 +149,145 @@ class ApartmentControllerIT extends AbstractIntegrationTest {
         .andExpect(status().isForbidden());
   }
 
+  // --- POST /api/condominiums/{id}/apartments/batch ---
+
+  @Test
+  void createBatch_semAutorizacao_retorna401() throws Exception {
+    UUID condoId = insertCondo("Condo Batch 401");
+    mvc.perform(
+            post("/api/condominiums/{id}/apartments/batch", condoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"items":[{"unitNumber":"101","block":"A"}]}
+                    """))
+        .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void createBatch_adminHappyPath_retorna200ComCreated() throws Exception {
+    UUID condoId = insertCondo("Condo Batch Happy");
+    UUID userId = UuidV7.generate();
+    insertAdmin(condoId, userId);
+
+    mvc.perform(
+            post("/api/condominiums/{id}/apartments/batch", condoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .content(
+                    """
+                    {"items":[{"unitNumber":"101","block":"A"},{"unitNumber":"102","block":"A"}]}
+                    """)
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.created", hasSize(2)))
+        .andExpect(jsonPath("$.skipped", hasSize(0)));
+  }
+
+  @Test
+  void createBatch_idempotente_segundaChamadaRetornaSkipped() throws Exception {
+    UUID condoId = insertCondo("Condo Batch Idem");
+    UUID userId = UuidV7.generate();
+    insertAdmin(condoId, userId);
+    insertApartment(condoId, "101");
+
+    mvc.perform(
+            post("/api/condominiums/{id}/apartments/batch", condoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .content(
+                    """
+                    {"items":[{"unitNumber":"101"},{"unitNumber":"102"}]}
+                    """)
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.created", hasSize(1)))
+        .andExpect(jsonPath("$.skipped", hasSize(1)))
+        .andExpect(jsonPath("$.skipped[0].unitNumber").value("101"))
+        .andExpect(jsonPath("$.skipped[0].reason").value("DUPLICATE"));
+  }
+
+  @Test
+  void createBatch_naoAdmin_retorna403() throws Exception {
+    UUID condoId = insertCondo("Condo Batch 403");
+    UUID adminId = UuidV7.generate();
+    UUID residentId = UuidV7.generate();
+    UUID aptId = insertApartment(condoId, "100");
+    insertAdmin(condoId, adminId);
+    insertResident(condoId, aptId, residentId, "OWNER");
+
+    mvc.perform(
+            post("/api/condominiums/{id}/apartments/batch", condoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .content(
+                    """
+                    {"items":[{"unitNumber":"201","block":"B"}]}
+                    """)
+                .with(jwt().jwt(b -> b.subject(residentId.toString()))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void createBatch_listaVazia_retorna400() throws Exception {
+    UUID condoId = insertCondo("Condo Batch Empty");
+    UUID userId = UuidV7.generate();
+    insertAdmin(condoId, userId);
+
+    mvc.perform(
+            post("/api/condominiums/{id}/apartments/batch", condoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .content(
+                    """
+                    {"items":[]}
+                    """)
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void createBatch_itemInvalido_retorna400() throws Exception {
+    UUID condoId = insertCondo("Condo Batch Invalid");
+    UUID userId = UuidV7.generate();
+    insertAdmin(condoId, userId);
+    String longUnit = "A".repeat(25);
+
+    mvc.perform(
+            post("/api/condominiums/{id}/apartments/batch", condoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .content(
+                    """
+                    {"items":[{"unitNumber":"%s","block":"A"}]}
+                    """
+                        .formatted(longUnit))
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void createBatch_acimaDe500Itens_retorna400() throws Exception {
+    UUID condoId = insertCondo("Condo Batch Over500");
+    UUID userId = UuidV7.generate();
+    insertAdmin(condoId, userId);
+
+    StringBuilder items = new StringBuilder("[");
+    for (int i = 1; i <= 501; i++) {
+      if (i > 1) items.append(",");
+      items.append("{\"unitNumber\":\"").append(i).append("\"}");
+    }
+    items.append("]");
+
+    mvc.perform(
+            post("/api/condominiums/{id}/apartments/batch", condoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .content("{\"items\":" + items + "}")
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isBadRequest());
+  }
+
   // --- PATCH /api/apartments/{id}/delinquent ---
 
   @Test

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.condovote.apartment.dto.ApartmentResponse;
+import com.condovote.apartment.dto.BatchCreateApartmentResponse;
 import com.condovote.apartment.dto.CreateApartmentRequest;
 import com.condovote.auth.AuthGateway;
 import com.condovote.shared.UuidV7;
@@ -28,6 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 
 @ExtendWith(MockitoExtension.class)
 class ApartmentServiceTest {
@@ -36,6 +40,7 @@ class ApartmentServiceTest {
   @Mock TenantMembershipRepository membershipRepository;
   @Mock AuthGateway authGateway;
   @Mock AuditEventPublisher auditEventPublisher;
+  @Mock NamedParameterJdbcTemplate namedJdbc;
 
   ApartmentService service;
 
@@ -46,7 +51,7 @@ class ApartmentServiceTest {
   void setUp() {
     service =
         new ApartmentService(
-            apartmentRepository, membershipRepository, authGateway, auditEventPublisher);
+            apartmentRepository, membershipRepository, authGateway, auditEventPublisher, namedJdbc);
     lenient().when(authGateway.getCurrentUserId()).thenReturn(userId);
   }
 
@@ -153,5 +158,61 @@ class ApartmentServiceTest {
     assertThatThrownBy(() -> service.setDelinquent(aptId, true))
         .isInstanceOf(ForbiddenException.class);
     verify(apartmentRepository, never()).updateDelinquent(any(), anyBoolean());
+  }
+
+  // --- createBatch ---
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void createBatch_adminCriaTodos_retornaTodosCreated() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    ApartmentResponse apt1 =
+        new ApartmentResponse(UuidV7.generate(), condoId, "101", "A", false, null, Instant.now());
+    ApartmentResponse apt2 =
+        new ApartmentResponse(UuidV7.generate(), condoId, "102", "A", false, null, Instant.now());
+    when(namedJdbc.query(anyString(), any(SqlParameterSource.class), any(RowMapper.class)))
+        .thenReturn(List.of(apt1, apt2));
+
+    List<CreateApartmentRequest> items =
+        List.of(new CreateApartmentRequest("101", "A"), new CreateApartmentRequest("102", "A"));
+    BatchCreateApartmentResponse result = service.createBatch(condoId, items);
+
+    assertThat(result.created()).hasSize(2);
+    assertThat(result.skipped()).isEmpty();
+    verify(auditEventPublisher)
+        .publish(
+            eq("APARTMENT_BATCH_CREATED"), eq("apartment"), any(), any(), eq(condoId), eq(userId));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void createBatch_comDuplicatas_retornaSkipped() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    // apenas apt1 retornado (apt2 é duplicata)
+    ApartmentResponse apt1 =
+        new ApartmentResponse(UuidV7.generate(), condoId, "101", "A", false, null, Instant.now());
+    when(namedJdbc.query(anyString(), any(SqlParameterSource.class), any(RowMapper.class)))
+        .thenReturn(List.of(apt1));
+
+    List<CreateApartmentRequest> items =
+        List.of(new CreateApartmentRequest("101", "A"), new CreateApartmentRequest("102", "A"));
+    BatchCreateApartmentResponse result = service.createBatch(condoId, items);
+
+    assertThat(result.created()).hasSize(1);
+    assertThat(result.skipped()).hasSize(1);
+    assertThat(result.skipped().get(0).unitNumber()).isEqualTo("102");
+    assertThat(result.skipped().get(0).reason())
+        .isEqualTo(BatchCreateApartmentResponse.SkipReason.DUPLICATE);
+  }
+
+  @Test
+  void createBatch_naoAdmin_lancaForbidden() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
+
+    assertThatThrownBy(
+            () -> service.createBatch(condoId, List.of(new CreateApartmentRequest("101", "A"))))
+        .isInstanceOf(ForbiddenException.class);
+    verify(namedJdbc, never())
+        .query(anyString(), any(SqlParameterSource.class), any(RowMapper.class));
   }
 }

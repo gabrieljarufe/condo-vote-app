@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, map, of, startWith } from 'rxjs';
+import { catchError, map, startWith } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';

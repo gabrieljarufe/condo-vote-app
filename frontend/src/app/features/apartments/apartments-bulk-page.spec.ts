@@ -1,4 +1,4 @@
-import { Component, NO_ERRORS_SCHEMA, output, input } from '@angular/core';
+import { Component, output, input } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
@@ -8,9 +8,6 @@ import { TenantService } from '../../core/tenant/tenant.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
 import ApartmentsBulkPage from './apartments-bulk-page';
 import { GeneratedApartment } from './generate-apartments';
-import { AppHeader } from '../../shared/layout/app-header';
-import { ApartmentBulkGeneratorForm } from './apartment-bulk-generator-form';
-import { ApartmentBulkPreviewGrid } from './apartment-bulk-preview-grid';
 
 @Component({ selector: 'app-app-header', template: '', standalone: true })
 class AppHeaderStub {}

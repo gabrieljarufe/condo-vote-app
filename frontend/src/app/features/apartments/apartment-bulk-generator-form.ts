@@ -23,6 +23,7 @@ import {
 
 const PRESETS = [
   { value: '{andar}{seq:02}', label: 'Padrão (101, 102, 201…)' },
+  { value: '{andar}{seq}', label: 'Compacto (01, 02… / 11, 12…)' },
   { value: '{andar}-{seq}', label: 'Com traço (1-1, 1-2…)' },
   { value: '{seq:03}', label: 'Sequencial (001, 002…)' },
   { value: 'custom', label: 'Personalizado' },
@@ -154,7 +155,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             [id]="floorStartField.fieldId"
             type="number"
             formControlName="floorStart"
-            min="1"
+            min="0"
             class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
           />
         </app-form-field>
@@ -227,6 +228,21 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
           />
         </app-form-field>
+
+        <!-- Ajuda de tokens -->
+        <div class="rounded-xl bg-surface-container border border-outline-variant px-4 py-3 text-xs text-on-surface-variant flex gap-3">
+          <span class="mt-0.5 shrink-0">ⓘ</span>
+          <div class="flex flex-col gap-1.5">
+            <p class="font-medium text-on-surface">Tokens disponíveis</p>
+            <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 font-mono">
+              <span class="text-secondary">&#123;andar&#125;</span><span>número do andar — ex: <em>1, 2, 12</em></span>
+              <span class="text-secondary">&#123;seq&#125;</span><span>sequência no andar — ex: <em>1, 2, 3</em></span>
+              <span class="text-secondary">&#123;seq:02&#125;</span><span>sequência com 2 dígitos — ex: <em>01, 02, 03</em></span>
+              <span class="text-secondary">&#123;seq:03&#125;</span><span>sequência com 3 dígitos — ex: <em>001, 002</em></span>
+            </div>
+            <p class="mt-0.5">Exemplo: <span class="font-mono text-secondary">&#123;andar&#125;&#123;seq:02&#125;</span> → 101, 102, 201, 202…</p>
+          </div>
+        </div>
       }
 
       <!-- Andares a pular -->
@@ -291,7 +307,7 @@ export class ApartmentBulkGeneratorForm implements OnInit {
       }),
       floorStart: new FormControl(1, {
         nonNullable: true,
-        validators: [Validators.required, Validators.min(1)],
+        validators: [Validators.required, Validators.min(0)],
       }),
       floorEnd: new FormControl(12, {
         nonNullable: true,
@@ -318,6 +334,9 @@ export class ApartmentBulkGeneratorForm implements OnInit {
   readonly preview = signal<string | null>(null);
 
   ngOnInit(): void {
+    this.form.controls.pattern.valueChanges.subscribe((val) => {
+      this.isCustomPattern.set(val === 'custom');
+    });
     this.form.valueChanges.subscribe(() => this.updatePreview());
     this.updatePreview();
   }
@@ -354,7 +373,7 @@ export class ApartmentBulkGeneratorForm implements OnInit {
 
   protected readonly floorStartErrors = {
     required: 'Andar inicial é obrigatório',
-    min: 'Deve ser ao menos 1',
+    min: 'Deve ser ao menos 0',
   };
 
   protected readonly floorEndErrors = {

@@ -39,11 +39,11 @@ interface GridRow {
           <table class="w-full text-sm border-collapse">
             <thead>
               <tr>
-                <th class="text-left px-3 py-2 text-on-surface-variant font-medium border-b border-outline-variant">
+                <th class="text-center px-3 py-2 text-on-surface-variant font-medium border-b border-outline-variant">
                   Andar
                 </th>
                 @for (col of columnHeaders(); track col) {
-                  <th class="text-left px-3 py-2 text-on-surface-variant font-medium border-b border-outline-variant">
+                  <th class="text-center px-3 py-2 text-on-surface-variant font-medium border-b border-outline-variant">
                     {{ col }}
                   </th>
                 }
@@ -53,11 +53,11 @@ interface GridRow {
             <tbody>
               @for (row of rows(); track $index; let rowIndex = $index) {
                 <tr class="group/row border-b border-outline-variant last:border-0">
-                  <td class="px-3 py-2 text-on-surface font-medium whitespace-nowrap">
+                  <td class="px-3 py-2 text-center text-on-surface font-medium whitespace-nowrap">
                     {{ row.label }}
                   </td>
                   @for (cell of row.cells; track $index; let cellIndex = $index) {
-                    <td class="px-2 py-1">
+                    <td class="px-2 py-1 text-center">
                       <div class="relative group/cell">
                         @if (cell.editing) {
                           <input
@@ -66,7 +66,7 @@ interface GridRow {
                             (input)="onCellInput(rowIndex, cellIndex, $event)"
                             (keydown)="onCellKeydown(rowIndex, cellIndex, $event)"
                             (blur)="confirmEdit(rowIndex, cellIndex)"
-                            class="w-full min-w-[4rem] px-2 py-1 rounded border bg-surface-container-lowest text-on-surface focus:outline-none focus:border-secondary"
+                            class="w-full min-w-[4rem] px-2 py-1 rounded border bg-surface-container-lowest text-on-surface text-center focus:outline-none focus:border-secondary"
                             [class.border-error]="isDuplicate(cell.unitNumber)"
                             [class.border-outline-variant]="!isDuplicate(cell.unitNumber)"
                             autofocus
@@ -75,7 +75,7 @@ interface GridRow {
                           <button
                             type="button"
                             (click)="startEdit(rowIndex, cellIndex)"
-                            class="w-full min-w-[4rem] px-2 py-1 rounded border text-left bg-surface-container-lowest text-on-surface hover:border-secondary transition-colors"
+                            class="w-full min-w-[4rem] px-2 py-1 rounded border text-center bg-surface-container-lowest text-on-surface hover:border-secondary transition-colors"
                             [class.border-error]="isDuplicate(cell.unitNumber)"
                             [class.text-error]="isDuplicate(cell.unitNumber)"
                             [class.border-outline-variant]="!isDuplicate(cell.unitNumber)"

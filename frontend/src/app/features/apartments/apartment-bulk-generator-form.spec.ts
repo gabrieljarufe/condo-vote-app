@@ -181,11 +181,12 @@ describe('ApartmentBulkGeneratorForm', () => {
     expect(component.form.valid).toBe(false);
   });
 
-  it('presets têm os 4 valores esperados', async () => {
+  it('presets têm os 5 valores esperados', async () => {
     const { component } = await setup();
     const presets = component.presets;
-    expect(presets).toHaveLength(4);
+    expect(presets).toHaveLength(5);
     expect(presets.map((p: { value: string }) => p.value)).toContain('custom');
     expect(presets.map((p: { value: string }) => p.value)).toContain('{andar}{seq:02}');
+    expect(presets.map((p: { value: string }) => p.value)).toContain('{andar}{seq}');
   });
 });

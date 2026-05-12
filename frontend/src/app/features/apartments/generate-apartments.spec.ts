@@ -257,6 +257,33 @@ describe('generateApartments', () => {
   });
 
   /**
+   * Test: padrão compacto {andar}{seq} com térreo (andar 0)
+   * Gera 01 02 03 04 / 11 12 13 14
+   */
+  it('gera apartamentos com padrão compacto {andar}{seq} a partir do térreo (andar 0)', () => {
+    const config: GeneratorConfig = {
+      block: '',
+      floorStart: 0,
+      floorEnd: 1,
+      unitsPerFloor: 4,
+      pattern: '{andar}{seq}',
+      skipFloors: [],
+    };
+
+    const result = generateApartments(config);
+
+    expect(result).toHaveLength(8);
+    expect(result[0]).toEqual({ block: null, unitNumber: '01', floor: 0, seq: 1 });
+    expect(result[1]).toEqual({ block: null, unitNumber: '02', floor: 0, seq: 2 });
+    expect(result[2]).toEqual({ block: null, unitNumber: '03', floor: 0, seq: 3 });
+    expect(result[3]).toEqual({ block: null, unitNumber: '04', floor: 0, seq: 4 });
+    expect(result[4]).toEqual({ block: null, unitNumber: '11', floor: 1, seq: 1 });
+    expect(result[5]).toEqual({ block: null, unitNumber: '12', floor: 1, seq: 2 });
+    expect(result[6]).toEqual({ block: null, unitNumber: '13', floor: 1, seq: 3 });
+    expect(result[7]).toEqual({ block: null, unitNumber: '14', floor: 1, seq: 4 });
+  });
+
+  /**
    * Additional test: Complex real-world scenario
    */
   it('gera apartamentos em cenário real complexo', () => {

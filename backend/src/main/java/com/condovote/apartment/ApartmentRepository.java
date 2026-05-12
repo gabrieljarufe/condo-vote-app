@@ -26,7 +26,7 @@ public interface ApartmentRepository extends CrudRepository<Apartment, UUID> {
           SELECT id, condominium_id, block, unit_number, eligible_voter_user_id, is_delinquent, created_at
           FROM apartment
           WHERE condominium_id = :condominiumId
-          ORDER BY COALESCE(block, '') ASC, unit_number ASC
+          ORDER BY COALESCE(block, '') ASC, LENGTH(unit_number) ASC, unit_number ASC
           """)
   List<Apartment> findByCondominiumIdOrdered(@Param("condominiumId") UUID condominiumId);
 

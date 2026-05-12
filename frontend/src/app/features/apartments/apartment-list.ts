@@ -10,26 +10,26 @@ import { Apartment } from '../../core/api/apartments-api.service';
         Nenhum apartamento cadastrado.
       </p>
     } @else {
-      <table class="w-full text-sm">
+      <table class="w-full text-sm table-fixed">
         <thead>
-          <tr class="border-b border-outline-variant text-left text-on-surface-variant">
-            <th class="py-2 pr-4 font-medium">Bloco</th>
-            <th class="py-2 pr-4 font-medium">Unidade</th>
-            <th class="py-2 pr-4 font-medium">Inadimplente</th>
-            <th class="py-2 font-medium">Ação</th>
+          <tr class="border-b border-outline-variant text-center text-on-surface-variant">
+            <th class="py-2 pr-4 font-medium w-1/5">Bloco</th>
+            <th class="py-2 pr-4 font-medium w-1/5">Unidade</th>
+            <th class="py-2 pr-4 font-medium w-1/5">Inadimplente</th>
+            <th class="py-2 font-medium w-2/5">Ação</th>
           </tr>
         </thead>
         <tbody>
           @for (apt of apartments(); track apt.id) {
-            <tr class="border-b border-outline-variant/50 hover:bg-surface-container-low">
-              <td class="py-3 pr-4">{{ apt.block ?? '—' }}</td>
-              <td class="py-3 pr-4 font-medium">{{ apt.unitNumber }}</td>
+            <tr class="border-b border-outline-variant/50 hover:bg-surface-container-low text-center">
+              <td class="py-3 pr-4 truncate">{{ apt.block ?? '—' }}</td>
+              <td class="py-3 pr-4 font-medium truncate">{{ apt.unitNumber }}</td>
               <td class="py-3 pr-4">
                 <span
                   [class]="
                     apt.isDelinquent
-                      ? 'inline-flex items-center px-2 py-0.5 rounded text-xs bg-error/10 text-error'
-                      : 'inline-flex items-center px-2 py-0.5 rounded text-xs bg-surface-container text-on-surface-variant'
+                      ? 'inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded text-xs bg-error/10 text-error'
+                      : 'inline-flex items-center justify-center min-w-[2.5rem] px-2 py-0.5 rounded text-xs bg-surface-container text-on-surface-variant'
                   "
                 >
                   {{ apt.isDelinquent ? 'Sim' : 'Não' }}
@@ -39,7 +39,7 @@ import { Apartment } from '../../core/api/apartments-api.service';
                 <button
                   type="button"
                   (click)="toggleDelinquent.emit(apt)"
-                  class="text-xs text-secondary hover:underline"
+                  class="text-xs text-secondary hover:underline whitespace-nowrap"
                 >
                   {{ apt.isDelinquent ? 'Remover inadimplência' : 'Marcar inadimplente' }}
                 </button>

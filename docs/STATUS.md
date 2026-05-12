@@ -49,7 +49,7 @@
 - 🚧 **Fase 7** — Histórias de Domínio — **em execução**
   - ✅ **H1** — Login + Home com seletor de condomínios (smoke prod com piloto Pitufos validado 2026-05-11)
   - ✅ **Foundations Fase 7** — edição inline V6 (índice parcial invitation), V7 (triggers write-once snapshot + immutable vote), V8 (índice composto audit cursor `(condo, occurred DESC, id DESC)`), V9 (WITH CHECK em policies); `AuditEventPublisher` e `SupabaseAdminGateway`; `SecurityConfig` permitAll `/api/public/**`. Requer `supabase db reset` local e DROP/CREATE schema em prod antes do próximo deploy. Decisão: `CPF_ENCRYPTION_KEY` deve ser **idêntica** em staging↔prod (sem rotação v1 — ciphertext determinístico não decifra cross-env se chaves divergirem)
-  - ⏳ H2 — Síndico cadastra apartamento
+  - ✅ **H2** — Síndico cadastra apartamento (e marca inadimplência) — backend CRUD + audit_event + batch endpoint; frontend lista + form individual + wizard em lote com 4 presets de numeração (incl. compacto com térreo), grade editável Step 2, ORDER BY natural (LENGTH+alfa), centralização de tabela, fix layout shift inadimplência, fix preset "Personalizado" + tooltip de tokens. PR #TBD
   - ⏳ H3 — Síndico convida morador (com e-mail)
   - ⏳ H4 — Convidado completa cadastro com CPF
   - ⏳ H5 — Morador vê apartamentos onde reside

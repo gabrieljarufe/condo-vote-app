@@ -1,6 +1,7 @@
 package com.condovote.apartment;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jdbc.repository.query.Modifying;
 import org.springframework.data.jdbc.repository.query.Query;
@@ -33,4 +34,17 @@ public interface ApartmentRepository extends CrudRepository<Apartment, UUID> {
   @Modifying
   @Query("UPDATE apartment SET is_delinquent = :isDelinquent WHERE id = :id")
   void updateDelinquent(@Param("id") UUID id, @Param("isDelinquent") boolean isDelinquent);
+
+  @Query(
+      """
+          SELECT id
+          FROM apartment
+          WHERE condominium_id = :condominiumId
+            AND COALESCE(block, '') = COALESCE(:block, '')
+            AND unit_number = :unitNumber
+          """)
+  Optional<UUID> findIdByCondoBlockUnit(
+      @Param("condominiumId") UUID condominiumId,
+      @Param("block") String block,
+      @Param("unitNumber") String unitNumber);
 }

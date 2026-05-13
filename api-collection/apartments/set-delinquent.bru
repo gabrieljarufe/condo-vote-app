@@ -1,0 +1,30 @@
+meta {
+  name: Set Delinquent
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{base_url}}/api/apartments/{{apartment_id}}/delinquent
+  body: json
+  auth: bearer
+}
+
+headers {
+  X-Tenant-Id: {{condo_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "isDelinquent": true
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.isDelinquent: eq true
+}

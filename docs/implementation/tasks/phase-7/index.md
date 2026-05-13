@@ -35,7 +35,7 @@ A virada é **fatiar por história de usuário**: cada PR materializa um caminho
 |---|----------|---------|-----------------------------------|------------|
 | H1 | Como síndico bootstrapado, logo no sistema e vejo meus condomínios | [h1-login-home.md](h1-login-home.md) | (validação do walking skeleton) | — |
 | H2 | Como síndico, cadastro um apartamento no meu condomínio | `h2-apartment-create.md` _(a criar)_ | F5 (parte) | H1 |
-| H3 | Como síndico, convido um morador para um apartamento (com e-mail) | `h3-invite-resident.md` _(a criar)_ | F2 + F3 (parte) + F8 + F4 (expiração) | H2, F1 ✅ |
+| H3 | Como síndico, convido um morador para um apartamento (com e-mail) | [h3-convite-morador.md](h3-convite-morador.md) | F2 ✅ + F3 (parte) ✅ + F4 (expiração) ✅ — F8 adiado para H4 | H2, F1 ✅ |
 | H4 | Como convidado, valido o link e completo cadastro com CPF | `h4-onboarding-complete.md` _(a criar)_ | F2 (resto) + F1 ✅ + F8 | H3 |
 | H5 | Como morador logado, vejo os apartamentos onde sou residente | `h5-resident-view.md` _(a criar)_ | F5 (read) | H4 |
 | H6 | Como síndico, promovo morador a co-síndico ou delego voto | `h6-promote-delegate.md` _(a criar)_ | F5 (resto) | H5 |
@@ -69,9 +69,9 @@ Tabela inversa para confirmar que nenhum requisito técnico caiu na transição 
 | Antigo F | Descrição | Histórias que cobrem |
 |----------|-----------|----------------------|
 | F1 | CpfEncryptor (AES-256-SIV) + chave + CLI | ✅ Concluído na Fase 6 (T6.3a). Consumido em H4. |
-| F2 | Invitations + Redis token + `/register/complete` | H3 (criar/listar/expirar) + H4 (validar/completar) |
-| F3 | Email outbox + EmailSender + 7 templates Thymeleaf | H3 (template de convite + outbox) + templates restantes distribuídos quando o caso de uso aparecer (H7 abrir/encerrar poll, H8 lembrete de votação, etc.) |
-| F4 | Jobs `@Scheduled` (6 jobs + RetentionPrunerJob placeholder) | H3 (expirar convite) + H7 (fechar poll) + H8 (lembrete pré-fechamento) + H10 (RetentionPruner placeholder + qualquer job residual) |
+| F2 | Invitations + Redis token + `/register/complete` | ✅ H3 (criar/listar/expirar/revoke/resend/fix-email + token Redis 24h) + H4 (validar/completar) |
+| F3 | Email outbox + EmailSender + 7 templates Thymeleaf | ✅ H3 (transactional outbox + `EmailGateway` SMTP/Resend + `EmailSenderJob` 30s + template `invitation.html`) + templates restantes distribuídos quando o caso de uso aparecer (H7 abrir/encerrar poll, H8 lembrete de votação, etc.) |
+| F4 | Jobs `@Scheduled` (6 jobs + RetentionPrunerJob placeholder) | ✅ H3 (`InvitationExpirerJob` 1h + `EmailSenderJob` 30s) + H7 (fechar poll) + H8 (lembrete pré-fechamento) + H10 (RetentionPruner placeholder + qualquer job residual) |
 | F5 | Apartment + Resident CRUD + Delegação + Promoção | H2 (apartment CRUD) + H5 (resident read) + H6 (promoção + delegação) |
 | F6 | Poll CRUD + snapshot + vote + result | H7 (CRUD + snapshot ao abrir) + H8 (voto + resultado) |
 | F7 | Audit timeline (queries read-only) | H9 |

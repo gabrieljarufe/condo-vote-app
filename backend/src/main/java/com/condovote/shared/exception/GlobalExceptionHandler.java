@@ -32,6 +32,12 @@ public class GlobalExceptionHandler {
         .body(ApiError.of("CONFLICT", "Conflito de dados"));
   }
 
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<ApiError> handleConflict(ConflictException ex) {
+    return ResponseEntity.status(HttpStatus.CONFLICT)
+        .body(ApiError.of("CONFLICT", ex.getMessage()));
+  }
+
   @ExceptionHandler(ForbiddenException.class)
   public ResponseEntity<ApiError> handleForbidden(ForbiddenException ex) {
     return ResponseEntity.status(HttpStatus.FORBIDDEN)

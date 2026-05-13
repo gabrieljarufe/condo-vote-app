@@ -20,7 +20,6 @@ public class EmailTemplateRenderer {
     ctx.setVariable("aptLabel", vars.aptLabel());
     ctx.setVariable("roleLabel", vars.roleLabel());
     ctx.setVariable("acceptUrl", vars.acceptUrl());
-    ctx.setVariable("expiresAtLabel", vars.expiresAtLabel());
 
     String html = templateEngine.process("email/invitation", ctx);
     String text = buildPlainText(vars);
@@ -38,24 +37,15 @@ public class EmailTemplateRenderer {
         Para aceitar e completar seu cadastro, abra este link:
         %s
 
-        O link expira em %s.
+        O link é válido por 24 horas.
 
         Se você não esperava este convite, ignore este e-mail.
 
         Condo Vote — Sistema de votação condominial
         """
-        .formatted(
-            vars.condoName(),
-            vars.roleLabel(),
-            vars.aptLabel(),
-            vars.acceptUrl(),
-            vars.expiresAtLabel());
+        .formatted(vars.condoName(), vars.roleLabel(), vars.aptLabel(), vars.acceptUrl());
   }
 
   public record InvitationEmailVars(
-      String condoName,
-      String aptLabel,
-      String roleLabel,
-      String acceptUrl,
-      String expiresAtLabel) {}
+      String condoName, String aptLabel, String roleLabel, String acceptUrl) {}
 }

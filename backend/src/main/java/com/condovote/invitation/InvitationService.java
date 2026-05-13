@@ -1,7 +1,9 @@
 package com.condovote.invitation;
 
+import com.condovote.apartment.Apartment;
 import com.condovote.apartment.ApartmentRepository;
 import com.condovote.auth.AuthGateway;
+import com.condovote.condominium.CondominiumRepository;
 import com.condovote.invitation.dto.BulkCreateInvitationRequest;
 import com.condovote.invitation.dto.BulkResultResponse;
 import com.condovote.invitation.dto.BulkResultResponse.BulkRowError;
@@ -41,6 +43,7 @@ public class InvitationService {
   private final InvitationRepository invitationRepository;
   private final EmailNotificationRepository emailNotificationRepository;
   private final ApartmentRepository apartmentRepository;
+  private final CondominiumRepository condominiumRepository;
   private final CpfEncryptor cpfEncryptor;
   private final AuditEventPublisher auditEventPublisher;
   private final TenantMembershipRepository membershipRepository;
@@ -54,6 +57,7 @@ public class InvitationService {
       InvitationRepository invitationRepository,
       EmailNotificationRepository emailNotificationRepository,
       ApartmentRepository apartmentRepository,
+      CondominiumRepository condominiumRepository,
       CpfEncryptor cpfEncryptor,
       AuditEventPublisher auditEventPublisher,
       TenantMembershipRepository membershipRepository,
@@ -64,6 +68,7 @@ public class InvitationService {
     this.invitationRepository = invitationRepository;
     this.emailNotificationRepository = emailNotificationRepository;
     this.apartmentRepository = apartmentRepository;
+    this.condominiumRepository = condominiumRepository;
     this.cpfEncryptor = cpfEncryptor;
     this.auditEventPublisher = auditEventPublisher;
     this.membershipRepository = membershipRepository;
@@ -278,12 +283,19 @@ public class InvitationService {
           "Já existe convite pendente para este e-mail neste apartamento e papel");
     }
 
+    String condoName =
+        condominiumRepository.findById(condominiumId).map(c -> c.name()).orElse("Seu condomínio");
+    String aptLabel =
+        apartmentRepository.findById(aptId).map(InvitationService::formatAptLabel).orElse("—");
+
     Map<String, Object> payload =
         Map.of(
             "invitationId", id.toString(),
             "email", email,
             "token", token,
             "apartmentId", aptId.toString(),
+            "aptLabel", aptLabel,
+            "condoName", condoName,
             "role", role,
             "expiresAt", expiresAt.toString(),
             "acceptUrl", buildAcceptUrl(token));
@@ -312,6 +324,14 @@ public class InvitationService {
             .findById(id)
             .orElseThrow(
                 () -> new IllegalStateException("Invitation recém-inserido não encontrado")));
+  }
+
+  private static String formatAptLabel(Apartment apt) {
+    String block = apt.block();
+    if (block == null || block.isBlank()) {
+      return "Apto " + apt.unitNumber();
+    }
+    return "Bloco " + block + " · Apto " + apt.unitNumber();
   }
 
   private String buildAcceptUrl(String token) {

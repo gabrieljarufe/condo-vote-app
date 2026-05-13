@@ -49,6 +49,12 @@ Estas decisões parecem de implementação mas são **estruturais**. Não mude s
 - **Transferência de titularidade** (venda, herança, inquilino comprando): na v1 é tratada via **remoção + convite/promoção** pelo síndico. Fluxo formal (solicitação iniciada pelo proprietário) fica para v2. Ver `condo-vote-principles.md` seção 4 ("Transferência de titularidade") e ponto 4 em "Pontos em Aberto".
 - Ao propor mudanças em regras de negócio, **atualize a spec** — não só o código. A spec é a fonte da verdade.
 - Ao concluir uma task ou descobrir algo não-óbvio, **atualize `docs/STATUS.md`** no mesmo PR — é o índice navegável de progresso.
+- **Ao encerrar cada história/feature, crie `docs/features/<id>-<slug>.md`** registrando:
+  - O que já foi validado em smoke test (caminho feliz funcional).
+  - O que ainda **falta testar** (critérios de aceitação não exercitados, fluxos de erro, edge cases).
+  - Bugs conhecidos não-bloqueantes que ficaram para depois.
+  - Pré-requisitos pendentes para o teste em produção (DNS, secrets, histórias dependentes).
+  - O objetivo é separar "milestone funcional alcançado" (ex: e-mail está sendo enviado) de "feature 100% verificada" — para que o usuário decida se quer seguir para prod ou polir antes.
 
 ## Stack
 

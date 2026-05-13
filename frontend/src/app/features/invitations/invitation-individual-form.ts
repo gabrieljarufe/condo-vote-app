@@ -124,7 +124,7 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
 export class InvitationIndividualForm implements OnInit {
   readonly apartments = input<readonly Apartment[]>([]);
 
-  readonly submit = output<CreateInvitationRequest>();
+  readonly formSubmit = output<CreateInvitationRequest>();
   readonly cancel = output<void>();
 
   protected readonly errorMessage = signal<string | null>(null);
@@ -182,6 +182,6 @@ export class InvitationIndividualForm implements OnInit {
     const { apartmentId, email, cpf, role } = this.form.getRawValue();
     this.loading.set(true);
     this.errorMessage.set(null);
-    this.submit.emit({ apartmentId, email, cpf, role });
+    this.formSubmit.emit({ apartmentId, email, cpf, role });
   }
 }

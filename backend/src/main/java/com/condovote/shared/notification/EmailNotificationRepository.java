@@ -28,7 +28,7 @@ public interface EmailNotificationRepository extends CrudRepository<EmailNotific
 
   @Query(
       """
-          SELECT id, user_id, type, payload, status, attempts, last_error,
+          SELECT id, user_id, type::text, payload::text, status::text, attempts, last_error,
                  scheduled_for, sent_at, created_at
           FROM email_notification
           WHERE status = 'PENDING'::email_status AND scheduled_for <= :now

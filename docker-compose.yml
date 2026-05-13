@@ -17,11 +17,15 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
       APP_CORS_ALLOWED_ORIGINS: http://localhost:4200
       APP_REDIS_URL: redis://redis:6379
-      MAIL_HOST: host.docker.internal
-      MAIL_PORT: "54325"
-      EMAIL_PROVIDER: smtp
-      EMAIL_FROM: dev@condovote.local
-      EMAIL_ACCEPT_BASE_URL: http://localhost:4200
+      # E-mail via Resend (HTTP). Para voltar ao SMTP local (Inbucket/Mailpit),
+      # trocar EMAIL_PROVIDER=smtp e descomentar MAIL_HOST/MAIL_PORT.
+      APP_EMAIL_PROVIDER: resend
+      APP_EMAIL_FROM: onboarding@resend.dev
+      APP_EMAIL_ACCEPT_BASE_URL: http://localhost:4200
+      APP_EMAIL_RESEND_API_KEY: ${RESEND_API_KEY:?defina RESEND_API_KEY no shell antes de subir o compose}
+      APP_EMAIL_RESEND_API_URL: https://api.resend.com/emails
+      # MAIL_HOST: host.docker.internal
+      # MAIL_PORT: "54325"
     depends_on:
       redis:
         condition: service_healthy

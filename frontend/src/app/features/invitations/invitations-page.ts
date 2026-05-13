@@ -128,7 +128,7 @@ type PageState = 'loading' | 'error' | 'ready';
               <app-invitation-individual-form
                 #invitationForm
                 [apartments]="apartments()"
-                (submit)="onCreate($event)"
+                (formSubmit)="onCreate($event)"
                 (cancel)="showForm.set(false)"
               />
             </section>
@@ -227,6 +227,10 @@ export default class InvitationsPage implements OnInit {
         this.invitations.update((list) =>
           list.map((inv) => (inv.id === id ? { ...inv, status: 'REVOKED' as const } : inv)),
         );
+      },
+      error: () => {
+        this.errorMessage.set('Erro ao revogar convite. Tente novamente.');
+        this.pageState.set('error');
       },
     });
   }

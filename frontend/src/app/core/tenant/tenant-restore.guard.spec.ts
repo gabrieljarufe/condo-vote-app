@@ -16,7 +16,9 @@ function makeRoute(condoId: string): ActivatedRouteSnapshot {
   } as unknown as ActivatedRouteSnapshot;
 }
 
-async function runGuard(route: ActivatedRouteSnapshot): Promise<boolean | UrlTree> {
+async function runGuard(
+  route: ActivatedRouteSnapshot,
+): Promise<boolean | UrlTree> {
   return TestBed.runInInjectionContext(() =>
     tenantRestoreGuard(route, {} as RouterStateSnapshot),
   ) as Promise<boolean | UrlTree>;

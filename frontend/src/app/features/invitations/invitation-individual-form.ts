@@ -6,7 +6,7 @@ import {
   output,
   signal,
 } from '@angular/core';
-import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Apartment } from '../../core/api/apartments-api.service';
 import { CreateInvitationRequest, InvitationRole } from '../../core/api/invitations-api.service';
 import { FormField } from '../../shared/ui/form-field';
@@ -18,6 +18,14 @@ function formatCpf(raw: string): string {
   if (digits.length <= 9)
     return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+}
+
+function cpfNotAllSameDigits(control: AbstractControl): ValidationErrors | null {
+  const digits = (control.value as string).replace(/\D/g, '');
+  if (digits.length === 11 && /^(\d)\1{10}$/.test(digits)) {
+    return { cpfDigitsEqual: true };
+  }
+  return null;
 }
 
 function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[] {
@@ -85,7 +93,7 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
         #cpfField
         label="CPF"
         [control]="cpf"
-        [errors]="{ required: 'Obrigatório', pattern: 'CPF inválido (11 dígitos)' }"
+        [errors]="{ required: 'Obrigatório', pattern: 'CPF inválido (11 dígitos)', cpfDigitsEqual: 'CPF inválido: todos os dígitos são iguais' }"
       >
         <input
           [id]="cpfField.fieldId"
@@ -147,7 +155,7 @@ export class InvitationIndividualForm implements OnInit {
 
   readonly cpf = new FormControl('', {
     nonNullable: true,
-    validators: [Validators.required, Validators.pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)],
+    validators: [Validators.required, Validators.pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/), cpfNotAllSameDigits],
   });
 
   readonly form = new FormGroup({

@@ -14,6 +14,7 @@ interface GridRow {
   floor: number | null;
   label: string;
   cells: GridCell[];
+  block: string | null;
 }
 
 function makeApts(floorCount: number, perFloor: number): GeneratedApartment[] {
@@ -50,6 +51,7 @@ function makeRows(apts: GeneratedApartment[]): GridRow[] {
     rows.push({
       floor,
       label: String(floor),
+      block: floorApts[0]?.block ?? null,
       cells: floorApts.map((a) => ({
         unitNumber: a.unitNumber,
         editing: false,
@@ -61,6 +63,7 @@ function makeRows(apts: GeneratedApartment[]): GridRow[] {
     rows.push({
       floor: null,
       label: apt.unitNumber,
+      block: apt.block,
       cells: [{ unitNumber: apt.unitNumber, editing: false, editValue: apt.unitNumber }],
     });
   }
@@ -239,6 +242,35 @@ describe('ApartmentBulkPreviewGrid', () => {
 
     expect(emitted.length).toBe(1);
     expect(emitted[0].length).toBe(4);
+  });
+
+  it('onSubmitBatch preserva block nos apartamentos emitidos', async () => {
+    const apts: GeneratedApartment[] = [
+      { block: 'A', unitNumber: '101', floor: 1, seq: 1 },
+      { block: 'A', unitNumber: '102', floor: 1, seq: 2 },
+      { block: 'A', unitNumber: '201', floor: 2, seq: 1 },
+    ];
+    const { comp, fixture } = await setup(apts);
+
+    const emitted: GeneratedApartment[][] = [];
+    fixture.componentInstance.submitBatch.subscribe((v: GeneratedApartment[]) => emitted.push(v));
+
+    comp.onSubmitBatch();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0].every((a) => a.block === 'A')).toBe(true);
+  });
+
+  it('onSubmitBatch preserva block null quando bloco não foi informado', async () => {
+    const { comp, fixture } = await setup(makeApts(1, 2));
+
+    const emitted: GeneratedApartment[][] = [];
+    fixture.componentInstance.submitBatch.subscribe((v: GeneratedApartment[]) => emitted.push(v));
+
+    comp.onSubmitBatch();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0].every((a) => a.block === null)).toBe(true);
   });
 
   it('onSubmitBatch não emite quando há duplicatas', async () => {

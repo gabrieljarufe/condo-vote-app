@@ -20,6 +20,7 @@ import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.exception.ForbiddenException;
 import com.condovote.shared.exception.NotFoundException;
 import com.condovote.shared.tenant.TenantMembershipRepository;
+import com.condovote.shared.web.PageResponse;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -81,23 +82,74 @@ class ApartmentServiceTest {
   }
 
   @Test
-  void list_adminLista_retornaLista() {
+  void list_adminLista_defaultPage_retornaPaginaPrimeira() {
     when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
     Apartment apt =
         new Apartment(UuidV7.generate(), condoId, "A", "101", null, false, Instant.now());
-    when(apartmentRepository.findByCondominiumIdOrdered(condoId)).thenReturn(List.of(apt));
+    when(apartmentRepository.findByCondominiumIdOrderedPaged(condoId, 20, 0))
+        .thenReturn(List.of(apt));
+    when(apartmentRepository.countByCondominiumId(condoId)).thenReturn(1L);
 
-    List<ApartmentResponse> result = service.listByCondominium(condoId);
+    PageResponse<ApartmentResponse> result = service.listByCondominium(condoId, 0, 20);
 
-    assertThat(result).hasSize(1);
-    assertThat(result.get(0).unitNumber()).isEqualTo("101");
+    assertThat(result.content()).hasSize(1);
+    assertThat(result.content().get(0).unitNumber()).isEqualTo("101");
+    assertThat(result.page()).isZero();
+    assertThat(result.size()).isEqualTo(20);
+    assertThat(result.totalElements()).isEqualTo(1L);
+    assertThat(result.totalPages()).isEqualTo(1);
+  }
+
+  @Test
+  void list_paginaSeguinte_calculaOffsetCorretamente() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    Apartment apt =
+        new Apartment(UuidV7.generate(), condoId, "A", "201", null, false, Instant.now());
+    when(apartmentRepository.findByCondominiumIdOrderedPaged(condoId, 10, 20))
+        .thenReturn(List.of(apt));
+    when(apartmentRepository.countByCondominiumId(condoId)).thenReturn(25L);
+
+    PageResponse<ApartmentResponse> result = service.listByCondominium(condoId, 2, 10);
+
+    assertThat(result.content()).hasSize(1);
+    assertThat(result.page()).isEqualTo(2);
+    assertThat(result.size()).isEqualTo(10);
+    assertThat(result.totalElements()).isEqualTo(25L);
+    assertThat(result.totalPages()).isEqualTo(3);
+  }
+
+  @Test
+  void list_paginaVazia_retornaContentVazio() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    when(apartmentRepository.findByCondominiumIdOrderedPaged(condoId, 20, 100))
+        .thenReturn(List.of());
+    when(apartmentRepository.countByCondominiumId(condoId)).thenReturn(3L);
+
+    PageResponse<ApartmentResponse> result = service.listByCondominium(condoId, 5, 20);
+
+    assertThat(result.content()).isEmpty();
+    assertThat(result.totalElements()).isEqualTo(3L);
+  }
+
+  @Test
+  void list_pageNegativa_lancaIllegalArgument() {
+    assertThatThrownBy(() -> service.listByCondominium(condoId, -1, 20))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void list_sizeForaDoIntervalo_lancaIllegalArgument() {
+    assertThatThrownBy(() -> service.listByCondominium(condoId, 0, 0))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> service.listByCondominium(condoId, 0, 101))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
   void list_naoAdmin_lancaForbidden() {
     when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
 
-    assertThatThrownBy(() -> service.listByCondominium(condoId))
+    assertThatThrownBy(() -> service.listByCondominium(condoId, 0, 20))
         .isInstanceOf(ForbiddenException.class);
   }
 

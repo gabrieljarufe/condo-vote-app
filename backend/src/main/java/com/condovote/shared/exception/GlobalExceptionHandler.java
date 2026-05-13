@@ -44,6 +44,11 @@ public class GlobalExceptionHandler {
         .body(ApiError.of("FORBIDDEN", ex.getMessage()));
   }
 
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<ApiError> handleIllegalArgument(IllegalArgumentException ex) {
+    return ResponseEntity.badRequest().body(ApiError.of("VALIDATION_ERROR", ex.getMessage()));
+  }
+
   @ExceptionHandler(NotFoundException.class)
   public ResponseEntity<ApiError> handleNotFound(NotFoundException ex) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND)

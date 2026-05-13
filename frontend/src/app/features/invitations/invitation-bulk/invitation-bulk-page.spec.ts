@@ -85,7 +85,9 @@ function makeInvApi(overrides: Partial<{ createBulk: unknown }> = {}) {
 
 function makeAptApi() {
   return {
-    list: vi.fn(() => of([])),
+    list: vi.fn(() =>
+      of({ content: [], page: 0, size: 100, totalElements: 0, totalPages: 0 }),
+    ),
     create: vi.fn(() => of({})),
     setDelinquent: vi.fn(() => of({})),
   };

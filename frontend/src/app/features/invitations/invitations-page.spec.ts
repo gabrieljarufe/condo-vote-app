@@ -67,7 +67,15 @@ function makeInvApi(
 
 function makeAptApi(overrides: Partial<{ list: unknown }> = {}) {
   return {
-    list: vi.fn(() => of([mockApartment])),
+    list: vi.fn(() =>
+      of({
+        content: [mockApartment],
+        page: 0,
+        size: 100,
+        totalElements: 1,
+        totalPages: 1,
+      }),
+    ),
     create: vi.fn(() => of(mockApartment)),
     setDelinquent: vi.fn(() => of(mockApartment)),
     ...overrides,
@@ -108,7 +116,7 @@ describe('InvitationsPage', () => {
     const aptApi = makeAptApi();
     const { component } = await setup(invApi, aptApi);
     expect(invApi.list).toHaveBeenCalledWith('condo-1', expect.any(Object));
-    expect(aptApi.list).toHaveBeenCalledWith('condo-1');
+    expect(aptApi.list).toHaveBeenCalledWith('condo-1', 0, 100);
     expect(component.pageState()).toBe('ready');
     expect(component.invitations()).toHaveLength(1);
     expect(component.apartments()).toHaveLength(1);

@@ -163,7 +163,7 @@ export default class InvitationsPage implements OnInit {
 
   ngOnInit(): void {
     const condoId = this.tenant.activeCondominiumId()!;
-    // TODO: condomínios com >100 unidades precisam paginar aqui também.
+    // Condomínios com >100 unidades precisam paginar aqui também (pendência conhecida).
     this.apartmentsApi.list(condoId, 0, 100).subscribe({
       next: (page) => this.apartments.set([...page.content]),
     });

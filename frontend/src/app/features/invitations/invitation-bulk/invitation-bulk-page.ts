@@ -113,7 +113,7 @@ export default class InvitationBulkPage implements OnInit {
     const condoId = this.tenant.activeCondominiumId();
     if (!condoId) return;
 
-    // TODO: condomínios com >100 unidades precisam paginar aqui também.
+    // Condomínios com >100 unidades precisam paginar aqui também (pendência conhecida).
     this.apartmentsApi.list(condoId, 0, 100).subscribe({
       next: (page) => this.apartments.set([...page.content]),
       error: () => {

@@ -6,6 +6,8 @@ import {
   Output,
 } from '@angular/core';
 
+let nextPaginatorId = 0;
+
 @Component({
   selector: 'app-paginator',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -67,7 +69,7 @@ export class Paginator {
   @Output() readonly sizeChange = new EventEmitter<number>();
 
   protected readonly sizeOptions = [10, 20, 50, 100] as const;
-  protected readonly sizeSelectId = `pag-size-${Math.random().toString(36).slice(2, 8)}`;
+  protected readonly sizeSelectId = `pag-size-${nextPaginatorId++}`;
 
   protected get isFirstPage(): boolean {
     return this.page <= 0;

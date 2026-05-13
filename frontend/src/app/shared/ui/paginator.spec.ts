@@ -1,10 +1,10 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { Paginator } from './paginator';
 
 @Component({
-  selector: 'test-host',
+  selector: 'app-test-paginator-host',
   standalone: true,
   imports: [Paginator],
   template: `

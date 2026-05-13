@@ -3,6 +3,7 @@ package com.condovote.shared.crypto;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.HexFormat;
 import org.junit.jupiter.api.Test;
 
 class CpfEncryptorTest {
@@ -75,5 +76,70 @@ class CpfEncryptorTest {
   void deveLancarExcecaoParaCpfComDigitosIguais() {
     assertThatThrownBy(() -> encryptor.encrypt("11111111111"))
         .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  // --- encryptToBytes / decryptFromBytes ---
+
+  @Test
+  void encryptToBytes_validCpf_returnsBytes() {
+    byte[] result = encryptor.encryptToBytes("12345678901");
+    assertThat(result).isNotNull().isNotEmpty();
+  }
+
+  @Test
+  void encryptToBytes_determinism_sameCpfProducesSameBytes() {
+    byte[] first = encryptor.encryptToBytes("12345678901");
+    byte[] second = encryptor.encryptToBytes("12345678901");
+    assertThat(first).isEqualTo(second);
+  }
+
+  @Test
+  void encryptToBytesThenDecryptFromBytes_roundTrip_returnsOriginalCpf() {
+    String cpf = "98765432100";
+    byte[] ciphertext = encryptor.encryptToBytes(cpf);
+    assertThat(encryptor.decryptFromBytes(ciphertext)).isEqualTo(cpf);
+  }
+
+  @Test
+  void encryptToBytes_emptyCpf_throws() {
+    assertThatThrownBy(() -> encryptor.encryptToBytes(""))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void encryptToBytes_invalidFormat_throws() {
+    assertThatThrownBy(() -> encryptor.encryptToBytes("abc12345678"))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void decryptFromBytes_corruptedCiphertext_throws() {
+    byte[] corrupted = new byte[] {0x00, 0x01, 0x02};
+    assertThatThrownBy(() -> encryptor.decryptFromBytes(corrupted))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void decryptFromBytes_nullOrEmpty_throws() {
+    assertThatThrownBy(() -> encryptor.decryptFromBytes(null))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> encryptor.decryptFromBytes(new byte[0]))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void encryptToBytes_stripsFormatting_sameBytesAsDigitsOnly() {
+    byte[] formatted = encryptor.encryptToBytes("123.456.789-01");
+    byte[] digits = encryptor.encryptToBytes("12345678901");
+    assertThat(formatted).isEqualTo(digits);
+  }
+
+  @Test
+  void encryptToBytes_consistentWithEncryptString() {
+    String cpf = "12345678901";
+    byte[] bytesResult = encryptor.encryptToBytes(cpf);
+    String hexResult = encryptor.encrypt(cpf);
+    // encryptToBytes should be the byte[] equivalent of the hex string from encrypt
+    assertThat(HexFormat.of().formatHex(bytesResult).toUpperCase()).isEqualTo(hexResult);
   }
 }

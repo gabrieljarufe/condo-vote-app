@@ -27,6 +27,16 @@ spring:
     validate-on-migrate: true
     out-of-order: false
 
+  mail:
+    host: ${MAIL_HOST:127.0.0.1}
+    port: ${MAIL_PORT:54325}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+
   security:
     oauth2:
       resourceserver:
@@ -44,10 +54,19 @@ app:
   actuator:
     username: ${ACTUATOR_USER}
     password: ${ACTUATOR_PASSWORD}
-  redis:
-    url: ${REDIS_URL}
   cpf:
     encryption-key: ${CPF_ENCRYPTION_KEY}
+  email:
+    provider: ${EMAIL_PROVIDER:smtp}      # smtp (dev/test via Inbucket/GreenMail) | resend (prod)
+    from: ${EMAIL_FROM:no-reply@condovote.local}
+    accept-base-url: ${EMAIL_ACCEPT_BASE_URL:http://localhost:4200}
+    resend:
+      api-key: ${RESEND_API_KEY:}
+      api-url: ${RESEND_API_URL:https://api.resend.com/emails}
+  invitation:
+    token-ttl-hours: ${INVITATION_TOKEN_TTL_HOURS:24}
+  redis:
+    url: ${REDIS_URL}
 
 management:
   endpoints:

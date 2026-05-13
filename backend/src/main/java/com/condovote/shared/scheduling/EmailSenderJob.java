@@ -120,8 +120,7 @@ public class EmailSenderJob {
             (String) payload.getOrDefault("condoName", "Seu condomínio"),
             (String) payload.getOrDefault("aptLabel", payload.get("apartmentId").toString()),
             roleLabel,
-            (String) payload.get("acceptUrl"),
-            (String) payload.get("expiresAt"));
+            (String) payload.get("acceptUrl"));
     return renderer.renderInvitation(to, vars);
   }
 

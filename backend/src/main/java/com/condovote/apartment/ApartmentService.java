@@ -9,6 +9,7 @@ import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.exception.ForbiddenException;
 import com.condovote.shared.exception.NotFoundException;
 import com.condovote.shared.tenant.TenantMembershipRepository;
+import com.condovote.shared.web.PageResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -66,14 +67,24 @@ public class ApartmentService {
   }
 
   @Transactional(readOnly = true)
-  public List<ApartmentResponse> listByCondominium(UUID condominiumId) {
+  public PageResponse<ApartmentResponse> listByCondominium(UUID condominiumId, int page, int size) {
+    if (page < 0) {
+      throw new IllegalArgumentException("page deve ser >= 0");
+    }
+    if (size < 1 || size > 100) {
+      throw new IllegalArgumentException("size deve estar entre 1 e 100");
+    }
     UUID userId = authGateway.getCurrentUserId();
     if (!membershipRepository.isAdminOfTenant(userId, condominiumId)) {
       throw new ForbiddenException("Apenas síndicos podem listar apartamentos");
     }
-    return apartmentRepository.findByCondominiumIdOrdered(condominiumId).stream()
-        .map(ApartmentResponse::from)
-        .toList();
+    int offset = page * size;
+    List<ApartmentResponse> content =
+        apartmentRepository.findByCondominiumIdOrderedPaged(condominiumId, size, offset).stream()
+            .map(ApartmentResponse::from)
+            .toList();
+    long totalElements = apartmentRepository.countByCondominiumId(condominiumId);
+    return PageResponse.of(content, page, size, totalElements);
   }
 
   @Transactional

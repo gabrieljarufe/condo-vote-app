@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
-import { Apartment, ApartmentsApiService } from '../../core/api/apartments-api.service';
+import { Apartment, ApartmentsApiService, Page } from '../../core/api/apartments-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
 import ApartmentsPage from './apartments-page';
@@ -32,9 +32,19 @@ const mockTenant = {
   clear: vi.fn(),
 };
 
+function makePage(content: Apartment[], total = content.length, size = 20, page = 0): Page<Apartment> {
+  return {
+    content,
+    page,
+    size,
+    totalElements: total,
+    totalPages: size === 0 ? 0 : Math.ceil(total / size),
+  };
+}
+
 function makeApi(overrides: Partial<{ list: unknown; create: unknown; setDelinquent: unknown }> = {}) {
   return {
-    list: vi.fn(() => of([mockApartment])),
+    list: vi.fn(() => of(makePage([mockApartment]))),
     create: vi.fn(() => of({ ...mockApartment, id: 'apt-new', unitNumber: '102' })),
     setDelinquent: vi.fn(() => of({ ...mockApartment, isDelinquent: true })),
     ...overrides,
@@ -79,10 +89,18 @@ describe('ApartmentsPage', () => {
     expect(component.errorMessage()).toBe('Falha');
   });
 
-  it('onCreateApartment adiciona apartamento à lista', async () => {
-    const { component } = await setup();
+  it('onCreateApartment re-busca a página atual após criar', async () => {
+    const second = { ...mockApartment, id: 'apt-2', unitNumber: '102' };
+    const api = makeApi();
+    let call = 0;
+    api.list = vi.fn(() => {
+      call += 1;
+      return of(call === 1 ? makePage([mockApartment]) : makePage([mockApartment, second]));
+    });
+    const { component } = await setup(api);
     component.showForm.set(true);
     component.onCreateApartment({ unitNumber: '102', block: 'A' });
+    expect(api.list).toHaveBeenCalledTimes(2);
     expect(component.apartments()).toHaveLength(2);
     expect(component.showForm()).toBe(false);
   });
@@ -93,6 +111,43 @@ describe('ApartmentsPage', () => {
     component.showForm.set(true);
     component.onCreateApartment({ unitNumber: '101' });
     expect(component.apartments()).toHaveLength(1);
+  });
+
+  it('onPageChange busca a próxima página', async () => {
+    const second = { ...mockApartment, id: 'apt-2', unitNumber: '121' };
+    const api = makeApi();
+    let call = 0;
+    api.list = vi.fn((_condo: string, page = 0, size = 20) => {
+      call += 1;
+      if (call === 1) return of(makePage([mockApartment], 25, size, page));
+      return of(makePage([second], 25, size, page));
+    });
+    const { component } = await setup(api);
+    component.onPageChange(1);
+    expect(api.list).toHaveBeenLastCalledWith('condo-1', 1, 10);
+    expect(component.apartments()[0].id).toBe('apt-2');
+    expect(component.page()).toBe(1);
+  });
+
+  it('onSizeChange reseta page para 0 e re-busca', async () => {
+    const api = makeApi();
+    api.list = vi.fn((_condo: string, page = 0, size = 20) =>
+      of(makePage([mockApartment], 25, size, page)),
+    );
+    const { component } = await setup(api);
+    component.page.set(2);
+    component.onSizeChange(10);
+    expect(component.page()).toBe(0);
+    expect(component.size()).toBe(10);
+    expect(api.list).toHaveBeenLastCalledWith('condo-1', 0, 10);
+  });
+
+  it('expõe totalElements e totalPages a partir da resposta', async () => {
+    const api = makeApi();
+    api.list = vi.fn(() => of(makePage([mockApartment], 42, 20, 0)));
+    const { component } = await setup(api);
+    expect(component.totalElements()).toBe(42);
+    expect(component.totalPages()).toBe(3);
   });
 
   it('onToggleDelinquent atualiza flag do apartamento', async () => {

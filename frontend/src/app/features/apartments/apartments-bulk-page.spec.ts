@@ -97,7 +97,7 @@ function makeApi(
   overrides: Partial<{ createBatch: unknown }> = {},
 ) {
   return {
-    list: vi.fn(() => of([])),
+    list: vi.fn(() => of({ content: [], page: 0, size: 20, totalElements: 0, totalPages: 0 })),
     create: vi.fn(() => of({})),
     createBatch: vi.fn(() => of(successResponse)),
     setDelinquent: vi.fn(() => of({})),

@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { of } from 'rxjs';
-import { Apartment, ApartmentsApiService } from './apartments-api.service';
+import { Apartment, ApartmentsApiService, Page } from './apartments-api.service';
 
 const mockApartment: Apartment = {
   id: 'apt-1',
@@ -26,12 +26,35 @@ describe('ApartmentsApiService', () => {
     service = TestBed.inject(ApartmentsApiService);
   });
 
-  it('list faz GET no endpoint correto', () => {
-    httpMock.get.mockReturnValue(of([mockApartment]));
-    let result: Apartment[] = [];
+  it('list faz GET no endpoint correto com page/size default', () => {
+    const page: Page<Apartment> = {
+      content: [mockApartment],
+      page: 0,
+      size: 10,
+      totalElements: 1,
+      totalPages: 1,
+    };
+    httpMock.get.mockReturnValue(of(page));
+    let result: Page<Apartment> | null = null;
     service.list('condo-1').subscribe((r) => (result = r));
-    expect(httpMock.get).toHaveBeenCalledWith(expect.stringContaining('/condominiums/condo-1/apartments'));
-    expect(result).toHaveLength(1);
+    expect(httpMock.get).toHaveBeenCalledWith(
+      expect.stringContaining('/condominiums/condo-1/apartments'),
+      expect.objectContaining({ params: expect.anything() }),
+    );
+    const params = httpMock.get.mock.calls[0][1].params;
+    expect(params.get('page')).toBe('0');
+    expect(params.get('size')).toBe('10');
+    expect((result as Page<Apartment> | null)?.content).toHaveLength(1);
+  });
+
+  it('list propaga page/size customizados', () => {
+    httpMock.get.mockReturnValue(
+      of({ content: [], page: 2, size: 10, totalElements: 25, totalPages: 3 }),
+    );
+    service.list('condo-1', 2, 10).subscribe();
+    const params = httpMock.get.mock.calls[0][1].params;
+    expect(params.get('page')).toBe('2');
+    expect(params.get('size')).toBe('10');
   });
 
   it('create faz POST com body correto', () => {

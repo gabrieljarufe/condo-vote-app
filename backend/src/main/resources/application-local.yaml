@@ -29,8 +29,9 @@ spring:
 
 supabase:
   url: http://localhost:54321
-  # Service role key local do supabase start — só vale para o stack local
-  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:eyJhbGciOiJIUzI1NiIsImtpZCI6IiJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIn0.local}
+  # Obtenha via: supabase status | grep service_role
+  # Defina em .env: SUPABASE_SERVICE_ROLE_KEY=<valor>
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
 
 app:
   cors:

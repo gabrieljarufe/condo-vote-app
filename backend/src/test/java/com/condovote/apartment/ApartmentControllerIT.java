@@ -190,10 +190,66 @@ class ApartmentControllerIT extends AbstractIntegrationTest {
   void list_naoAdmin_retorna403() throws Exception {
     UUID condoId = insertCondo("Condo List 403");
     UUID adminId = UuidV7.generate();
+    UUID noVinculoId = UuidV7.generate();
+    insertAdmin(condoId, adminId);
+
+    mvc.perform(
+            get("/api/condominiums/{id}/apartments", condoId)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(noVinculoId.toString()))))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void list_moradorComUmApto_retorna200ComSuasUnidades() throws Exception {
+    UUID condoId = insertCondo("Condo Morador 1");
+    UUID adminId = UuidV7.generate();
     UUID residentId = UuidV7.generate();
-    UUID aptId = insertApartment(condoId, "100");
+    UUID aptId = insertApartment(condoId, "101");
     insertAdmin(condoId, adminId);
     insertResident(condoId, aptId, residentId, "OWNER");
+
+    mvc.perform(
+            get("/api/condominiums/{id}/apartments", condoId)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(residentId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(1)))
+        .andExpect(jsonPath("$.content[0].unitNumber").value("101"))
+        .andExpect(jsonPath("$.totalElements").value(1));
+  }
+
+  @Test
+  void list_moradorComDoisAptos_retorna200ComAmbas() throws Exception {
+    UUID condoId = insertCondo("Condo Morador 2");
+    UUID adminId = UuidV7.generate();
+    UUID residentId = UuidV7.generate();
+    UUID aptId1 = insertApartment(condoId, "201");
+    UUID aptId2 = insertApartment(condoId, "202");
+    insertAdmin(condoId, adminId);
+    insertResident(condoId, aptId1, residentId, "OWNER");
+    insertResident(condoId, aptId2, residentId, "TENANT");
+
+    mvc.perform(
+            get("/api/condominiums/{id}/apartments", condoId)
+                .accept(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(residentId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(2)))
+        .andExpect(jsonPath("$.totalElements").value(2));
+  }
+
+  @Test
+  void list_moradorSemVinculoAtivo_retorna403() throws Exception {
+    UUID condoId = insertCondo("Condo Morador Ended");
+    UUID adminId = UuidV7.generate();
+    UUID residentId = UuidV7.generate();
+    UUID aptId = insertApartment(condoId, "301");
+    insertAdmin(condoId, adminId);
+    insertEndedResident(condoId, aptId, residentId, "OWNER");
 
     mvc.perform(
             get("/api/condominiums/{id}/apartments", condoId)

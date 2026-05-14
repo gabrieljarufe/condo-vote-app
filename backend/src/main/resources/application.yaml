@@ -65,6 +65,9 @@ app:
       api-url: ${RESEND_API_URL:https://api.resend.com/emails}
   invitation:
     token-ttl-hours: ${INVITATION_TOKEN_TTL_HOURS:24}
+  onboarding:
+    rate-limit:
+      requests-per-minute: ${ONBOARDING_RATE_LIMIT_RPM:20}
   redis:
     url: ${REDIS_URL}
 

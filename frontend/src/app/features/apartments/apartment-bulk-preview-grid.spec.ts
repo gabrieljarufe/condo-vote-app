@@ -14,6 +14,7 @@ interface GridRow {
   floor: number | null;
   label: string;
   cells: GridCell[];
+  block: string | null;
 }
 
 function makeApts(floorCount: number, perFloor: number): GeneratedApartment[] {
@@ -50,6 +51,7 @@ function makeRows(apts: GeneratedApartment[]): GridRow[] {
     rows.push({
       floor,
       label: String(floor),
+      block: floorApts[0]?.block ?? null,
       cells: floorApts.map((a) => ({
         unitNumber: a.unitNumber,
         editing: false,
@@ -61,6 +63,7 @@ function makeRows(apts: GeneratedApartment[]): GridRow[] {
     rows.push({
       floor: null,
       label: apt.unitNumber,
+      block: apt.block,
       cells: [{ unitNumber: apt.unitNumber, editing: false, editValue: apt.unitNumber }],
     });
   }
@@ -213,20 +216,33 @@ describe('ApartmentBulkPreviewGrid', () => {
     expect(comp.isDuplicate('101')).toBe(false);
   });
 
-  it('addCustomRow adiciona linha com label CB, floor null e 4 células em edição', async () => {
-    const { comp } = await setup(makeApts(1, 2));
+  it('addCustomRow adiciona linha com floor = maxFloor+1 e mesmo número de células da última linha', async () => {
+    const { comp } = await setup(makeApts(2, 3)); // andares 1 e 2, 3 células cada
 
-    expect(comp.rows().length).toBe(1);
+    expect(comp.rows().length).toBe(2);
 
     comp.addCustomRow();
 
     const rows: GridRow[] = comp.rows();
-    expect(rows.length).toBe(2);
-    const newRow = rows[1];
-    expect(newRow.label).toBe('CB');
-    expect(newRow.floor).toBeNull();
-    expect(newRow.cells.length).toBe(4);
+    expect(rows.length).toBe(3);
+    const newRow = rows[2];
+    expect(newRow.floor).toBe(3);
+    expect(newRow.label).toBe('3');
+    expect(newRow.cells.length).toBe(3);
     expect(newRow.cells[0].editing).toBe(true);
+  });
+
+  it('addCustomRow sem linhas existentes usa floor 1 e 4 células', async () => {
+    const { comp } = await setup([]);
+    comp.rows.set([]);
+
+    comp.addCustomRow();
+
+    const rows: GridRow[] = comp.rows();
+    expect(rows.length).toBe(1);
+    expect(rows[0].floor).toBe(1);
+    expect(rows[0].label).toBe('1');
+    expect(rows[0].cells.length).toBe(4);
   });
 
   it('onSubmitBatch emite submitBatch com array flat quando não há duplicatas', async () => {
@@ -239,6 +255,35 @@ describe('ApartmentBulkPreviewGrid', () => {
 
     expect(emitted.length).toBe(1);
     expect(emitted[0].length).toBe(4);
+  });
+
+  it('onSubmitBatch preserva block nos apartamentos emitidos', async () => {
+    const apts: GeneratedApartment[] = [
+      { block: 'A', unitNumber: '101', floor: 1, seq: 1 },
+      { block: 'A', unitNumber: '102', floor: 1, seq: 2 },
+      { block: 'A', unitNumber: '201', floor: 2, seq: 1 },
+    ];
+    const { comp, fixture } = await setup(apts);
+
+    const emitted: GeneratedApartment[][] = [];
+    fixture.componentInstance.submitBatch.subscribe((v: GeneratedApartment[]) => emitted.push(v));
+
+    comp.onSubmitBatch();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0].every((a) => a.block === 'A')).toBe(true);
+  });
+
+  it('onSubmitBatch preserva block null quando bloco não foi informado', async () => {
+    const { comp, fixture } = await setup(makeApts(1, 2));
+
+    const emitted: GeneratedApartment[][] = [];
+    fixture.componentInstance.submitBatch.subscribe((v: GeneratedApartment[]) => emitted.push(v));
+
+    comp.onSubmitBatch();
+
+    expect(emitted.length).toBe(1);
+    expect(emitted[0].every((a) => a.block === null)).toBe(true);
   });
 
   it('onSubmitBatch não emite quando há duplicatas', async () => {

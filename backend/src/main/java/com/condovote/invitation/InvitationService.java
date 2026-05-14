@@ -309,7 +309,15 @@ public class InvitationService {
     emailNotificationRepository.insert(
         UuidV7.generate(), userId, "INVITATION", payloadJson, Instant.now());
 
-    redisCommands.setex("invitation:token:" + token, (long) tokenTtlHours * 3600L, id.toString());
+    String tokenPayload;
+    try {
+      tokenPayload =
+          objectMapper.writeValueAsString(
+              Map.of("invitationId", id.toString(), "condominiumId", condominiumId.toString()));
+    } catch (JsonProcessingException ex) {
+      throw new IllegalStateException("Erro ao serializar payload do token", ex);
+    }
+    redisCommands.setex("invitation:token:" + token, (long) tokenTtlHours * 3600L, tokenPayload);
 
     auditEventPublisher.publish(
         "INVITATION_SENT",

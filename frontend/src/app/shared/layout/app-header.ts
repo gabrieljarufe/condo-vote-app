@@ -22,7 +22,7 @@ import { TenantService } from '../../core/tenant/tenant.service';
               <span class="material-symbols-outlined text-base" aria-hidden="true">apartment</span>
               {{ condoName }}
             </span>
-            @if (isAdmin() && apartmentsLink()) {
+            @if (apartmentsLink()) {
               <a
                 [routerLink]="apartmentsLink()"
                 routerLinkActive="text-secondary font-semibold"
@@ -64,8 +64,6 @@ export class AppHeader {
     if (!id) return null;
     return this.condominiums().find((c) => c.id === id)?.name ?? null;
   });
-
-  protected readonly isAdmin = computed(() => this.tenant.activeRoles().has('ADMIN'));
 
   protected readonly apartmentsLink = computed(() => {
     const condoId = this.tenant.activeCondominiumId();

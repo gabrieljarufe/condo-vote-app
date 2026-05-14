@@ -28,6 +28,15 @@ const mockApartment: Apartment = {
 const mockTenant = {
   activeCondominiumId: () => 'condo-1',
   activeRoles: () => new Set(['ADMIN']),
+  isAdmin: () => true,
+  setActive: vi.fn(),
+  clear: vi.fn(),
+};
+
+const mockResidentTenant = {
+  activeCondominiumId: () => 'condo-1',
+  activeRoles: () => new Set(['OWNER']),
+  isAdmin: () => false,
   setActive: vi.fn(),
   clear: vi.fn(),
 };
@@ -187,5 +196,28 @@ describe('ApartmentsPage', () => {
       'apartments',
       'bulk',
     ]);
+  });
+
+  it('renderiza tabela read-only quando usuário não é admin', async () => {
+    const { fixture, component } = await setup(makeApi(), mockResidentTenant);
+    fixture.detectChanges();
+    expect(component.isAdmin()).toBe(false);
+    const text = fixture.nativeElement.textContent as string;
+    expect(text.includes('Adimplente') || text.includes('Inadimplente')).toBe(true);
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button[type="button"]')) as HTMLButtonElement[];
+    const newBtn = buttons.find((b) => b.textContent?.includes('Novo apartamento'));
+    expect(newBtn).toBeUndefined();
+  });
+
+  it('não renderiza botões admin para morador', async () => {
+    const { fixture } = await setup(makeApi(), mockResidentTenant);
+    fixture.detectChanges();
+    const paginator = fixture.nativeElement.querySelector('app-paginator');
+    expect(paginator).toBeNull();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button[type="button"]')) as HTMLButtonElement[];
+    const adminBtns = buttons.filter(
+      (b) => b.textContent?.includes('Novo apartamento') || b.textContent?.includes('Inadimplente'),
+    );
+    expect(adminBtns).toHaveLength(0);
   });
 });

@@ -19,6 +19,11 @@ export class TenantService {
   readonly activeRoles = computed<ReadonlySet<UserRoleInCondo>>(
     () => this._active()?.roles ?? TenantService.EMPTY_ROLES
   );
+  readonly isAdmin = computed(() => this.activeRoles().has('ADMIN'));
+  readonly isResident = computed(
+    () => this.activeRoles().has('OWNER') || this.activeRoles().has('TENANT')
+  );
+  readonly hasActiveTenant = computed(() => this._active() !== null);
 
   setActive(id: string, roles: readonly UserRoleInCondo[]): void {
     this._active.set({ id, roles: new Set(roles) });

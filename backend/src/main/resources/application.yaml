@@ -45,8 +45,10 @@ spring:
           jws-algorithms: ES256
 
 supabase:
-  url: ${SUPABASE_URL}
-  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
+  # Defaults vazios para permitir boot sem essas envs (cenários onde nenhum endpoint
+  # de Supabase Admin é exercitado). SupabaseAdminGatewayImpl valida no momento do uso.
+  url: ${SUPABASE_URL:}
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
 
 app:
   cors:

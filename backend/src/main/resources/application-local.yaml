@@ -31,7 +31,7 @@ supabase:
   url: http://localhost:54321
   # Obtenha via: supabase status | grep service_role
   # Defina em .env: SUPABASE_SERVICE_ROLE_KEY=<valor>
-  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
 
 app:
   cors:

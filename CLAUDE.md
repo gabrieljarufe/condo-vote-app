@@ -207,3 +207,27 @@ O CI bloqueia merge se o threshold não for atingido — não deixar para o CI d
 ## Convenções de git
 
 - **Não adicione co-author nos commits.** Nunca inclua `Co-Authored-By: Claude` ou qualquer variante nas mensagens de commit.
+
+- **Scan obrigatório de secrets antes de todo commit.** Antes de criar qualquer commit, rode o script abaixo e revise manualmente cada match antes de prosseguir. Se encontrar algum hit que seja realmente um secret, **não commite** — discuta com o usuário como externalizar via variável de ambiente:
+
+```bash
+# Detecta padrões comuns de secrets nos arquivos staged
+git diff --cached --unified=0 | grep '^+' | grep -iE \
+  'password\s*[:=]\s*[^\$\{][^\s]{6,}|
+   secret\s*[:=]\s*[^\$\{][^\s]{6,}|
+   api[_-]?key\s*[:=]\s*[^\$\{][^\s]{6,}|
+   token\s*[:=]\s*[^\$\{][^\s]{6,}|
+   eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|
+   [A-Za-z0-9+/]{40,}={0,2}' \
+  --color=always || true
+```
+
+  Interpretação dos padrões:
+  - `password/secret/api_key/token` com valor hardcoded (não `${...}`) → provavelmente secret real
+  - `eyJ...` com 3 partes separadas por `.` → JWT; verificar se é chave pública documentada ou credencial real
+  - string base64 longa (≥ 40 chars) → pode ser chave criptográfica; verificar contexto
+
+  **Exceções aceitáveis** (não bloqueiam o commit, mas devem ter comentário explicando):
+  - JWTs default e públicos do Supabase CLI (`supabase-demo` como issuer) — são determinísticos e documentados pela Supabase como valores públicos de desenvolvimento
+  - Hashes de exemplo em testes (ex: `bcrypt` de senha `password123` do seed local)
+  - Valores de exemplo em `.env.example` (não `.env`)

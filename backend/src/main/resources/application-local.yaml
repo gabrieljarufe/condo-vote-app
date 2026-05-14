@@ -31,14 +31,14 @@ supabase:
   url: http://localhost:54321
   # Obtenha via: supabase status | grep service_role
   # Defina em .env: SUPABASE_SERVICE_ROLE_KEY=<valor>
-  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY}
+  service-role-key: ${SUPABASE_SERVICE_ROLE_KEY:}
 
 app:
   cors:
     allowed-origins: http://localhost:4200
   actuator:
-    username: admin
-    password: admin
+    username: ${ACTUATOR_USER:admin}
+    password: ${ACTUATOR_PASSWORD:admin}
   email:
     provider: smtp
     from: dev@condovote.local

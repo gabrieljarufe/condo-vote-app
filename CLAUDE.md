@@ -204,6 +204,44 @@ O CI bloqueia merge se o threshold não for atingido — não deixar para o CI d
 - CLIs standalone sem Spring (`CpfEncryptorCli` e similares) → adicionar em `<excludes>` no `pom.xml`
 - DTOs, records, classes `@Configuration` sem lógica
 
+## Secrets — regra absoluta
+
+**Todo secret DEVE estar em variável de ambiente. Nunca hardcoded no repositório.**
+
+Esta é a regra mais importante de segurança do projeto. Sem exceções para "é só local", "é fake", "é temporário".
+
+### O que é um secret
+
+Qualquer valor que:
+- Identifica ou autentica um serviço/usuário (senha, token, API key, JWT de serviço)
+- Seria útil para um atacante (chave de criptografia, connection string com credencial)
+- Não é público por design (anon keys do Supabase são públicas; service_role keys não são)
+
+### Padrão obrigatório
+
+| Arquivo | Regra |
+|---|---|
+| `application.yaml` | `${ENV_VAR}` — sem fallback. Se não tiver a var, o app não sobe. |
+| `application-local.yaml` | `${ENV_VAR:valor-local-obvio}` — fallback apenas para valores trivialmente falsos (ex: `admin`, `postgres`). Nunca uma senha real como fallback. |
+| `.env` | Valores reais locais — gitignored, nunca commitado. |
+| `.env.example` | Placeholders documentados — sem valores reais. |
+| Arquivos de teste (`*Test.java`, `*.spec.ts`) | Senhas fictícias OK (ex: `senha-forte-1`), mas GitGuardian pode flagar — aceitar como false positive. |
+| Qualquer outro arquivo | **Proibido conter secrets.** |
+
+### Scan obrigatório antes de todo commit
+
+Antes de criar qualquer commit, rode e revise cada hit:
+
+```bash
+git diff --cached --unified=0 | grep '^+' | grep -iE \
+  'password\s*[:=]\s*[^\$\{][^\s]{6,}|secret\s*[:=]\s*[^\$\{][^\s]{6,}|api[_-]?key\s*[:=]\s*[^\$\{][^\s]{6,}|token\s*[:=]\s*[^\$\{][^\s]{6,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|[A-Za-z0-9+/]{40,}={0,2}' \
+  --color=always || echo "sem hits"
+```
+
+Se encontrar um hit que seja secret real: **não commite**. Mova para variável de ambiente e discuta com o usuário.
+
+Falsos positivos conhecidos: caminhos de arquivo longos, hashes de teste, JWTs `supabase-demo`.
+
 ## Convenções de git
 
 - **Não adicione co-author nos commits.** Nunca inclua `Co-Authored-By: Claude` ou qualquer variante nas mensagens de commit.

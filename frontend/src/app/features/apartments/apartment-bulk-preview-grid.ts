@@ -317,11 +317,17 @@ export class ApartmentBulkPreviewGrid {
   }
 
   protected addCustomRow(): void {
+    const current = this.rows();
+    const floors = current.map((r) => r.floor).filter((f): f is number => f !== null);
+    const nextFloor = floors.length > 0 ? Math.max(...floors) + 1 : 1;
+    const cellCount = current.at(-1)?.cells.length ?? 4;
+    const block = current[0]?.block ?? null;
+
     const newRow: GridRow = {
-      floor: null,
-      label: 'CB',
-      block: null,
-      cells: Array.from({ length: 4 }, () => ({
+      floor: nextFloor,
+      label: String(nextFloor),
+      block,
+      cells: Array.from({ length: cellCount }, () => ({
         unitNumber: '',
         editing: true,
         editValue: '',

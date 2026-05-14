@@ -216,20 +216,33 @@ describe('ApartmentBulkPreviewGrid', () => {
     expect(comp.isDuplicate('101')).toBe(false);
   });
 
-  it('addCustomRow adiciona linha com label CB, floor null e 4 células em edição', async () => {
-    const { comp } = await setup(makeApts(1, 2));
+  it('addCustomRow adiciona linha com floor = maxFloor+1 e mesmo número de células da última linha', async () => {
+    const { comp } = await setup(makeApts(2, 3)); // andares 1 e 2, 3 células cada
 
-    expect(comp.rows().length).toBe(1);
+    expect(comp.rows().length).toBe(2);
 
     comp.addCustomRow();
 
     const rows: GridRow[] = comp.rows();
-    expect(rows.length).toBe(2);
-    const newRow = rows[1];
-    expect(newRow.label).toBe('CB');
-    expect(newRow.floor).toBeNull();
-    expect(newRow.cells.length).toBe(4);
+    expect(rows.length).toBe(3);
+    const newRow = rows[2];
+    expect(newRow.floor).toBe(3);
+    expect(newRow.label).toBe('3');
+    expect(newRow.cells.length).toBe(3);
     expect(newRow.cells[0].editing).toBe(true);
+  });
+
+  it('addCustomRow sem linhas existentes usa floor 1 e 4 células', async () => {
+    const { comp } = await setup([]);
+    comp.rows.set([]);
+
+    comp.addCustomRow();
+
+    const rows: GridRow[] = comp.rows();
+    expect(rows.length).toBe(1);
+    expect(rows[0].floor).toBe(1);
+    expect(rows[0].label).toBe('1');
+    expect(rows[0].cells.length).toBe(4);
   });
 
   it('onSubmitBatch emite submitBatch com array flat quando não há duplicatas', async () => {

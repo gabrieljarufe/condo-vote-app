@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/auth/login'),
   },
   {
+    path: 'invitations/:token',
+    loadComponent: () => import('./features/onboarding/invitation-accept-page'),
+  },
+  {
     path: 'app',
     canActivate: [authGuard],
     loadChildren: () => import('./features/home/home.routes'),

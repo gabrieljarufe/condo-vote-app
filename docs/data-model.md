@@ -378,8 +378,8 @@ CREATE TYPE email_status AS ENUM (
 
 **Token storage (Redis, fora do PG):**
 - O token de aceite é um nonce gerado na criação do convite. **Não é persistido em PG.**
-- Vive em Redis: chave `invitation:token:{token_plaintext}` → `invitation_id`, com TTL de 24h.
-- Aceite: app faz `GET` no Redis → resolve `invitation_id` → carrega registro de PG → valida (`status=PENDING`, `expires_at` no futuro) → atualiza para `ACCEPTED`.
+- Vive em Redis: chave `invitation:token:{token_plaintext}` → JSON `{"invitationId":"<uuid>","condominiumId":"<uuid>"}`, com TTL de 24h. O `condominiumId` é necessário para o endpoint público `/api/public/invitations/validate` setar `SET LOCAL app.current_tenant` antes de consultar o banco (H4).
+- Aceite: app faz `GET` no Redis → desserializa JSON → seta tenant → carrega registro de PG → valida (`status=PENDING`, `expires_at` no futuro) → atualiza para `ACCEPTED`.
 - Single-use: `DEL` da chave após aceite bem-sucedido.
 
 **Reenvio:**
@@ -478,7 +478,7 @@ CREATE TYPE email_status AS ENUM (
 - `idx_vote_voter_user_id ON (voter_user_id)` — auditoria por usuário
 
 **Regras:**
-- Imutável após registro. Sem UPDATE/DELETE pela aplicação. Voto pertence ao apartamento; remoção do morador não invalida (não existe coluna `is_nullified` — qualquer menção em outros docs está desatualizada).
+- Imutável após registro, **enforçado via trigger no banco** (`trg_vote_immutable`, V7). Sem UPDATE/DELETE. Voto pertence ao apartamento; remoção do morador não invalida (não existe coluna `is_nullified` — qualquer menção em outros docs está desatualizada).
 
 ---
 
@@ -499,7 +499,7 @@ CREATE TYPE email_status AS ENUM (
 - `idx_poll_eligible_snapshot_condominium_id ON (condominium_id)` — RLS
 
 **Notas:**
-- Write-once. Gerado na transição `SCHEDULED → OPEN`. Nunca alterado.
+- Write-once, **enforçado via trigger no banco** (`trg_poll_eligible_snapshot_immutable`, V7). Gerado na transição `SCHEDULED → OPEN`. Nunca alterado.
 - **Critério de inclusão:** apartamento (a) existe no momento da abertura, (b) `is_delinquent = false`, (c) `eligible_voter_user_id IS NOT NULL`. Inadimplentes ou sem votante habilitado **não são incluídos**.
 - Define o denominador para quórum (modos Absoluto e Qualificado) e o quórum de presença (Primeira Convocação).
 - **O snapshot é lei:** tanto `apartment_id` quanto `eligible_voter_user_id` são usados na verificação de voto. Se o votante habilitado for removido durante a votação, o apartamento perde o direito de voto nesta votação. Não há fallback para novo votante.
@@ -545,7 +545,7 @@ CREATE TYPE email_status AS ENUM (
 | occurred_at | TIMESTAMP | NOT NULL | DEFAULT now() | Quando ocorreu |
 
 **Índices:**
-- `idx_audit_event_condominium_id ON (condominium_id, occurred_at DESC)` — RLS + timeline
+- `idx_audit_event_condominium_id ON (condominium_id, occurred_at DESC, id DESC)` — RLS + timeline + cursor pagination com desempate de timestamp (V8)
 - `idx_audit_event_entity ON (entity_type, entity_id)` — "histórico desta entidade"
 - `idx_audit_event_event_type ON (event_type)` — relatórios por tipo
 
@@ -696,8 +696,11 @@ Todas as tabelas do app de votação com `condominium_id` têm RLS habilitado.
 SET LOCAL app.current_tenant = '<condominium_id>';
 
 CREATE POLICY tenant_isolation ON <table>
-    USING (condominium_id = current_setting('app.current_tenant')::uuid);
+    USING (condominium_id = (SELECT current_setting('app.current_tenant'))::uuid)
+    WITH CHECK (condominium_id = (SELECT current_setting('app.current_tenant'))::uuid);
 ```
+
+> **Nota (V9):** `WITH CHECK` foi adicionado como defesa em profundidade contra INSERT/UPDATE cross-tenant. `(SELECT current_setting(...))` em vez de chamada direta elimina o warning `auth_rls_initplan` do Supabase linter (evita re-avaliação por linha).
 
 **Tabelas com RLS:** `apartment`, `apartment_resident`, `condominium_admin`, `invitation`, `poll`, `poll_option` (via JOIN com poll), `poll_eligible_snapshot`, `vote`, `poll_result`, `audit_event`
 
@@ -732,7 +735,7 @@ Tokens efêmeros de convite vivem no Redis para evitar I/O no PostgreSQL e expir
 
 | Token | Chave | Valor | TTL | Single-use? |
 |------|-------|-------|-----|-------------|
-| Convite | `invitation:token:{token}` | `invitation_id` | 24h | Sim (DEL após aceite) |
+| Convite | `invitation:token:{token}` | JSON `{"invitationId":"<uuid>","condominiumId":"<uuid>"}` | 24h | Sim (DEL após aceite) |
 
 > **Nota:** Refresh tokens e reset de senha são gerenciados internamente pelo **Supabase Auth** — não passam pelo nosso Redis.
 

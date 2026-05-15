@@ -23,7 +23,7 @@ public class EmailTemplateRenderer {
 
     String html = templateEngine.process("email/invitation", ctx);
     String text = buildPlainText(vars);
-    String subject = "Convite para " + vars.condoName() + " — apartamento " + vars.aptLabel();
+    String subject = "Convite para " + vars.condoName() + " — " + vars.aptLabel();
 
     return new EmailMessage(to, subject, html, text);
   }

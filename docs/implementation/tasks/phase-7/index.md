@@ -31,18 +31,18 @@ A virada é **fatiar por história de usuário**: cada PR materializa um caminho
 
 ## Histórias (ordem de implementação)
 
-| # | História | Arquivo | Cobertura técnica (antigos F1–F8) | Depende de |
-|---|----------|---------|-----------------------------------|------------|
-| H1 | Como síndico bootstrapado, logo no sistema e vejo meus condomínios | [h1-login-home.md](h1-login-home.md) | (validação do walking skeleton) | — |
-| H2 | Como síndico, cadastro um apartamento no meu condomínio | `h2-apartment-create.md` _(a criar)_ | F5 (parte) | H1 |
-| H3 | Como síndico, convido um morador para um apartamento (com e-mail) | [h3-convite-morador.md](h3-convite-morador.md) | F2 ✅ + F3 (parte) ✅ + F4 (expiração) ✅ — F8 adiado para H4 | H2, F1 ✅ |
-| H4 | Como convidado, valido o link e completo cadastro com CPF | `h4-onboarding-complete.md` _(a criar)_ | F2 (resto) + F1 ✅ + F8 | H3 |
-| H5 | Como morador logado, vejo os apartamentos onde sou residente | `h5-resident-view.md` _(a criar)_ | F5 (read) | H4 |
-| H6 | Como síndico, promovo morador a co-síndico ou delego voto | `h6-promote-delegate.md` _(a criar)_ | F5 (resto) | H5 |
-| H7 | Como síndico, crio uma votação (CRUD + snapshot ao abrir) | `h7-poll-create.md` _(a criar)_ | F6 (parte) + F4 (fechamento) | H6 |
-| H8 | Como morador, voto numa votação aberta e vejo o resultado | `h8-poll-vote.md` _(a criar)_ | F6 (resto) + F4 (lembretes) | H7 |
-| H9 | Como síndico, vejo a timeline de auditoria do condomínio | `h9-audit-timeline.md` _(a criar)_ | F7 | H8 |
-| H10 | Jobs agendados residuais (RetentionPrunerJob placeholder) | `h10-jobs-residual.md` _(a criar)_ | F4 (resto) | H8 |
+| # | História | Arquivo | Cobertura técnica (antigos F1–F8) | Depende de | Status |
+|---|----------|---------|-----------------------------------|------------|--------|
+| H1 | Como síndico bootstrapado, logo no sistema e vejo meus condomínios | [h1-login-home.md](h1-login-home.md) | (validação do walking skeleton) | — | ✅ |
+| H2 | Como síndico, cadastro um apartamento no meu condomínio | [h2-cadastrar-apartamento.md](h2-cadastrar-apartamento.md) | F5 (parte) ✅ | H1 | ✅ |
+| H3 | Como síndico, convido um morador para um apartamento (com e-mail) | [h3-convite-morador.md](h3-convite-morador.md) | F2 ✅ + F3 (parte) ✅ + F4 (expiração) ✅ | H2, F1 ✅ | ✅ |
+| H4 | Como convidado, valido o link e completo cadastro com CPF | [h4-onboarding-magic-link.md](h4-onboarding-magic-link.md) | F2 (resto) ✅ + F1 ✅ + F8 ✅ | H3 | ✅ |
+| H5 | Como morador logado, vejo os apartamentos onde sou residente | `h5-resident-view.md` _(a criar)_ | F5 (read) | H4 | ⏳ |
+| H6 | Como síndico, promovo morador a co-síndico ou delego voto | `h6-promote-delegate.md` _(a criar)_ | F5 (resto) | H5 | ⏳ |
+| H7 | Como síndico, crio uma votação (CRUD + snapshot ao abrir) | `h7-poll-create.md` _(a criar)_ | F6 (parte) + F4 (fechamento) | H6 | ⏳ |
+| H8 | Como morador, voto numa votação aberta e vejo o resultado | `h8-poll-vote.md` _(a criar)_ | F6 (resto) + F4 (lembretes) | H7 | ⏳ |
+| H9 | Como síndico, vejo a timeline de auditoria do condomínio | `h9-audit-timeline.md` _(a criar)_ | F7 | H8 | ⏳ |
+| H10 | Jobs agendados residuais (RetentionPrunerJob placeholder) | `h10-jobs-residual.md` _(a criar)_ | F4 (resto) | H8 | ⏳ |
 
 > **Observações:**
 >
@@ -75,6 +75,6 @@ Tabela inversa para confirmar que nenhum requisito técnico caiu na transição 
 | F5 | Apartment + Resident CRUD + Delegação + Promoção | H2 (apartment CRUD) + H5 (resident read) + H6 (promoção + delegação) |
 | F6 | Poll CRUD + snapshot + vote + result | H7 (CRUD + snapshot ao abrir) + H8 (voto + resultado) |
 | F7 | Audit timeline (queries read-only) | H9 |
-| F8 | Rate limiting Bucket4j | H3 + H4 (endpoints públicos de convite/register) |
+| F8 | Rate limiting Bucket4j | ✅ H4 (in-memory, single-instance; endpoints de H3 são autenticados — rate-limit por JWT) |
 
 > Ao concluir cada história, marcar a linha correspondente nesta tabela com ✅ no PR final.

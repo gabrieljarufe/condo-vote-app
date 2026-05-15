@@ -31,6 +31,11 @@ public class SupabaseAdminGatewayImpl implements SupabaseAdminGateway {
 
   @Override
   public UUID createUser(String email, String password) {
+    if (serviceRoleKey == null || serviceRoleKey.isBlank()) {
+      throw new SupabaseAdminException(
+          "SUPABASE_SERVICE_ROLE_KEY não configurado — obtenha via 'supabase status' "
+              + "(local) ou Coolify env vars (prod). Sem ela, /api/public/register/complete não funciona.");
+    }
     Map<String, Object> body = Map.of("email", email, "password", password, "email_confirm", true);
 
     try {

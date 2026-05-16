@@ -46,6 +46,20 @@ Para edifícios com muitas unidades, use o wizard de cadastro em lote:
 - Backend: `POST /api/condominiums/{id}/apartments`, `GET /api/condominiums/{id}/apartments`, `PATCH /api/apartments/{id}/delinquent`
 - Frontend: `/app/condominiums/:condoId/apartments` (lazy-loaded)
 
+## H2.1 — Paginação server-side (PR #81)
+
+`GET /api/condominiums/{id}/apartments` passou a retornar `PageResponse<T>` com suporte a paginação via query params:
+
+- `page` (default `0`) — índice da página (base 0).
+- `size` (default `10`, clamp `[1, 100]`) — itens por página.
+- Resposta: `{content, page, size, totalElements, totalPages}`.
+
+Novo DTO genérico `shared/web/PageResponse` reutilizável em qualquer endpoint paginado futuro.
+
+Frontend: novo componente `app-paginator` (em `shared/ui`) com prev/next e seletor 10/20/50/100 itens por página; re-fetch automático após criação de apartamento.
+
+**Limitação conhecida:** a página de convites consume a listagem de apartamentos com `size=100` como workaround (TODO quando o piloto tiver >100 unidades — implementar paginação na tela de convites também).
+
 ## Referências
 
 - Spec: `docs/condo-vote-principles.md` §Atores §Inadimplência

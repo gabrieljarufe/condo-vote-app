@@ -30,6 +30,7 @@ services:
       # falha com 500 e mensagem clara apontando para esta env.
       # Obter via: supabase status | grep service_role
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
       # MAIL_HOST: host.docker.internal
       # MAIL_PORT: "54325"
     depends_on:

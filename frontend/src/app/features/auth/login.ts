@@ -21,7 +21,7 @@ import { Spinner } from '../../shared/ui/spinner';
 
           @if (registeredToast()) {
             <p
-              class="text-sm text-on-primary-container bg-primary-container rounded-lg p-3 mb-4"
+              class="text-sm text-on-success-container bg-success-container rounded-lg p-3 mb-4"
               role="status"
               aria-live="polite"
             >

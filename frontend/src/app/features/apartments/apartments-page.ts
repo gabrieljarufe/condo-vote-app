@@ -49,7 +49,7 @@ type PageState = 'loading' | 'error' | 'ready';
         </div>
       } @else if (pageState() === 'error') {
         <p class="text-sm text-error py-4" role="alert">{{ errorMessage() }}</p>
-      } @else {
+      } @else if (isAdmin()) {
         <div class="flex flex-col gap-8">
           <section
             class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6"
@@ -102,6 +102,34 @@ type PageState = 'loading' | 'error' | 'ready';
           />
         }
         </div>
+      } @else {
+        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+          <h2 class="text-lg font-semibold text-on-surface mb-4">Lista de unidades</h2>
+          <table class="w-full text-sm table-fixed">
+            <thead>
+              <tr class="border-b border-outline-variant text-center text-on-surface-variant">
+                <th class="py-2 pr-4 font-medium w-1/3">Bloco</th>
+                <th class="py-2 pr-4 font-medium w-1/3">Unidade</th>
+                <th class="py-2 font-medium w-1/3">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (apt of apartments(); track apt.id) {
+                <tr class="border-b border-outline-variant/50 hover:bg-surface-container-low text-center">
+                  <td class="py-3 pr-4 truncate">{{ apt.block ?? '—' }}</td>
+                  <td class="py-3 pr-4 font-medium truncate">{{ apt.unitNumber }}</td>
+                  <td class="py-3">
+                    <span [class]="apt.isDelinquent
+                      ? 'inline-flex items-center justify-center px-2 py-0.5 rounded text-xs bg-error/10 text-error'
+                      : 'inline-flex items-center justify-center px-2 py-0.5 rounded text-xs bg-surface-container text-on-surface-variant'">
+                      {{ apt.isDelinquent ? 'Inadimplente' : 'Adimplente' }}
+                    </span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </section>
       }
     </main>
   `,
@@ -122,6 +150,7 @@ export default class ApartmentsPage implements OnInit {
   protected readonly size = signal(10);
   protected readonly totalElements = signal(0);
   protected readonly totalPages = signal(0);
+  protected readonly isAdmin = computed(() => this.tenant.isAdmin());
   protected readonly dashboardLink = computed(() => {
     const id = this.tenant.activeCondominiumId();
     return id ? `/app/condominiums/${id}` : '/app';

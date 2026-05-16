@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from '../../core/tenant/admin.guard';
 import { tenantRestoreGuard } from '../../core/tenant/tenant-restore.guard';
 
 const routes: Routes = [
@@ -18,17 +19,17 @@ const routes: Routes = [
   },
   {
     path: 'condominiums/:condoId/apartments/bulk',
-    canActivate: [tenantRestoreGuard],
+    canActivate: [tenantRestoreGuard, adminGuard],
     loadComponent: () => import('../apartments/apartments-bulk-page'),
   },
   {
     path: 'condominiums/:condoId/invitations',
-    canActivate: [tenantRestoreGuard],
+    canActivate: [tenantRestoreGuard, adminGuard],
     loadComponent: () => import('../invitations/invitations-page'),
   },
   {
     path: 'condominiums/:condoId/invitations/bulk',
-    canActivate: [tenantRestoreGuard],
+    canActivate: [tenantRestoreGuard, adminGuard],
     loadComponent: () => import('../invitations/invitation-bulk/invitation-bulk-page'),
   },
   {

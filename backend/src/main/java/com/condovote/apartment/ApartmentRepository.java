@@ -54,4 +54,17 @@ public interface ApartmentRepository extends CrudRepository<Apartment, UUID> {
       @Param("condominiumId") UUID condominiumId,
       @Param("block") String block,
       @Param("unitNumber") String unitNumber);
+
+  @Query(
+      """
+          SELECT a.id, a.condominium_id, a.block, a.unit_number, a.eligible_voter_user_id, a.is_delinquent, a.created_at
+          FROM apartment a
+          JOIN apartment_resident ar ON ar.apartment_id = a.id
+          WHERE ar.condominium_id = :condominiumId
+            AND ar.user_id = :userId
+            AND ar.ended_at IS NULL
+          ORDER BY COALESCE(a.block, '') ASC, LENGTH(a.unit_number) ASC, a.unit_number ASC
+          """)
+  List<Apartment> findActiveResidencyApartments(
+      @Param("condominiumId") UUID condominiumId, @Param("userId") UUID userId);
 }

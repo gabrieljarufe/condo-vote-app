@@ -143,7 +143,8 @@ public class OnboardingService {
     }
 
     if (existsUserByEmail(inv.email())) {
-      throw new ConflictException("Já existe conta para este e-mail. Faça login.");
+      throw new ConflictException(
+          "Já existe conta para este e-mail. Faça login para aceitar este convite.");
     }
 
     UUID authUserId = supabaseAdminGateway.createUser(inv.email(), req.password());
@@ -160,13 +161,14 @@ public class OnboardingService {
         cpfBytes,
         CONSENT_POLICY_VERSION);
 
+    UUID residentRowId = UuidV7.generate();
     jdbcTemplate.update(
         """
             INSERT INTO apartment_resident
                 (id, condominium_id, apartment_id, user_id, role, joined_at)
             VALUES (?, ?, ?, ?, ?::resident_role, now())
             """,
-        UuidV7.generate(),
+        residentRowId,
         payload.condominiumId,
         inv.apartmentId(),
         authUserId,
@@ -193,7 +195,22 @@ public class OnboardingService {
         Map.of(
             "email", inv.email(),
             "apartmentId", inv.apartmentId().toString(),
-            "role", inv.role()),
+            "role", inv.role(),
+            "flow", "CREATE_NEW_USER"),
+        payload.condominiumId,
+        authUserId);
+
+    auditEventPublisher.publish(
+        "RESIDENT_JOINED",
+        "apartment_resident",
+        residentRowId,
+        Map.of(
+            "apartmentId", inv.apartmentId().toString(),
+            "userId", authUserId.toString(),
+            "role", inv.role(),
+            "via", "INVITATION",
+            "invitationId", payload.invitationId.toString(),
+            "acceptanceConfirmedAt", Instant.now().toString()),
         payload.condominiumId,
         authUserId);
 

@@ -199,7 +199,7 @@ class OnboardingServiceTest {
                 newService()
                     .complete(
                         new CompleteRegistrationRequest(
-                            token, "11144477735", "senha-forte-1!", "Nome")))
+                            token, "11144477735", "senha-forte-1!", "Nome", true)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("CPF não confere");
   }
@@ -241,7 +241,7 @@ class OnboardingServiceTest {
                 newService()
                     .complete(
                         new CompleteRegistrationRequest(
-                            token, "11144477735", "senha-forte-1!", "Nome")))
+                            token, "11144477735", "senha-forte-1!", "Nome", true)))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -254,8 +254,122 @@ class OnboardingServiceTest {
                 newService()
                     .complete(
                         new CompleteRegistrationRequest(
-                            "x", "11144477735", "senha-forte-1!", "Nome")))
+                            "x", "11144477735", "senha-forte-1!", "Nome", true)))
         .isInstanceOf(ConflictException.class);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void complete_happyPath_emiteInvitationAcceptedERESIDENT_JOINED() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID newUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+    String email = "novo@example.com";
+    byte[] cpfBytes = new byte[] {1, 2, 3};
+
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(Long.class), eq(email)))
+        .thenReturn(0L);
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            email,
+            cpfBytes,
+            "OWNER",
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+    when(cpfEncryptor.encryptToBytes("111.444.777-35")).thenReturn(cpfBytes);
+    when(supabaseAdminGateway.createUser(email, "senha-forte-1!")).thenReturn(newUserId);
+    lenient()
+        .when(jdbcTemplate.update(contains("UPDATE invitation"), eq(invitationId)))
+        .thenReturn(1);
+
+    newService()
+        .complete(
+            new CompleteRegistrationRequest(
+                token, "111.444.777-35", "senha-forte-1!", "Nome Completo", true));
+
+    ArgumentCaptor<Map<String, Object>> payloadCap = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> typeCap = ArgumentCaptor.forClass(String.class);
+    verify(auditEventPublisher, times(2))
+        .publish(
+            typeCap.capture(),
+            anyString(),
+            any(UUID.class),
+            payloadCap.capture(),
+            eq(condoId),
+            eq(newUserId));
+    assertThat(typeCap.getAllValues()).containsExactly("INVITATION_ACCEPTED", "RESIDENT_JOINED");
+    assertThat(payloadCap.getAllValues().get(0))
+        .contains(entry("flow", "CREATE_NEW_USER"))
+        .contains(entry("email", email));
+    assertThat(payloadCap.getAllValues().get(1))
+        .contains(entry("via", "INVITATION"))
+        .contains(entry("userId", newUserId.toString()))
+        .contains(entry("invitationId", invitationId.toString()));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void complete_emailJaExiste_mensagemSugereLogin() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+    String email = "existente@example.com";
+    byte[] cpfBytes = new byte[] {1, 2, 3};
+
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(Long.class), eq(email)))
+        .thenReturn(1L);
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            email,
+            cpfBytes,
+            "OWNER",
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+    when(cpfEncryptor.encryptToBytes("111.444.777-35")).thenReturn(cpfBytes);
+
+    assertThatThrownBy(
+            () ->
+                newService()
+                    .complete(
+                        new CompleteRegistrationRequest(
+                            token, "111.444.777-35", "senha-forte-1!", "Nome", true)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Faça login para aceitar este convite");
   }
 
   // ──────────────────────────── acceptAsExistingUser ────────────────────────────

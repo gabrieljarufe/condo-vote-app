@@ -53,6 +53,11 @@ const routes: Routes = [
     loadComponent: () => import('../polls/poll-edit-page'),
   },
   {
+    path: 'condominiums/:condoId/my-polls',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/voting/resident-pending-polls-page'),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

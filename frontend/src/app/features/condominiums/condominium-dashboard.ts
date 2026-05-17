@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { catchError, map, startWith } from 'rxjs';
+import { catchError, map, of, startWith } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
+import { PollsApiService } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
@@ -66,6 +67,24 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
               </div>
             </a>
           }
+
+          @if (isResident()) {
+            <a
+              [routerLink]="['/app/condominiums', condoId(), 'my-polls']"
+              class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+            >
+              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">how_to_vote</span>
+              <div class="flex-1">
+                <p class="font-semibold text-on-surface">Minhas votações</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Cédulas pendentes para sua votação</p>
+              </div>
+              @if (pendingPollsCount() > 0) {
+                <span class="rounded-full bg-primary text-on-primary text-xs font-bold px-2.5 py-1">
+                  {{ pendingPollsCount() }}
+                </span>
+              }
+            </a>
+          }
         </div>
 
         <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">
@@ -78,6 +97,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
 })
 export default class CondominiumDashboard {
   private readonly tenant = inject(TenantService);
+  private readonly pollsApi = inject(PollsApiService);
 
   protected readonly state = toSignal(
     inject(MeApiService).getCondominiums().pipe(
@@ -101,4 +121,14 @@ export default class CondominiumDashboard {
   protected readonly condoId = computed(() => this.tenant.activeCondominiumId() ?? '');
 
   protected readonly isAdmin = computed(() => this.tenant.activeRoles().has('ADMIN'));
+
+  protected readonly isResident = computed(() => this.tenant.isResident());
+
+  protected readonly pendingPollsCount = toSignal(
+    this.pollsApi.getMyPendingPolls(this.tenant.activeCondominiumId() ?? '').pipe(
+      map((polls) => polls.length),
+      catchError(() => of(0)),
+    ),
+    { initialValue: 0 },
+  );
 }

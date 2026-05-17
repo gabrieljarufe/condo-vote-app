@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -224,7 +223,7 @@ public class OnboardingService {
    * (idempotente caso já exista).
    */
   @Transactional
-  public void acceptAsExistingUser(String token, String cpfRaw, String jwtEmail, UUID jwtUserId) {
+  public void acceptAsExistingUser(String token, String jwtEmail, UUID jwtUserId) {
     TokenPayload payload = readToken(token);
     if (payload == null) {
       throw new ConflictException("Convite inválido ou expirado");
@@ -248,25 +247,12 @@ public class OnboardingService {
       throw new ForbiddenException("Convite é para outro e-mail");
     }
 
-    // Carrega CPF criptografado do app_user. queryForObject lança EmptyResultDataAccessException
-    // se não encontrar — convertemos em ConflictException para indicar "conta não existe".
-    byte[] storedCpf;
-    try {
-      storedCpf =
-          jdbcTemplate.queryForObject(
-              "SELECT cpf_encrypted FROM app_user WHERE id = ?", byte[].class, jwtUserId);
-    } catch (EmptyResultDataAccessException e) {
+    // Verifica que o app_user referenciado pelo JWT existe. Protege contra JWT órfão de auth.users.
+    Long exists =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM app_user WHERE id = ?", Long.class, jwtUserId);
+    if (exists == null || exists == 0) {
       throw new ConflictException("Conta não encontrada — refaça o cadastro");
-    }
-
-    byte[] cpfBytes;
-    try {
-      cpfBytes = cpfEncryptor.encryptToBytes(cpfRaw);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("CPF inválido: " + e.getMessage());
-    }
-    if (!Arrays.equals(cpfBytes, storedCpf)) {
-      throw new IllegalArgumentException("CPF não confere");
     }
 
     // Idempotência: se já existe residência ativa para (apt, user), não criamos outra.

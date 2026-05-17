@@ -196,7 +196,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                 }
                 @case ('LINK') {
                   <p class="text-sm text-on-surface-variant mb-6">
-                    Confirme seu CPF para vincular este apartamento à sua conta.
+                    Confirme a declaração abaixo para vincular este apartamento à sua conta.
                   </p>
                   <form
                     [formGroup]="linkForm"
@@ -213,24 +213,6 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                         class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container text-on-surface-variant cursor-not-allowed"
                       />
                     </div>
-
-                    <app-form-field
-                      label="CPF"
-                      [control]="linkForm.controls.cpf"
-                      [errors]="{ required: 'CPF é obrigatório', pattern: 'CPF inválido' }"
-                      #linkCpfField
-                    >
-                      <input
-                        [id]="linkCpfField.fieldId"
-                        type="text"
-                        inputmode="numeric"
-                        autocomplete="off"
-                        placeholder="000.000.000-00"
-                        formControlName="cpf"
-                        (input)="onCpfInput($event, linkForm.controls.cpf)"
-                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-                      />
-                    </app-form-field>
 
                     <label
                       class="flex gap-3 text-sm text-on-surface items-start cursor-pointer"
@@ -386,10 +368,6 @@ export default class InvitationAcceptPage implements OnInit {
   );
 
   protected readonly linkForm = new FormGroup({
-    cpf: new FormControl('', {
-      nonNullable: true,
-      validators: [Validators.required, Validators.pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)],
-    }),
     acceptanceConfirmed: new FormControl<boolean>(false, {
       nonNullable: true,
       validators: [Validators.requiredTrue],
@@ -475,19 +453,16 @@ export default class InvitationAcceptPage implements OnInit {
       return;
     }
     const token = this.route.snapshot.paramMap.get('token')!;
-    const raw = this.linkForm.getRawValue();
     this.submitting.set(true);
     this.errorMessage.set(null);
-    this.api.acceptAsExisting(token, { cpf: raw.cpf, acceptanceConfirmed: true }).subscribe({
+    this.api.acceptAsExisting(token, { acceptanceConfirmed: true }).subscribe({
       next: () => {
         this.router.navigate(['/app']);
       },
       error: (err) => {
         this.submitting.set(false);
         const status = err?.status;
-        if (status === 400) {
-          this.errorMessage.set('CPF não confere com a sua conta.');
-        } else if (status === 403) {
+        if (status === 403) {
           this.errorMessage.set('Convite não pertence a esta conta.');
         } else if (status === 409) {
           this.errorMessage.set('Convite não está mais pendente.');

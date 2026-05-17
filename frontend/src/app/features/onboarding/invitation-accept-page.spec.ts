@@ -201,7 +201,7 @@ describe('InvitationAcceptPage', () => {
       session: makeSession('MORADOR@exemplo.com'),
     });
     const html = fixture.nativeElement.outerHTML as string;
-    expect(html).toContain('Confirme seu CPF');
+    expect(html).toContain('Confirme a declaração');
     expect(html).toContain('Aceitar convite');
 
     const router = TestBed.inject(Router);
@@ -211,13 +211,13 @@ describe('InvitationAcceptPage', () => {
       linkForm: { patchValue: (v: Record<string, unknown>) => void };
       submitLink: () => void;
     };
-    cmp.linkForm.patchValue({ cpf: '111.444.777-35', acceptanceConfirmed: true });
+    cmp.linkForm.patchValue({ acceptanceConfirmed: true });
     cmp.submitLink();
 
     expect(api.acceptAsExisting).toHaveBeenCalledTimes(1);
     expect(api.acceptAsExisting).toHaveBeenCalledWith(
       'tok-abc',
-      expect.objectContaining({ cpf: '111.444.777-35', acceptanceConfirmed: true }),
+      expect.objectContaining({ acceptanceConfirmed: true }),
     );
     expect(navSpy).toHaveBeenCalledWith(['/app']);
   });

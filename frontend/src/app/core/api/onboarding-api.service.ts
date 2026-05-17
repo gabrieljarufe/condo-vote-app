@@ -29,7 +29,6 @@ export interface CompleteRegistrationRequest {
 }
 
 export interface AcceptAsExistingRequest {
-  readonly cpf: string;
   readonly acceptanceConfirmed: boolean;
 }
 

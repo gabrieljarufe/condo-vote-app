@@ -34,7 +34,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
 
@@ -421,9 +420,9 @@ class OnboardingServiceTest {
     Invitation inv = pendingInv(invId, condoId, aptId, email, cpfBytes);
     stubTokenAndInvitation(token, inv);
 
-    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(byte[].class), eq(jwtUserId)))
-        .thenReturn(cpfBytes);
-    when(cpfEncryptor.encryptToBytes("111.444.777-35")).thenReturn(cpfBytes);
+    when(jdbcTemplate.queryForObject(
+            contains("COUNT(*) FROM app_user"), eq(Long.class), eq(jwtUserId)))
+        .thenReturn(1L);
     // SELECT-before-INSERT em apartment_resident → não existe ainda.
     when(jdbcTemplate.query(
             contains("FROM apartment_resident"),
@@ -433,7 +432,7 @@ class OnboardingServiceTest {
         .thenReturn(Optional.empty());
     lenient().when(jdbcTemplate.update(contains("UPDATE invitation"), eq(invId))).thenReturn(1);
 
-    newService().acceptAsExistingUser(token, "111.444.777-35", email, jwtUserId);
+    newService().acceptAsExistingUser(token, email, jwtUserId);
 
     ArgumentCaptor<Map<String, Object>> payloadCap = ArgumentCaptor.forClass(Map.class);
     ArgumentCaptor<String> typeCap = ArgumentCaptor.forClass(String.class);
@@ -468,37 +467,12 @@ class OnboardingServiceTest {
     Invitation inv = pendingInv(invId, condoId, aptId, "convite@x.com", new byte[] {1});
     stubTokenAndInvitation(token, inv);
 
-    assertThatThrownBy(
-            () ->
-                newService()
-                    .acceptAsExistingUser(token, "111.444.777-35", "outro@y.com", jwtUserId))
+    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, "outro@y.com", jwtUserId))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("outro e-mail");
     verify(auditEventPublisher, never())
         .publish(
             anyString(), anyString(), any(UUID.class), any(), any(UUID.class), any(UUID.class));
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void acceptAsExisting_cpfNaoConfere_lancaIllegalArgument() {
-    UUID invId = UUID.randomUUID();
-    UUID condoId = UUID.randomUUID();
-    UUID aptId = UUID.randomUUID();
-    UUID jwtUserId = UUID.randomUUID();
-    String email = "a@x.com";
-    String token = UUID.randomUUID().toString();
-
-    Invitation inv = pendingInv(invId, condoId, aptId, email, new byte[] {1});
-    stubTokenAndInvitation(token, inv);
-    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(byte[].class), eq(jwtUserId)))
-        .thenReturn(new byte[] {9, 9, 9});
-    when(cpfEncryptor.encryptToBytes("111.444.777-35")).thenReturn(new byte[] {1, 2, 3});
-
-    assertThatThrownBy(
-            () -> newService().acceptAsExistingUser(token, "111.444.777-35", email, jwtUserId))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("CPF não confere");
   }
 
   @Test
@@ -528,8 +502,7 @@ class OnboardingServiceTest {
             Instant.now());
     stubTokenAndInvitation(token, inv);
 
-    assertThatThrownBy(
-            () -> newService().acceptAsExistingUser(token, "111.444.777-35", email, jwtUserId))
+    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, email, jwtUserId))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("expirado");
   }
@@ -561,8 +534,7 @@ class OnboardingServiceTest {
             Instant.now());
     stubTokenAndInvitation(token, inv);
 
-    assertThatThrownBy(
-            () -> newService().acceptAsExistingUser(token, "111.444.777-35", email, jwtUserId))
+    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, email, jwtUserId))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -578,11 +550,11 @@ class OnboardingServiceTest {
 
     Invitation inv = pendingInv(invId, condoId, aptId, email, new byte[] {1});
     stubTokenAndInvitation(token, inv);
-    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(byte[].class), eq(jwtUserId)))
-        .thenThrow(new EmptyResultDataAccessException(1));
+    when(jdbcTemplate.queryForObject(
+            contains("COUNT(*) FROM app_user"), eq(Long.class), eq(jwtUserId)))
+        .thenReturn(0L);
 
-    assertThatThrownBy(
-            () -> newService().acceptAsExistingUser(token, "111.444.777-35", email, jwtUserId))
+    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, email, jwtUserId))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("Conta não encontrada");
   }
@@ -601,9 +573,9 @@ class OnboardingServiceTest {
 
     Invitation inv = pendingInv(invId, condoId, aptId, email, cpfBytes);
     stubTokenAndInvitation(token, inv);
-    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(byte[].class), eq(jwtUserId)))
-        .thenReturn(cpfBytes);
-    when(cpfEncryptor.encryptToBytes("111.444.777-35")).thenReturn(cpfBytes);
+    when(jdbcTemplate.queryForObject(
+            contains("COUNT(*) FROM app_user"), eq(Long.class), eq(jwtUserId)))
+        .thenReturn(1L);
     when(jdbcTemplate.query(
             contains("FROM apartment_resident"),
             any(ResultSetExtractor.class),
@@ -612,7 +584,7 @@ class OnboardingServiceTest {
         .thenReturn(Optional.of(existingResidentId));
     lenient().when(jdbcTemplate.update(contains("UPDATE invitation"), eq(invId))).thenReturn(1);
 
-    newService().acceptAsExistingUser(token, "111.444.777-35", email, jwtUserId);
+    newService().acceptAsExistingUser(token, email, jwtUserId);
 
     // Não deve haver INSERT em apartment_resident.
     verify(jdbcTemplate, never())

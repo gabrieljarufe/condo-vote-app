@@ -35,6 +35,6 @@ public class InvitationLinkController {
       @Valid @RequestBody AcceptAsExistingRequest req,
       @AuthenticationPrincipal Jwt jwt) {
     service.acceptAsExistingUser(
-        token, req.cpf(), jwt.getClaimAsString("email"), UUID.fromString(jwt.getSubject()));
+        token, jwt.getClaimAsString("email"), UUID.fromString(jwt.getSubject()));
   }
 }

@@ -99,7 +99,7 @@ class InvitationLinkControllerIT extends AbstractIntegrationTest {
   void semJwt_retorna401() throws Exception {
     String body =
         """
-        {"cpf":"111.444.777-35","acceptanceConfirmed":true}
+        {"acceptanceConfirmed":true}
         """;
     mvc.perform(
             post("/api/invitations/{token}/accept-as-existing", "qualquer")
@@ -114,9 +114,8 @@ class InvitationLinkControllerIT extends AbstractIntegrationTest {
 
     String body =
         """
-        {"cpf":"%s","acceptanceConfirmed":true}
-        """
-            .formatted(fx.cpfRaw());
+        {"acceptanceConfirmed":true}
+        """;
 
     mvc.perform(
             post("/api/invitations/{token}/accept-as-existing", fx.token())
@@ -163,9 +162,8 @@ class InvitationLinkControllerIT extends AbstractIntegrationTest {
 
     String body =
         """
-        {"cpf":"%s","acceptanceConfirmed":true}
-        """
-            .formatted(fx.cpfRaw());
+        {"acceptanceConfirmed":true}
+        """;
 
     mvc.perform(
             post("/api/invitations/{token}/accept-as-existing", fx.token())
@@ -184,11 +182,7 @@ class InvitationLinkControllerIT extends AbstractIntegrationTest {
   void acceptanceConfirmedFalse_retorna400() throws Exception {
     Fixture fx = seed("noconfirm", "603", "111.444.777-35");
 
-    String body =
-        """
-        {"cpf":"%s","acceptanceConfirmed":false}
-        """
-            .formatted(fx.cpfRaw());
+    String body = "{\"acceptanceConfirmed\":false}";
 
     mvc.perform(
             post("/api/invitations/{token}/accept-as-existing", fx.token())
@@ -221,11 +215,7 @@ class InvitationLinkControllerIT extends AbstractIntegrationTest {
         fx.aptId(),
         fx.userId());
 
-    String body =
-        """
-        {"cpf":"%s","acceptanceConfirmed":true}
-        """
-            .formatted(fx.cpfRaw());
+    String body = "{\"acceptanceConfirmed\":true}";
 
     mvc.perform(
             post("/api/invitations/{token}/accept-as-existing", fx.token())

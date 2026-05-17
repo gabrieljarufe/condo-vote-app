@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.2](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.1...frontend-v0.1.2) (2026-05-17)
+
+
+### Bug Fixes
+
+* **h5:** expõe acceptAsExisting e acceptanceConfirmed no api service ([12373fc](https://github.com/gabrieljarufe/condo-vote-app/commit/12373fcaa4a79f32cef620e70f13e65aaac30271))
+* **h5:** permite aceite de convite para e-mail com conta existente ([1a999e1](https://github.com/gabrieljarufe/condo-vote-app/commit/1a999e1aafdc21d95a2789f2e459f0aec9b940cd))
+* **h5:** ramifica invitation-accept-page em 4 modos com checkbox de declaração ([86993f1](https://github.com/gabrieljarufe/condo-vote-app/commit/86993f1783528c9a20c4edb29a4838c2ebe62479))
+* **h5:** remove CPF do fluxo LINK (minimizacao LGPD) ([932ec02](https://github.com/gabrieljarufe/condo-vote-app/commit/932ec02c6a074dca5d23417dc39094de526a0770))
+* **h5:** suporta ?redirect= no login com whitelist anti-open-redirect ([aa1f619](https://github.com/gabrieljarufe/condo-vote-app/commit/aa1f6199ec0da4a4551c0a9047449431b88f7d2a))
+
 ## [0.1.1](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.0...frontend-v0.1.1) (2026-05-17)
 
 

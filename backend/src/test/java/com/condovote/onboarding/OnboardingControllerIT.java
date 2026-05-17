@@ -53,6 +53,59 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void validate_pendingComEmailJaExistente_retornaEmailHasAccountTrue() throws Exception {
+    UUID condoId = insertCondo("Onboarding LinkExisting");
+    UUID aptId = insertApartment(condoId, "501");
+    UUID adminId = UuidV7.generate();
+    UUID invitationId = UuidV7.generate();
+    String email = "ja-tem-conta@example.com";
+    byte[] cpfBytes = cpfEncryptor.encryptToBytes("111.444.777-35");
+    Instant expiresAt = Instant.now().plusSeconds(3600);
+
+    // Cria invitation PENDING
+    jdbc.update(
+        """
+            INSERT INTO invitation
+                (id, condominium_id, apartment_id, email, cpf_encrypted, role,
+                 status, expires_at, created_by_user_id, created_at)
+            VALUES (?, ?, ?, ?, ?, 'OWNER'::resident_role, 'PENDING'::invitation_status,
+                    ?, ?, now())
+            """,
+        invitationId,
+        condoId,
+        aptId,
+        email,
+        cpfBytes,
+        java.sql.Timestamp.from(expiresAt),
+        adminId);
+
+    // Cria app_user com o mesmo e-mail (CPF diferente, irrelevante para validate)
+    UUID existingUserId = UuidV7.generate();
+    byte[] otherCpfBytes = cpfEncryptor.encryptToBytes("529.982.247-25");
+    jdbc.update(
+        """
+            INSERT INTO app_user
+                (id, name, email, cpf_encrypted, is_active, consent_accepted_at,
+                 consent_policy_version, created_at)
+            VALUES (?, 'Existing User', ?, ?, true, now(), 'v1', now())
+            """,
+        existingUserId,
+        email,
+        otherCpfBytes);
+
+    String token = UUID.randomUUID().toString();
+    String redisPayload =
+        "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}";
+    when(redisCommands.get("invitation:token:" + token)).thenReturn(redisPayload);
+
+    mvc.perform(get("/api/public/invitations/validate").param("token", token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.state").value("VALID"))
+        .andExpect(jsonPath("$.email").value(email))
+        .andExpect(jsonPath("$.emailHasAccount").value(true));
+  }
+
+  @Test
   void completeRegistration_happyPath_retorna201ECriaResidente() throws Exception {
     UUID condoId = insertCondo("Onboarding Happy");
     UUID aptId = insertApartment(condoId, "401");

@@ -96,8 +96,15 @@ public class OnboardingService {
                 .orElse("—");
         String condoName =
             condominiumRepository.findById(payload.condominiumId).map(c -> c.name()).orElse("—");
+        boolean emailHasAccount = existsUserByEmail(inv.email());
         yield new ValidateInvitationResponse(
-            State.VALID, inv.email(), aptLabel, condoName, inv.role(), inv.expiresAt());
+            State.VALID,
+            inv.email(),
+            aptLabel,
+            condoName,
+            inv.role(),
+            inv.expiresAt(),
+            emailHasAccount);
       }
       default -> ValidateInvitationResponse.of(State.NOT_FOUND);
     };
@@ -133,10 +140,7 @@ public class OnboardingService {
       throw new IllegalArgumentException("CPF não confere com o convite");
     }
 
-    Long existsByEmail =
-        jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM app_user WHERE lower(email) = lower(?)", Long.class, inv.email());
-    if (existsByEmail != null && existsByEmail > 0) {
+    if (existsUserByEmail(inv.email())) {
       throw new ConflictException("Já existe conta para este e-mail. Faça login.");
     }
 
@@ -215,6 +219,13 @@ public class OnboardingService {
     } catch (JsonProcessingException | IllegalArgumentException e) {
       return null;
     }
+  }
+
+  private boolean existsUserByEmail(String email) {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM app_user WHERE lower(email) = lower(?)", Long.class, email);
+    return count != null && count > 0;
   }
 
   private void setTenant(UUID condominiumId) {

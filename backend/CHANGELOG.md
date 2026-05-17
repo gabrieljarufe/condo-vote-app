@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.0.3](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.2...backend-v0.0.3) (2026-05-17)
+
+
+### Features
+
+* **apartments:** pagina lista de apartamentos server-side ([1258694](https://github.com/gabrieljarufe/condo-vote-app/commit/1258694426120fadb4ae4855a4b2cb3fbe3b4a0f))
+* **apartments:** paginação server-side da lista de apartamentos ([3f4a7fe](https://github.com/gabrieljarufe/condo-vote-app/commit/3f4a7feff4059f1c11b3f0d859782d4a6c33cf04))
+* **h4:** aceite de convite via magic link ([ba1b96e](https://github.com/gabrieljarufe/condo-vote-app/commit/ba1b96e81cf9d93d6f4402e668f5ee2f5f568fb4))
+* **h4:** aceite de convite via magic link (onboarding público) ([42338aa](https://github.com/gabrieljarufe/condo-vote-app/commit/42338aac10a52db31538b1b49ad60405e7d00436))
+
+
+### Bug Fixes
+
+* **backend:** boot não quebra mais quando SUPABASE_SERVICE_ROLE_KEY não está setada ([5d9ec66](https://github.com/gabrieljarufe/condo-vote-app/commit/5d9ec66b6e217c1ec30bdc1a403f5dee55d271bf))
+* **backend:** boot resiliente quando SUPABASE_SERVICE_ROLE_KEY ausente ([b92d042](https://github.com/gabrieljarufe/condo-vote-app/commit/b92d04200479b1bb0d53f376f5488f93c23643c8))
+* **email:** remove 'apartamento' redundante do subject do convite ([fd81189](https://github.com/gabrieljarufe/condo-vote-app/commit/fd81189fb7b4e2c11911ecbb6b1bc4b153c8ecb0))
+* **h3:** mostra nome do condomínio + label do apartamento no e-mail ([50fd15a](https://github.com/gabrieljarufe/condo-vote-app/commit/50fd15a631a644fe541af538fec3609e9eff7150))
+* **h3:** mostra nome do condomínio e label do apartamento no e-mail de convite ([7a9195a](https://github.com/gabrieljarufe/condo-vote-app/commit/7a9195aa0c5b822548d70ca7e1d20922bbf41182))
+* **security:** credenciais do actuator via env vars e regra de secrets no CLAUDE.md ([736f7ce](https://github.com/gabrieljarufe/condo-vote-app/commit/736f7cee55e02389420f45b068a2975697857eda))
+* **security:** remove JWT fallback hardcoded do application-local.yaml ([c7fb909](https://github.com/gabrieljarufe/condo-vote-app/commit/c7fb9095e1e4dd8de6cfe944101ceac4ffc0e08e))
+
 ## [0.0.2](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.1...backend-v0.0.2) (2026-05-13)
 
 

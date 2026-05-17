@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.4](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.3...backend-v0.0.4) (2026-05-17)
+
+
+### Features
+
+* **h5:** morador vê apartamentos onde reside + docs/repriorização MVP ([94fd63d](https://github.com/gabrieljarufe/condo-vote-app/commit/94fd63d314bb10e921a0460941a52d5d2f7efc3f))
+
 ## [0.0.3](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.2...backend-v0.0.3) (2026-05-17)
 
 

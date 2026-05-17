@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { from, mergeMap, of, catchError, map } from 'rxjs';
 import {
   MyBallotResponse,
@@ -31,7 +31,7 @@ interface SubmitResultRow {
 
 @Component({
   selector: 'app-ballot-review-page',
-  imports: [CommonModule, AppHeader, BallotCard, RouterLink],
+  imports: [CommonModule, AppHeader, BallotCard],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />

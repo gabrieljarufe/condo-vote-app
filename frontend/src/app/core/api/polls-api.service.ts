@@ -156,7 +156,9 @@ export class PollsApiService {
     optionId: string,
     bulkOperation: boolean,
   ): Observable<VoteResponse> {
-    const headers = bulkOperation ? { 'X-Bulk-Operation': 'true' } : {};
+    const headers: Record<string, string> = bulkOperation
+      ? { 'X-Bulk-Operation': 'true' }
+      : {};
     return this.http.post<VoteResponse>(
       `${environment.apiUrl}/api/polls/${pollId}/vote`,
       { apartmentId, optionId },

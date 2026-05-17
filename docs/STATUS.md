@@ -74,9 +74,17 @@
   - ✅ **H5** — Morador vê apartamentos onde reside
   - 🔶 **H7** — Síndico cria votação (lifecycle completo: DRAFT/SCHEDULED/OPEN/CLOSED/INVALIDATED/CANCELLED) — Backend: aggregates Poll/PollOption/PollEligibleSnapshot/PollResult, PollResultCalculator (função pura cobrindo SIMPLE/ABSOLUTE/QUALIFIED_2_3/QUALIFIED_3_4 × FIRST/SECOND), PollService + PollOpener + PollCloser, 8 endpoints REST, PollOpenerJob/PollCloserJob @Scheduled(5min), 198 UTs + 120 ITs verdes. Frontend: feature `polls/` com lista paginada filtrada, page de criar/editar com FormArray de opções, page de detalhe com ações condicionais por status, dialog de cancelar com motivo obrigatório (≥10 chars), badge de status colorido. Migrations V12 (enum values POLL_PUBLISHED/POLL_UPDATED/POLL_OPENED_AUTO + index parcial idx_poll_open_by_condo) e V13 (`MANUAL` em poll_close_trigger). Smoke E2E prod pendente — ver `docs/features/h7-criar-votacao.md`. PR `feat/h7-poll-lifecycle`.
   - ⏳ H6 — Síndico promove morador / delega voto (stretch — só entra se sobrar tempo)
-  - ⏳ H8 — Morador vota e vê resultado (MVP — próxima)
+  - 🔶 **H8** — Morador registra voto + auto-close + breakdown — Backend: `Vote` + `VoteRepository` (tally por opção + namedJdbc direto), `VoteService.castVote` com lock pessimista (`SELECT poll FOR UPDATE` na 1ª linha da transação), validações de elegibilidade contra snapshot, dedup 1-voto/apto, audit `VOTE_CAST` com `bulkOperation`, auto-close 100% via `PollCloser.close(pollId, actor, CloseTrigger.AUTOMATIC_ALL_VOTED)`, `VoteController` + `MyBallotsController`. `PollCloser` refatorado com enum `CloseTrigger { MANUAL, AUTOMATIC_END_TIME, AUTOMATIC_ALL_VOTED }`. V14 adiciona `VOTE_CAST` ao enum `audit_event_type`. Frontend: `BallotVotePage` (1 cédula + CTA bulk), `BallotReviewPage` (N cards + override + bulk submit paralelo + tolerância a falha parcial + retry), `BallotCard` (dumb, `@Input`/`@Output` decorators), tile "Minhas votações" condicional a `isResident()` com badge contador, breakdown real por opção no `poll-detail-page` (%, barra, badge "Vencedora") quando CLOSED/INVALIDATED. 127 testes backend + 285 Vitest frontend verdes. Smoke E2E prod pendente — ver `docs/features/h8-votar.md`. PR `feat/h8-poll-vote`.
   - ⏳ H9 — Timeline de auditoria (stretch)
   - ⏳ H10 — Jobs residuais (RetentionPruner placeholder, stretch)
+
+### Descobertas não-óbvias da H8 (2026-05-17)
+
+- **Spring Data JDBC com `@Id` pré-setado executa UPDATE, não INSERT.** Para entidades com UUID v7 gerado no Java, o padrão do projeto é `namedJdbc.update("INSERT INTO ...")` diretamente. `VoteRepository.insert()` segue esse padrão; `save()` não pode ser usado para `Vote`.
+- **Lock pessimista vai no `poll`, não no `vote`.** `VoteService.castVote` executa `SELECT FROM poll WHERE id=? FOR UPDATE` na 1ª linha da transação para serializar votos concorrentes sem deadlock entre linhas de `vote` que ainda não existem.
+- **`poll_close_trigger` já tinha `AUTOMATIC_ALL_VOTED` desde V7** — V14 só adicionou `VOTE_CAST` ao `audit_event_type`. Enum `CloseTrigger` Java foi adicionado em H8, mas o valor no banco já existia.
+- **`PollCloser` já consultava votos do banco (premissa P5 do plano estava errada).** `loadVotesByOption()` estava em `PollCloser` desde H7. H8 apenas refatorou a assinatura para aceitar `CloseTrigger` explícito e adicionou a chamada do `VoteService`.
+- **Vitest + Angular JIT: signal inputs não funcionam em componentes substituídos via `overrideComponent`.** `BallotCard` usa `@Input()`/`@Output()` decorators clássicos. `fixture.componentRef.setInput` com `input.required()` causa `NG0303` neste setup (mesma limitação já documentada em H7 para `poll-cancel-dialog`).
 
 ### Descobertas não-óbvias da H7 (2026-05-17)
 

@@ -165,32 +165,32 @@ Use uma nova poll (não reuse a do Bloco 2 que já está OPEN).
 | 7.1 | Trocar de condomínio via "Trocar" no header (precisa estar admin em 2+ condos) | Lista de polls do outro condo carrega; polls do anterior somem | UI |
 | 7.2 | Com tenant atual = condo B, tentar `GET /api/polls/{idDeCondoA}` via Bruno (mantendo `X-Tenant-Id` = condo B) | 403 Forbidden | Status code |
 
-### Bloco 8 — Integração com H8 (placeholders)
+### Bloco 8 — Integração com H8
 
-> ⏳ **TODO — todos os passos abaixo dependem da H8 (registrar voto).** Manter aqui para destravar quando H8 entrar — basta substituir os ⏳ por instruções concretas. Bloco 8 NÃO bloqueia merge da H7 em prod.
+> H8 entrou. Os passos abaixo têm instruções concretas. Para o roteiro completo de voto (fluxos bulk, auto-close, breakdown, cross-tenant), ver **[`docs/features/h8-votar.md`](h8-votar.md)**.
 
 | # | Ação | Resultado esperado | Como validar |
 |---|---|---|---|
-| 8.1 | ⏳ TODO Login como morador (votante habilitado de apto no snapshot de uma poll OPEN) | Morador vê poll OPEN na sua área | UI (H8) |
-| 8.2 | ⏳ TODO Votar em uma opção | Voto registrado, UI confirma sucesso | UI + `SELECT count(*) FROM vote WHERE poll_id=?` |
-| 8.3 | ⏳ TODO Tentar votar de novo no mesmo apartamento | 409 (regra 1 voto por apartamento) | UI/HTTP |
-| 8.4 | ⏳ TODO Tentar votar como morador de apto inadimplente ou sem voter habilitado | 403 (apartamento não está no snapshot) | UI/HTTP |
-| 8.5 | ⏳ TODO Como síndico: criar poll SIMPLE_MAJORITY com 3 elegíveis, registrar 2 votos na mesma opção, encerrar | Status = CLOSED, `winningOptionId` populado em `poll_result` | UI + `SELECT outcome, winning_option_id FROM poll_result WHERE poll_id=?` |
-| 8.6 | ⏳ TODO Detalhe da poll CLOSED mostra vencedor + breakdown real por opção | Tabela com % por opção (substitui o placeholder atual "Detalhe do voto disponível em H8/H9") | UI |
-| 8.7 | ⏳ TODO Criar poll com empate exato (2 opções com mesmo nº de votos atingindo limiar) e encerrar | Status = INVALIDATED, `invalidation_reason='NO_OPTION_REACHED_THRESHOLD'` | SQL + UI |
-| 8.8 | ⏳ TODO Auto-close quando todos os apartamentos do snapshot votarem (se H8 implementar essa transição) | Status muda para CLOSED ao último voto, antes de `scheduled_end` | UI + log |
+| 8.1 | Login como morador (votante habilitado de apto no snapshot de uma poll OPEN) → tile "Minhas votações" aparece no dashboard | Morador vê poll OPEN na sua área | UI: badge contador no tile; ver [h8-votar.md Bloco 1](h8-votar.md#bloco-1--voto-único-1-apartamento) |
+| 8.2 | Clicar na poll → BallotVotePage → selecionar opção → "Votar" → confirmar | 201; voto inserido; UI confirma sucesso | `SELECT count(*) FROM vote WHERE poll_id='<pollId>';` deve retornar 1; ver [h8-votar.md Bloco 1](h8-votar.md#bloco-1--voto-único-1-apartamento) |
+| 8.3 | Tentar votar de novo no mesmo apartamento (via UI ou Bruno) | 409 "Voto já registrado para este apartamento nesta votação" | Status code HTTP 409; ver [h8-votar.md Bloco 1](h8-votar.md#bloco-1--voto-único-1-apartamento) passo 1.7 |
+| 8.4 | Tentar votar como morador de apto inadimplente (não está no snapshot) | 403 "Apartamento não elegível para esta votação" | Status code HTTP 403; ver [h8-votar.md Bloco 4](h8-votar.md#bloco-4--elegibilidade-heterogênea-1-apto-inadimplente) passo 4.2 |
+| 8.5 | Síndico cria poll SIMPLE_MAJORITY com 3 elegíveis; morador registra 2 votos na mesma opção; síndico encerra manualmente | Status = CLOSED, `winningOptionId` populado em `poll_result` | `SELECT outcome, winning_option_id FROM poll_result WHERE poll_id='<pollId>';`; ver [h8-votar.md Bloco 7](h8-votar.md#bloco-7--breakdown-ui-quando-closed) |
+| 8.6 | Síndico acessa detalhe da poll CLOSED | Tabela com % por opção, barra horizontal, badge "Vencedora" (substitui placeholder anterior "Detalhe do voto disponível em H8/H9") | UI; ver [h8-votar.md Bloco 7](h8-votar.md#bloco-7--breakdown-ui-quando-closed) |
+| 8.7 | Criar poll com empate exato e encerrar manualmente | Status = INVALIDATED, `invalidation_reason='NO_OPTION_REACHED_THRESHOLD'` | `SELECT outcome, invalidation_reason FROM poll_result WHERE poll_id='<pollId>';` |
+| 8.8 | Auto-close: todos os apartamentos do snapshot votarem | Status muda para CLOSED ao último voto (antes de `scheduled_end`); `close_trigger='AUTOMATIC_ALL_VOTED'` | `SELECT status, close_trigger FROM poll WHERE id='<pollId>';`; ver [h8-votar.md Bloco 6](h8-votar.md#bloco-6--auto-close-ao-100--audit-automatictrue) |
 
 ### Critérios de aprovação
 
 - ✅ **Blocos 1-7 todos verdes** em ambiente local = H7 funcionalmente pronta para prod.
-- ⏳ Bloco 8 fica pendente até H8 entrar — não bloqueia merge da H7 em main.
+- ✅ **Bloco 8** destravado com H8 — roteiro completo em `docs/features/h8-votar.md`.
 - 🚨 Qualquer passo dos Blocos 1-7 falhando = blocker (não mergear PR antes de resolver).
 
 ### Manutenção deste roteiro
 
-Quando H8 entrar:
-1. Substituir os ⏳ TODO do Bloco 8 por instruções concretas com queries SQL específicas.
-2. Espelhar Bloco 8 (ou referência cruzada) em `docs/features/h8-votar.md` quando o arquivo for criado.
+H8 entrou (2026-05-17):
+1. ✅ Bloco 8 atualizado com instruções concretas e referências cruzadas para `docs/features/h8-votar.md`.
+2. ✅ Roteiro completo de voto em `docs/features/h8-votar.md` (Blocos 1-9).
 
 Quando H6 entrar:
 3. Adicionar Bloco 9 cobrindo "delegação/promoção bloqueada durante poll OPEN" (invariante do domínio).

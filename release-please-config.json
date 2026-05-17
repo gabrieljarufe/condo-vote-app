@@ -15,7 +15,8 @@
     "frontend": {
       "release-type": "node",
       "component": "frontend",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "bump-patch-for-minor-pre-major": false
     }
   }
 }

@@ -53,6 +53,59 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void validate_pendingComEmailJaExistente_retornaEmailHasAccountTrue() throws Exception {
+    UUID condoId = insertCondo("Onboarding LinkExisting");
+    UUID aptId = insertApartment(condoId, "501");
+    UUID adminId = UuidV7.generate();
+    UUID invitationId = UuidV7.generate();
+    String email = "ja-tem-conta@example.com";
+    byte[] cpfBytes = cpfEncryptor.encryptToBytes("111.444.777-35");
+    Instant expiresAt = Instant.now().plusSeconds(3600);
+
+    // Cria invitation PENDING
+    jdbc.update(
+        """
+            INSERT INTO invitation
+                (id, condominium_id, apartment_id, email, cpf_encrypted, role,
+                 status, expires_at, created_by_user_id, created_at)
+            VALUES (?, ?, ?, ?, ?, 'OWNER'::resident_role, 'PENDING'::invitation_status,
+                    ?, ?, now())
+            """,
+        invitationId,
+        condoId,
+        aptId,
+        email,
+        cpfBytes,
+        java.sql.Timestamp.from(expiresAt),
+        adminId);
+
+    // Cria app_user com o mesmo e-mail (CPF diferente, irrelevante para validate)
+    UUID existingUserId = UuidV7.generate();
+    byte[] otherCpfBytes = cpfEncryptor.encryptToBytes("529.982.247-25");
+    jdbc.update(
+        """
+            INSERT INTO app_user
+                (id, name, email, cpf_encrypted, is_active, consent_accepted_at,
+                 consent_policy_version, created_at)
+            VALUES (?, 'Existing User', ?, ?, true, now(), 'v1', now())
+            """,
+        existingUserId,
+        email,
+        otherCpfBytes);
+
+    String token = UUID.randomUUID().toString();
+    String redisPayload =
+        "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}";
+    when(redisCommands.get("invitation:token:" + token)).thenReturn(redisPayload);
+
+    mvc.perform(get("/api/public/invitations/validate").param("token", token))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.state").value("VALID"))
+        .andExpect(jsonPath("$.email").value(email))
+        .andExpect(jsonPath("$.emailHasAccount").value(true));
+  }
+
+  @Test
   void completeRegistration_happyPath_retorna201ECriaResidente() throws Exception {
     UUID condoId = insertCondo("Onboarding Happy");
     UUID aptId = insertApartment(condoId, "401");
@@ -89,7 +142,7 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
 
     String body =
         """
-        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Maria Test"}
+        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Maria Test","acceptanceConfirmed":true}
         """
             .formatted(token, cpf);
 
@@ -120,13 +173,70 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
             "SELECT status::text FROM invitation WHERE id = ?", String.class, invitationId);
     assertThat(status).isEqualTo("ACCEPTED");
 
-    // audit_event publicado
-    Long auditCount =
+    // audit_event publicado: INVITATION_ACCEPTED com flow=CREATE_NEW_USER
+    Long invAcceptedCount =
         jdbc.queryForObject(
-            "SELECT count(*) FROM audit_event WHERE event_type = 'INVITATION_ACCEPTED'::audit_event_type AND entity_id = ?",
+            "SELECT count(*) FROM audit_event WHERE event_type = 'INVITATION_ACCEPTED'::audit_event_type "
+                + "AND entity_id = ? AND payload->>'flow' = 'CREATE_NEW_USER'",
             Long.class,
             invitationId);
-    assertThat(auditCount).isEqualTo(1L);
+    assertThat(invAcceptedCount).isEqualTo(1L);
+
+    // audit_event publicado: RESIDENT_JOINED para o app_user recém-criado
+    Long residentJoinedCount =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM audit_event WHERE event_type = 'RESIDENT_JOINED'::audit_event_type "
+                + "AND payload->>'invitationId' = ? AND payload->>'userId' = ?",
+            Long.class,
+            invitationId.toString(),
+            newUserId.toString());
+    assertThat(residentJoinedCount).isEqualTo(1L);
+  }
+
+  @Test
+  void completeRegistration_semAcceptanceConfirmed_retorna400() throws Exception {
+    UUID condoId = insertCondo("Onboarding Acceptance");
+    UUID aptId = insertApartment(condoId, "403");
+    UUID adminId = UuidV7.generate();
+    UUID invitationId = UuidV7.generate();
+    String cpf = "111.444.777-35";
+    byte[] cpfBytes = cpfEncryptor.encryptToBytes(cpf);
+    String email = "morador-no-accept@example.com";
+    Instant expiresAt = Instant.now().plusSeconds(3600);
+
+    jdbc.update(
+        """
+            INSERT INTO invitation
+                (id, condominium_id, apartment_id, email, cpf_encrypted, role,
+                 status, expires_at, created_by_user_id, created_at)
+            VALUES (?, ?, ?, ?, ?, 'OWNER'::resident_role, 'PENDING'::invitation_status,
+                    ?, ?, now())
+            """,
+        invitationId,
+        condoId,
+        aptId,
+        email,
+        cpfBytes,
+        java.sql.Timestamp.from(expiresAt),
+        adminId);
+
+    String token = UUID.randomUUID().toString();
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+
+    // Body sem acceptanceConfirmed=true → @AssertTrue deve rejeitar com 400.
+    String body =
+        """
+        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Maria","acceptanceConfirmed":false}
+        """
+            .formatted(token, cpf);
+
+    mvc.perform(
+            post("/api/public/register/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
@@ -160,7 +270,7 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
 
     String body =
         """
-        {"token":"%s","cpf":"12345678901","password":"senha-forte-1!","fullName":"X"}
+        {"token":"%s","cpf":"12345678901","password":"senha-forte-1!","fullName":"X","acceptanceConfirmed":true}
         """
             .formatted(token);
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.5](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.4...backend-v0.0.5) (2026-05-17)
+
+
+### Bug Fixes
+
+* **h5:** adiciona endpoint accept-as-existing com auditoria dual ([f47cc0e](https://github.com/gabrieljarufe/condo-vote-app/commit/f47cc0e949b50ee96565c1d0ac4eb7f79a29f022))
+* **h5:** emite RESIDENT_JOINED em complete() e exige declaração explícita ([606fad7](https://github.com/gabrieljarufe/condo-vote-app/commit/606fad7f344b8b9551c582a18764a4c1a3a63b9a))
+* **h5:** expor emailHasAccount em ValidateInvitationResponse ([2f582e7](https://github.com/gabrieljarufe/condo-vote-app/commit/2f582e78a6da44a54abd52c65f8efc1b9a51c219))
+* **h5:** permite aceite de convite para e-mail com conta existente ([1a999e1](https://github.com/gabrieljarufe/condo-vote-app/commit/1a999e1aafdc21d95a2789f2e459f0aec9b940cd))
+* **h5:** remove CPF do fluxo LINK (minimizacao LGPD) ([932ec02](https://github.com/gabrieljarufe/condo-vote-app/commit/932ec02c6a074dca5d23417dc39094de526a0770))
+
 ## [0.0.4](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.3...backend-v0.0.4) (2026-05-17)
 
 

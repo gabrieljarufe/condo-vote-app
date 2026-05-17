@@ -2,7 +2,7 @@
 
 **Fase atual:** Fase 7 — Histórias de Domínio
 
-**Próximo passo:** executar **H5 — Morador vê apartamentos onde reside** (H1/H2/H3/H4 concluídas; `apartment_resident` já é populado pelo aceite de convite da H4).
+**Próximo passo (MVP — prazo de 3 dias):** executar **H7 — Síndico cria votação (CRUD + snapshot ao abrir)**, seguido de **H8 — Morador vota**. H1–H5 concluídas. **H6 (promoção/delegação), H9 (timeline) e H10 (jobs residuais) repriorizadas como _stretch_** — só entram se sobrar tempo após H7+H8 verdes. Ver `docs/implementation/tasks/phase-7/index.md` (linha "Repriorização MVP" nas Observações) para detalhes da decisão e relaxamento da dependência H7→H6.
 
 > **Mudança de abordagem (2026-05-09):** o antigo `phase-7-domain-index.md` (8 features técnicas F1–F8) foi substituído pela pasta [`docs/implementation/tasks/phase-7/`](implementation/tasks/phase-7/index.md), que organiza o trabalho como **10 histórias de usuário fatiadas verticalmente** (H1–H10). Cada história vira um PR demonstrável; F1–F8 viraram cobertura técnica que cada história consome. Apêndice em `phase-7/index.md` audita que nada caiu na transição.
 

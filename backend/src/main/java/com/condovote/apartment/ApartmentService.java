@@ -75,16 +75,23 @@ public class ApartmentService {
       throw new IllegalArgumentException("size deve estar entre 1 e 100");
     }
     UUID userId = authGateway.getCurrentUserId();
-    if (!membershipRepository.isAdminOfTenant(userId, condominiumId)) {
-      throw new ForbiddenException("Apenas síndicos podem listar apartamentos");
+    if (membershipRepository.isAdminOfTenant(userId, condominiumId)) {
+      int offset = page * size;
+      List<ApartmentResponse> content =
+          apartmentRepository.findByCondominiumIdOrderedPaged(condominiumId, size, offset).stream()
+              .map(ApartmentResponse::from)
+              .toList();
+      long totalElements = apartmentRepository.countByCondominiumId(condominiumId);
+      return PageResponse.of(content, page, size, totalElements);
     }
-    int offset = page * size;
-    List<ApartmentResponse> content =
-        apartmentRepository.findByCondominiumIdOrderedPaged(condominiumId, size, offset).stream()
+    List<ApartmentResponse> residency =
+        apartmentRepository.findActiveResidencyApartments(condominiumId, userId).stream()
             .map(ApartmentResponse::from)
             .toList();
-    long totalElements = apartmentRepository.countByCondominiumId(condominiumId);
-    return PageResponse.of(content, page, size, totalElements);
+    if (residency.isEmpty()) {
+      throw new ForbiddenException("Acesso negado");
+    }
+    return PageResponse.of(residency, 0, residency.size(), (long) residency.size());
   }
 
   @Transactional

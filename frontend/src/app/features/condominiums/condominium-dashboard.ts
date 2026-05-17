@@ -35,7 +35,9 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
             <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">apartment</span>
             <div>
               <p class="font-semibold text-on-surface">Apartamentos</p>
-              <p class="text-xs text-on-surface-variant mt-0.5">Gerencie unidades e inadimplência</p>
+              <p class="text-xs text-on-surface-variant mt-0.5">
+                {{ isAdmin() ? 'Gerencie unidades e inadimplência' : 'Onde você reside' }}
+              </p>
             </div>
           </a>
 

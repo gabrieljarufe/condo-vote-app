@@ -14,6 +14,7 @@ import com.condovote.shared.UuidV7;
 import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.crypto.CpfEncryptor;
 import com.condovote.shared.exception.ConflictException;
+import com.condovote.shared.exception.ForbiddenException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -22,6 +23,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -196,6 +198,144 @@ public class OnboardingService {
         authUserId);
 
     return new CompleteRegistrationResponse(authUserId);
+  }
+
+  /**
+   * Vincula um apartamento de um convite PENDING a uma conta {@code app_user} já existente. JWT é
+   * obrigatório — o usuário já está logado. Auditoria dual: sempre publica {@code
+   * INVITATION_ACCEPTED}; só publica {@code RESIDENT_JOINED} se a residência ativa não existia
+   * (idempotente caso já exista).
+   */
+  @Transactional
+  public void acceptAsExistingUser(String token, String cpfRaw, String jwtEmail, UUID jwtUserId) {
+    TokenPayload payload = readToken(token);
+    if (payload == null) {
+      throw new ConflictException("Convite inválido ou expirado");
+    }
+    setTenant(payload.condominiumId);
+
+    Invitation inv =
+        invitationRepository
+            .findById(payload.invitationId)
+            .orElseThrow(() -> new ConflictException("Convite inválido ou expirado"));
+
+    if (!"PENDING".equals(inv.status())) {
+      throw new ConflictException("Convite não está mais pendente (status=" + inv.status() + ")");
+    }
+    if (inv.expiresAt().isBefore(Instant.now())) {
+      throw new ConflictException("Convite expirado");
+    }
+
+    // Email no JWT precisa bater com o e-mail do convite — impede usuário X aceitar convite de Y.
+    if (jwtEmail == null || !inv.email().equalsIgnoreCase(jwtEmail)) {
+      throw new ForbiddenException("Convite é para outro e-mail");
+    }
+
+    // Carrega CPF criptografado do app_user. queryForObject lança EmptyResultDataAccessException
+    // se não encontrar — convertemos em ConflictException para indicar "conta não existe".
+    byte[] storedCpf;
+    try {
+      storedCpf =
+          jdbcTemplate.queryForObject(
+              "SELECT cpf_encrypted FROM app_user WHERE id = ?", byte[].class, jwtUserId);
+    } catch (EmptyResultDataAccessException e) {
+      throw new ConflictException("Conta não encontrada — refaça o cadastro");
+    }
+
+    byte[] cpfBytes;
+    try {
+      cpfBytes = cpfEncryptor.encryptToBytes(cpfRaw);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("CPF inválido: " + e.getMessage());
+    }
+    if (!Arrays.equals(cpfBytes, storedCpf)) {
+      throw new IllegalArgumentException("CPF não confere");
+    }
+
+    // Idempotência: se já existe residência ativa para (apt, user), não criamos outra.
+    // apartment_resident não tem unique em (apartment_id, user_id) — SELECT-before-INSERT.
+    Optional<UUID> existingResident =
+        jdbcTemplate.query(
+            "SELECT id FROM apartment_resident "
+                + "WHERE apartment_id = ? AND user_id = ? AND ended_at IS NULL "
+                + "LIMIT 1",
+            rs ->
+                rs.next()
+                    ? Optional.of(UUID.fromString(rs.getString("id")))
+                    : Optional.<UUID>empty(),
+            inv.apartmentId(),
+            jwtUserId);
+
+    boolean wasIdempotent = existingResident != null && existingResident.isPresent();
+    UUID residentRowId;
+    if (wasIdempotent) {
+      residentRowId = existingResident.get();
+    } else {
+      residentRowId = UuidV7.generate();
+      jdbcTemplate.update(
+          """
+              INSERT INTO apartment_resident
+                  (id, condominium_id, apartment_id, user_id, role, joined_at)
+              VALUES (?, ?, ?, ?, ?::resident_role, now())
+              """,
+          residentRowId,
+          payload.condominiumId,
+          inv.apartmentId(),
+          jwtUserId,
+          inv.role());
+    }
+
+    int updated =
+        jdbcTemplate.update(
+            """
+                UPDATE invitation
+                SET status = 'ACCEPTED'::invitation_status, accepted_at = now()
+                WHERE id = ? AND status = 'PENDING'::invitation_status
+                """,
+            payload.invitationId);
+    if (updated == 0) {
+      throw new ConflictException("Convite não está mais pendente");
+    }
+
+    redisCommands.del("invitation:token:" + token);
+
+    auditEventPublisher.publish(
+        "INVITATION_ACCEPTED",
+        "invitation",
+        payload.invitationId,
+        Map.of(
+            "email",
+            inv.email(),
+            "apartmentId",
+            inv.apartmentId().toString(),
+            "role",
+            inv.role(),
+            "flow",
+            wasIdempotent ? "LINK_EXISTING_USER_IDEMPOTENT" : "LINK_EXISTING_USER"),
+        payload.condominiumId,
+        jwtUserId);
+
+    if (!wasIdempotent) {
+      auditEventPublisher.publish(
+          "RESIDENT_JOINED",
+          "apartment_resident",
+          residentRowId,
+          Map.of(
+              "apartmentId",
+              inv.apartmentId().toString(),
+              "userId",
+              jwtUserId.toString(),
+              "role",
+              inv.role(),
+              "via",
+              "INVITATION",
+              "invitationId",
+              payload.invitationId.toString(),
+              "acceptanceConfirmedAt",
+              Instant.now().toString()),
+          payload.condominiumId,
+          jwtUserId);
+    }
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

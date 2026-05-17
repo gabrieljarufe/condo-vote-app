@@ -31,21 +31,22 @@ A virada é **fatiar por história de usuário**: cada PR materializa um caminho
 
 ## Histórias (ordem de implementação)
 
-| # | História | Arquivo | Cobertura técnica (antigos F1–F8) | Depende de | Status |
-|---|----------|---------|-----------------------------------|------------|--------|
-| H1 | Como síndico bootstrapado, logo no sistema e vejo meus condomínios | [h1-login-home.md](h1-login-home.md) | (validação do walking skeleton) | — | ✅ |
-| H2 | Como síndico, cadastro um apartamento no meu condomínio | [h2-cadastrar-apartamento.md](h2-cadastrar-apartamento.md) | F5 (parte) ✅ | H1 | ✅ |
-| H3 | Como síndico, convido um morador para um apartamento (com e-mail) | [h3-convite-morador.md](h3-convite-morador.md) | F2 ✅ + F3 (parte) ✅ + F4 (expiração) ✅ | H2, F1 ✅ | ✅ |
-| H4 | Como convidado, valido o link e completo cadastro com CPF | [h4-onboarding-magic-link.md](h4-onboarding-magic-link.md) | F2 (resto) ✅ + F1 ✅ + F8 ✅ | H3 | ✅ |
-| H5 | Como morador logado, vejo os apartamentos onde sou residente | `h5-resident-view.md` _(a criar)_ | F5 (read) | H4 | ⏳ |
-| H6 | Como síndico, promovo morador a co-síndico ou delego voto | `h6-promote-delegate.md` _(a criar)_ | F5 (resto) | H5 | ⏳ |
-| H7 | Como síndico, crio uma votação (CRUD + snapshot ao abrir) | `h7-poll-create.md` _(a criar)_ | F6 (parte) + F4 (fechamento) | H6 | ⏳ |
-| H8 | Como morador, voto numa votação aberta e vejo o resultado | `h8-poll-vote.md` _(a criar)_ | F6 (resto) + F4 (lembretes) | H7 | ⏳ |
-| H9 | Como síndico, vejo a timeline de auditoria do condomínio | `h9-audit-timeline.md` _(a criar)_ | F7 | H8 | ⏳ |
-| H10 | Jobs agendados residuais (RetentionPrunerJob placeholder) | `h10-jobs-residual.md` _(a criar)_ | F4 (resto) | H8 | ⏳ |
+| # | História | Arquivo | Cobertura técnica (antigos F1–F8) | Depende de | Prioridade MVP |
+|---|----------|---------|-----------------------------------|------------|----------------|
+| H1 | Como síndico bootstrapado, logo no sistema e vejo meus condomínios | [h1-login-home.md](h1-login-home.md) | (validação do walking skeleton) | — | ✅ feito |
+| H2 | Como síndico, cadastro um apartamento no meu condomínio | [h2-cadastrar-apartamento.md](h2-cadastrar-apartamento.md) | F5 (parte) ✅ | H1 | ✅ feito |
+| H3 | Como síndico, convido um morador para um apartamento (com e-mail) | [h3-convite-morador.md](h3-convite-morador.md) | F2 ✅ + F3 (parte) ✅ + F4 (expiração) ✅ | H2, F1 ✅ | ✅ feito |
+| H4 | Como convidado, valido o link e completo cadastro com CPF | [h4-onboarding-magic-link.md](h4-onboarding-magic-link.md) | F2 (resto) ✅ + F1 ✅ + F8 ✅ | H3 | ✅ feito |
+| H5 | Como morador logado, vejo os apartamentos onde sou residente | `h5-resident-view.md` _(a criar)_ — ver [`docs/features/h5-resident-view.md`](../../../features/h5-resident-view.md) | F5 (read) ✅ | H4 | ✅ feito |
+| **H7** | **Como síndico, crio uma votação (CRUD + snapshot ao abrir)** | `h7-poll-create.md` _(a criar)_ | F6 (parte) + F4 (fechamento) | H5 _(ver obs.)_ | 🎯 **MVP — próxima** |
+| **H8** | **Como morador, voto numa votação aberta e vejo o resultado** | `h8-poll-vote.md` _(a criar)_ | F6 (resto) + F4 (lembretes) | H7 | 🎯 **MVP** |
+| H6 | Como síndico, promovo morador a co-síndico ou delego voto | `h6-promote-delegate.md` _(a criar)_ | F5 (resto) | H5 | 🕒 stretch |
+| H9 | Como síndico, vejo a timeline de auditoria do condomínio | `h9-audit-timeline.md` _(a criar)_ | F7 | H8 | 🕒 stretch |
+| H10 | Jobs agendados residuais (RetentionPrunerJob placeholder) | `h10-jobs-residual.md` _(a criar)_ | F4 (resto) | H8 | 🕒 stretch |
 
 > **Observações:**
 >
+> - **🎯 Repriorização MVP (3 dias de prazo):** **H7 e H8 são as únicas histórias obrigatórias restantes** — entregam o caso de uso central de votação digital, sem o qual o produto não existe. **H6 (promoção/delegação), H9 (timeline) e H10 (jobs residuais) viram _stretch_** — só entram se houver folga depois de H7+H8 verdes. A dependência declarada "H7 → H6" é fraca e foi relaxada: H7 pode usar votante default = morador OWNER do apto (sem configuração de delegação); bloqueio de delegação durante poll OPEN vira problema só quando H6 entrar.
 > - **F1 (CpfEncryptor)** já está implementado desde a Fase 6 (T6.3a). H4 apenas o consome.
 > - **F4 (jobs)** foi distribuído entre H3 (expiração de convite), H7 (fechamento automático de poll), H8 (lembretes pré-fechamento) e H10 (placeholder de retenção).
 > - **F8 (rate-limit Bucket4j)** entra junto de H3/H4 — endpoints públicos (`/invitations/validate`, `/register/complete`) sem rate-limit em prod é risco real, não pode ser deixado pra depois.

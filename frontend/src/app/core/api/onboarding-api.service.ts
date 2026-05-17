@@ -17,6 +17,7 @@ export interface ValidateInvitationResponse {
   readonly condominiumName: string | null;
   readonly role: 'OWNER' | 'TENANT' | null;
   readonly expiresAt: string | null;
+  readonly emailHasAccount: boolean;
 }
 
 export interface CompleteRegistrationRequest {
@@ -24,6 +25,12 @@ export interface CompleteRegistrationRequest {
   readonly cpf: string;
   readonly password: string;
   readonly fullName: string;
+  readonly acceptanceConfirmed: boolean;
+}
+
+export interface AcceptAsExistingRequest {
+  readonly cpf: string;
+  readonly acceptanceConfirmed: boolean;
 }
 
 export interface CompleteRegistrationResponse {
@@ -44,6 +51,13 @@ export class OnboardingApiService {
   complete(request: CompleteRegistrationRequest): Observable<CompleteRegistrationResponse> {
     return this.http.post<CompleteRegistrationResponse>(
       `${environment.apiUrl}/api/public/register/complete`,
+      request,
+    );
+  }
+
+  acceptAsExisting(token: string, request: AcceptAsExistingRequest): Observable<void> {
+    return this.http.post<void>(
+      `${environment.apiUrl}/api/invitations/${encodeURIComponent(token)}/accept-as-existing`,
       request,
     );
   }

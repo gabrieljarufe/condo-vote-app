@@ -77,6 +77,10 @@ public abstract class AbstractIntegrationTest {
         () ->
             "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
                 + "2122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f40");
+    // Delays altíssimos para evitar que os jobs disparem automaticamente durante os ITs.
+    registry.add("app.invitation.expirer-job.fixed-delay-ms", () -> "99999999");
+    registry.add("app.poll.opener-job.fixed-delay-ms", () -> "99999999");
+    registry.add("app.poll.closer-job.fixed-delay-ms", () -> "99999999");
   }
 
   // --- fixtures compartilhadas ---

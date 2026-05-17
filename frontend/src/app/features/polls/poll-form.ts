@@ -59,7 +59,7 @@ function endAfterStartValidator(): ValidatorFn {
 function optionsValidator(): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
     const arr = control as FormArray;
-    const values: string[] = arr.controls.map((c) => (c.getValue?.() ?? (c as FormControl).value) as string);
+    const values: string[] = arr.controls.map((c) => (c as FormControl).value as string);
     if (arr.length < 2) return { minOptions: true };
     if (arr.length > 10) return { maxOptions: true };
     const blanks = values.some((v) => !v || v.trim() === '');

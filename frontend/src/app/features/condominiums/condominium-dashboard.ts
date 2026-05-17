@@ -53,6 +53,19 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
               </div>
             </a>
           }
+
+          @if (isAdmin()) {
+            <a
+              [routerLink]="['/app/condominiums', condoId(), 'polls']"
+              class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+            >
+              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">how_to_vote</span>
+              <div>
+                <p class="font-semibold text-on-surface">Votações</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Crie e gerencie enquetes e votações</p>
+              </div>
+            </a>
+          }
         </div>
 
         <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">

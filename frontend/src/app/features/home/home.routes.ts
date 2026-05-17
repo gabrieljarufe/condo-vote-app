@@ -33,6 +33,26 @@ const routes: Routes = [
     loadComponent: () => import('../invitations/invitation-bulk/invitation-bulk-page'),
   },
   {
+    path: 'condominiums/:condoId/polls',
+    canActivate: [tenantRestoreGuard, adminGuard],
+    loadComponent: () => import('../polls/polls-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/new',
+    canActivate: [tenantRestoreGuard, adminGuard],
+    loadComponent: () => import('../polls/poll-create-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId',
+    canActivate: [tenantRestoreGuard, adminGuard],
+    loadComponent: () => import('../polls/poll-detail-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId/edit',
+    canActivate: [tenantRestoreGuard, adminGuard],
+    loadComponent: () => import('../polls/poll-edit-page'),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

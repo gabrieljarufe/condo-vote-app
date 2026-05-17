@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.1.0](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v1.0.0...frontend-v1.1.0) (2026-05-17)
+
+
+### Features
+
+* **apartments:** pagina lista de apartamentos server-side ([1258694](https://github.com/gabrieljarufe/condo-vote-app/commit/1258694426120fadb4ae4855a4b2cb3fbe3b4a0f))
+* **apartments:** paginação server-side da lista de apartamentos ([3f4a7fe](https://github.com/gabrieljarufe/condo-vote-app/commit/3f4a7feff4059f1c11b3f0d859782d4a6c33cf04))
+* **h4:** aceite de convite via magic link ([ba1b96e](https://github.com/gabrieljarufe/condo-vote-app/commit/ba1b96e81cf9d93d6f4402e668f5ee2f5f568fb4))
+* **h4:** aceite de convite via magic link (onboarding público) ([42338aa](https://github.com/gabrieljarufe/condo-vote-app/commit/42338aac10a52db31538b1b49ad60405e7d00436))
+
+
+### Bug Fixes
+
+* **bulk-grid:** addCustomRow sugere próximo andar em vez de label CB ([b7d0d9d](https://github.com/gabrieljarufe/condo-vote-app/commit/b7d0d9ddf9ec24022e1870906af3d3b2c78e5a64))
+* **email:** remove 'apartamento' redundante do subject e corrige toast de conta criada ([6049a32](https://github.com/gabrieljarufe/condo-vote-app/commit/6049a32c2002ea40b2ebae76596916c23e57bd24))
+* **frontend:** preserva bloco no bulk, fecha banner parcial com fade e valida CPF com dígitos iguais ([3ad46a7](https://github.com/gabrieljarufe/condo-vote-app/commit/3ad46a79c7ccba8998aea1827ee1a8f05f362865))
+* **lint:** resolve violações do reviewdog no PR de paginação ([bd09334](https://github.com/gabrieljarufe/condo-vote-app/commit/bd093347e7ca118d6994c2d9c37f6e0c5e7ca780))
+
 ## 1.0.0 (2026-05-13)
 
 

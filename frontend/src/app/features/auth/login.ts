@@ -5,6 +5,17 @@ import { AuthService } from '../../core/auth/auth.service';
 import { FormField } from '../../shared/ui/form-field';
 import { Spinner } from '../../shared/ui/spinner';
 
+/**
+ * Whitelist anti-open-redirect: aceita SOMENTE paths internos
+ * (começam com `/` e não com `//`, que seria URL protocol-relative).
+ */
+export function isSafeRedirect(value: string | null): boolean {
+  if (!value) return false;
+  if (!value.startsWith('/')) return false;
+  if (value.startsWith('//')) return false;
+  return true;
+}
+
 @Component({
   selector: 'app-login',
   imports: [ReactiveFormsModule, RouterLink, FormField, Spinner],
@@ -134,8 +145,13 @@ export default class Login implements OnInit {
     try {
       const { email, password } = this.form.getRawValue();
       await this.auth.signIn(email, password);
-      const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/app';
-      await this.router.navigateByUrl(returnUrl);
+      const redirect = this.route.snapshot.queryParamMap.get('redirect');
+      if (isSafeRedirect(redirect)) {
+        await this.router.navigateByUrl(redirect as string);
+      } else {
+        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') ?? '/app';
+        await this.router.navigateByUrl(returnUrl);
+      }
     } catch (e) {
       this.errorMessage.set(this.formatError(e));
     } finally {

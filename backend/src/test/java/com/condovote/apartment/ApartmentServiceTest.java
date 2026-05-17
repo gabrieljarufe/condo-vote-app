@@ -148,6 +148,51 @@ class ApartmentServiceTest {
   @Test
   void list_naoAdmin_lancaForbidden() {
     when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
+    when(apartmentRepository.findActiveResidencyApartments(condoId, userId)).thenReturn(List.of());
+
+    assertThatThrownBy(() -> service.listByCondominium(condoId, 0, 20))
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  void list_moradorComUmApto_retornaListaSemPaginacao() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
+    Apartment apt =
+        new Apartment(UuidV7.generate(), condoId, "A", "101", null, false, Instant.now());
+    when(apartmentRepository.findActiveResidencyApartments(condoId, userId))
+        .thenReturn(List.of(apt));
+
+    PageResponse<ApartmentResponse> result = service.listByCondominium(condoId, 0, 20);
+
+    assertThat(result.content()).hasSize(1);
+    assertThat(result.content().get(0).unitNumber()).isEqualTo("101");
+    assertThat(result.page()).isZero();
+    assertThat(result.size()).isEqualTo(1);
+    assertThat(result.totalElements()).isEqualTo(1L);
+    assertThat(result.totalPages()).isEqualTo(1);
+  }
+
+  @Test
+  void list_moradorComDoisAptos_retornaAmbos() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
+    Apartment apt1 =
+        new Apartment(UuidV7.generate(), condoId, "A", "101", null, false, Instant.now());
+    Apartment apt2 =
+        new Apartment(UuidV7.generate(), condoId, "A", "102", null, false, Instant.now());
+    when(apartmentRepository.findActiveResidencyApartments(condoId, userId))
+        .thenReturn(List.of(apt1, apt2));
+
+    PageResponse<ApartmentResponse> result = service.listByCondominium(condoId, 0, 20);
+
+    assertThat(result.content()).hasSize(2);
+    assertThat(result.totalElements()).isEqualTo(2L);
+    assertThat(result.size()).isEqualTo(2);
+  }
+
+  @Test
+  void list_moradorSemVinculo_lancaForbidden() {
+    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
+    when(apartmentRepository.findActiveResidencyApartments(condoId, userId)).thenReturn(List.of());
 
     assertThatThrownBy(() -> service.listByCondominium(condoId, 0, 20))
         .isInstanceOf(ForbiddenException.class);

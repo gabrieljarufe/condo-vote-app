@@ -2,7 +2,7 @@
 
 **Fase atual:** Fase 7 — Histórias de Domínio
 
-**Próximo passo:** executar **H1 — Login + Home** (formaliza o walking skeleton já em produção; única task pendente é T1.7 smoke test prod, fecha o T3.9 🔶 herdado). Em seguida abrir H2 — Síndico cadastra apartamento, primeira história com código de domínio novo.
+**Próximo passo:** executar **H5 — Morador vê apartamentos onde reside** (H1/H2/H3/H4 concluídas; `apartment_resident` já é populado pelo aceite de convite da H4).
 
 > **Mudança de abordagem (2026-05-09):** o antigo `phase-7-domain-index.md` (8 features técnicas F1–F8) foi substituído pela pasta [`docs/implementation/tasks/phase-7/`](implementation/tasks/phase-7/index.md), que organiza o trabalho como **10 histórias de usuário fatiadas verticalmente** (H1–H10). Cada história vira um PR demonstrável; F1–F8 viraram cobertura técnica que cada história consome. Apêndice em `phase-7/index.md` audita que nada caiu na transição.
 
@@ -50,6 +50,7 @@
   - ✅ **H1** — Login + Home com seletor de condomínios (smoke prod com piloto Pitufos validado 2026-05-11)
   - ✅ **Foundations Fase 7** — edição inline V6 (índice parcial invitation), V7 (triggers write-once snapshot + immutable vote), V8 (índice composto audit cursor `(condo, occurred DESC, id DESC)`), V9 (WITH CHECK em policies); `AuditEventPublisher` e `SupabaseAdminGateway`; `SecurityConfig` permitAll `/api/public/**`. Requer `supabase db reset` local e DROP/CREATE schema em prod antes do próximo deploy. Decisão: `CPF_ENCRYPTION_KEY` deve ser **idêntica** em staging↔prod (sem rotação v1 — ciphertext determinístico não decifra cross-env se chaves divergirem)
   - ✅ **H2** — Síndico cadastra apartamento (e marca inadimplência) — backend CRUD + audit_event + batch endpoint; frontend lista + form individual + wizard em lote com 4 presets de numeração (incl. compacto com térreo), grade editável Step 2, ORDER BY natural (LENGTH+alfa), centralização de tabela, fix layout shift inadimplência, fix preset "Personalizado" + tooltip de tokens. PR #70 (mergeado 2026-05-12)
+  - ✅ **H2.1** — Paginação server-side da lista de apartamentos — `GET /api/condominiums/{id}/apartments` agora retorna `PageResponse<T>` (`{content, page, size, totalElements, totalPages}`); query params `page` (default 0) e `size` (default 10, clamp [1, 100]); novo DTO genérico `shared/web/PageResponse` reutilizável. Frontend: novo componente `app-paginator` (shared/ui, prev/next + selector 10/20/50/100) e re-fetch da página após criar. Breaking change consumido só por este repo — invitations-page/invitation-bulk fetch with `size=100` (TODO para >100 unidades)
 
 ### Descobertas não-óbvias da H3 (2026-05-12)
 
@@ -61,8 +62,15 @@
 - **Frontend XLSX:** projeto não tinha lib de parse — H2 bulk gera padrão em memória, não lê arquivo. Adicionado `read-excel-file` 5.8.7 (2 kB gzipped) só em H3. Bulk também aceita CSV como fallback (parsing inline).
 - **`@MockitoBean` para Redis no `AbstractIntegrationTest`** simplifica ITs: qualquer chamada em `redisCommands.setex(...)` é aceita sem stub manual. ITs de invitations não validam Redis side-effect (cobertura via UT em `InvitationServiceTest`).
 - **Bucket4j (rate-limit) adiado para H4:** endpoints de H3 são todos autenticados (síndico). Risco de força-bruta só aparece em `/api/invitations/validate` e `/api/register/complete` (H4 — endpoints públicos).
-  - 🔶 **H3** — Síndico convida morador (com e-mail) — backend completo: `InvitationService` (criar/listar/revoke/resend/fix-email + bulk ACID com bloco+unidade), `EmailGateway` polymorfa (SMTP Inbucket dev / GreenMail test / Resend prod via WebClient), `EmailSenderJob @Scheduled(30s)` com outbox FIFO + backoff exponencial, `InvitationExpirerJob @Scheduled(1h)`, template Thymeleaf `invitation.html`. Frontend: página de convites com lista filtrada + form individual + wizard XLSX 2-step espelhando H2. PR aberto. Validação prod requer setup DNS (ver `docs/runbooks/resend-dns-setup.md`)
-  - ⏳ H4 — Convidado completa cadastro com CPF
+  - ✅ **H3** — Síndico convida morador (com e-mail) — backend completo: `InvitationService` (criar/listar/revoke/resend/fix-email + bulk ACID com bloco+unidade), `EmailGateway` polymorfa (SMTP Inbucket dev / GreenMail test / Resend prod via WebClient), `EmailSenderJob @Scheduled(30s)` com outbox FIFO + backoff exponencial, `InvitationExpirerJob @Scheduled(1h)`, template Thymeleaf `invitation.html`. Frontend: página de convites com lista filtrada + form individual + wizard XLSX 2-step espelhando H2. PR #75 mergeado; validação prod fim-a-fim depende de DNS Resend configurado (ver `docs/runbooks/resend-dns-setup.md`)
+  - ✅ **H4** — Morador completa cadastro via magic link — endpoints públicos `GET /api/public/invitations/validate?token=` (retorna `state` enum) e `POST /api/public/register/complete` (cria `auth.users` via `SupabaseAdminGateway`, popula `app_user` + `apartment_resident`, marca `invitation.ACCEPTED`, publica audit). Rate-limit Bucket4j 20 req/min/IP in-memory em `/api/public/**`. Frontend: rota pública `/invitations/:token` com tela de aceite (form e-mail readonly + CPF mascarado + senha) e estados LOADING/VALID/EXPIRED/REVOKED/NOT_FOUND/ALREADY_ACCEPTED; redirect `/login?registered=1` no sucesso. Payload Redis dos convites mudou para JSON `{invitationId,condominiumId}` para endpoint público resolver tenant + setar RLS. PR #83 mergeado; smoke E2E prod pendente — ver `docs/features/h4-onboarding-magic-link.md`
+
+### Descobertas não-óbvias da H4 (2026-05-14)
+
+- **Bucket4j in-memory por design:** rate-limit de 20 req/min/IP é implementado em memória JVM (`PublicEndpointsRateLimitFilter`), sem Redis — suficiente para single-instance v1. Quando virar multi-instância, migrar para bucket distribuído no Redis.
+- **Payload Redis do token mudou para JSON:** o valor da chave `invitation:token:{token}` passou de `invitation_id` (UUID puro) para `{"invitationId":"...","condominiumId":"..."}`. Necessário porque o endpoint público `/api/public/invitations/validate` precisa setar `SET LOCAL app.current_tenant` antes de consultar o banco — e para isso precisa do `condominiumId` antes de carregar o convite.
+- **`SupabaseAdminGateway` com `service_role` key:** criação de `auth.users` exige a chave `SUPABASE_SERVICE_ROLE_KEY` (não a anon key). Em prod essa variável precisa estar configurada no Coolify; o app falha cedo se ausente. Ver `docs/features/h4-onboarding-magic-link.md` para pré-requisitos completos.
+
   - ⏳ H5 — Morador vê apartamentos onde reside
   - ⏳ H6 — Síndico promove morador / delega voto
   - ⏳ H7 — Síndico cria votação (CRUD + snapshot)

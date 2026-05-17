@@ -15,6 +15,8 @@ import static org.mockito.Mockito.when;
 import com.condovote.apartment.Apartment;
 import com.condovote.apartment.ApartmentRepository;
 import com.condovote.auth.AuthGateway;
+import com.condovote.condominium.Condominium;
+import com.condovote.condominium.CondominiumRepository;
 import com.condovote.invitation.dto.BulkCreateInvitationRequest;
 import com.condovote.invitation.dto.BulkInvitationEntry;
 import com.condovote.invitation.dto.BulkResultResponse;
@@ -49,6 +51,7 @@ class InvitationServiceTest {
   @Mock InvitationRepository invitationRepository;
   @Mock EmailNotificationRepository emailNotificationRepository;
   @Mock ApartmentRepository apartmentRepository;
+  @Mock CondominiumRepository condominiumRepository;
   @Mock CpfEncryptor cpfEncryptor;
   @Mock AuditEventPublisher auditEventPublisher;
   @Mock TenantMembershipRepository membershipRepository;
@@ -72,6 +75,7 @@ class InvitationServiceTest {
             invitationRepository,
             emailNotificationRepository,
             apartmentRepository,
+            condominiumRepository,
             cpfEncryptor,
             auditEventPublisher,
             membershipRepository,
@@ -98,6 +102,10 @@ class InvitationServiceTest {
             Instant.now());
 
     lenient().when(authGateway.getCurrentUserId()).thenReturn(userId);
+    lenient()
+        .when(condominiumRepository.findById(condoId))
+        .thenReturn(
+            Optional.of(new Condominium(condoId, "Condomínio Teste", "Rua X", Instant.now())));
     TenantContext.set(condoId);
   }
 

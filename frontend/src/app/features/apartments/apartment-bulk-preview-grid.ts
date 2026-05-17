@@ -19,6 +19,7 @@ interface GridRow {
   floor: number | null;
   label: string;
   cells: GridCell[];
+  block: string | null;
 }
 
 @Component({
@@ -316,10 +317,17 @@ export class ApartmentBulkPreviewGrid {
   }
 
   protected addCustomRow(): void {
+    const current = this.rows();
+    const floors = current.map((r) => r.floor).filter((f): f is number => f !== null);
+    const nextFloor = floors.length > 0 ? Math.max(...floors) + 1 : 1;
+    const cellCount = current.at(-1)?.cells.length ?? 4;
+    const block = current[0]?.block ?? null;
+
     const newRow: GridRow = {
-      floor: null,
-      label: 'CB',
-      cells: Array.from({ length: 4 }, () => ({
+      floor: nextFloor,
+      label: String(nextFloor),
+      block,
+      cells: Array.from({ length: cellCount }, () => ({
         unitNumber: '',
         editing: true,
         editValue: '',
@@ -343,7 +351,7 @@ export class ApartmentBulkPreviewGrid {
       row.cells
         .filter((c) => c.unitNumber.trim() !== '')
         .map((c, seq) => ({
-          block: null,
+          block: row.block,
           unitNumber: c.unitNumber.trim(),
           floor: row.floor ?? 0,
           seq: seq + 1,
@@ -374,6 +382,7 @@ export class ApartmentBulkPreviewGrid {
       rows.push({
         floor,
         label: String(floor),
+        block: floorApts[0]?.block ?? null,
         cells: floorApts.map((a) => ({
           unitNumber: a.unitNumber,
           editing: false,
@@ -387,6 +396,7 @@ export class ApartmentBulkPreviewGrid {
       rows.push({
         floor: null,
         label: apt.unitNumber,
+        block: apt.block,
         cells: [{ unitNumber: apt.unitNumber, editing: false, editValue: apt.unitNumber }],
       });
     }

@@ -8,6 +8,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterLink } from '@angular/router';
 import { Apartment, ApartmentsApiService } from '../../core/api/apartments-api.service';
 import {
@@ -163,8 +164,9 @@ export default class InvitationsPage implements OnInit {
 
   ngOnInit(): void {
     const condoId = this.tenant.activeCondominiumId()!;
-    this.apartmentsApi.list(condoId).subscribe({
-      next: (apts) => this.apartments.set(apts),
+    // Condomínios com >100 unidades precisam paginar aqui também (pendência conhecida).
+    this.apartmentsApi.list(condoId, 0, 100).subscribe({
+      next: (page) => this.apartments.set([...page.content]),
     });
     this.loadInvitations();
   }
@@ -204,8 +206,12 @@ export default class InvitationsPage implements OnInit {
         this.showForm.set(false);
         this.invitations.update((list) => [created, ...list]);
       },
-      error: () => {
-        this.form?.setError('Erro ao criar convite. Verifique se já existe convite pendente para este apartamento e e-mail.');
+      error: (err: unknown) => {
+        const msg =
+          err instanceof HttpErrorResponse && typeof err.error?.message === 'string'
+            ? err.error.message
+            : 'Erro ao criar convite. Verifique se já existe convite pendente para este apartamento e e-mail.';
+        this.form?.setError(msg);
       },
     });
   }

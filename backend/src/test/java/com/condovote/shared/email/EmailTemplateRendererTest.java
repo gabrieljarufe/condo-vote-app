@@ -30,8 +30,7 @@ class EmailTemplateRendererTest {
         "Condomínio Jardim das Flores",
         "Bloco A · 101",
         "Proprietário",
-        "https://app.condovote.com.br/convite/aceitar?token=abc123",
-        "13/05/2026 às 14:30");
+        "https://app.condovote.com.br/convite/aceitar?token=abc123");
   }
 
   @Test
@@ -52,7 +51,7 @@ class EmailTemplateRendererTest {
     assertThat(msg.htmlBody()).contains(vars.aptLabel());
     assertThat(msg.htmlBody()).contains(vars.roleLabel());
     assertThat(msg.htmlBody()).contains(vars.acceptUrl());
-    assertThat(msg.htmlBody()).contains(vars.expiresAtLabel());
+    assertThat(msg.htmlBody()).contains("24 horas");
   }
 
   @Test
@@ -64,7 +63,7 @@ class EmailTemplateRendererTest {
     assertThat(msg.textBody()).contains(vars.aptLabel());
     assertThat(msg.textBody()).contains(vars.roleLabel());
     assertThat(msg.textBody()).contains(vars.acceptUrl());
-    assertThat(msg.textBody()).contains(vars.expiresAtLabel());
+    assertThat(msg.textBody()).contains("24 horas");
   }
 
   @Test
@@ -74,8 +73,7 @@ class EmailTemplateRendererTest {
             "Condomínio Test",
             "Bloco B · 202",
             "Inquilino",
-            "https://app.condovote.com.br/convite/aceitar?token=abc&ref=email",
-            "14/05/2026 às 10:00");
+            "https://app.condovote.com.br/convite/aceitar?token=abc&ref=email");
 
     EmailMessage msg = renderer.renderInvitation("morador@example.com", vars);
 

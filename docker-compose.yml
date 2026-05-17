@@ -15,6 +15,7 @@ services:
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
+      SUPABASE_URL: http://host.docker.internal:54321
       APP_CORS_ALLOWED_ORIGINS: http://localhost:4200
       APP_REDIS_URL: redis://redis:6379
       # E-mail via Resend (HTTP). Para voltar ao SMTP local (Inbucket/Mailpit),
@@ -24,6 +25,12 @@ services:
       APP_EMAIL_ACCEPT_BASE_URL: http://localhost:4200
       APP_EMAIL_RESEND_API_KEY: ${RESEND_API_KEY:?defina RESEND_API_KEY no shell antes de subir o compose}
       APP_EMAIL_RESEND_API_URL: https://api.resend.com/emails
+      # H4 — Supabase Admin API (criar auth.users no aceite de convite).
+      # Opcional: sem ela o backend sobe normalmente, mas POST /api/public/register/complete
+      # falha com 500 e mensagem clara apontando para esta env.
+      # Obter via: supabase status | grep service_role
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
       # MAIL_HOST: host.docker.internal
       # MAIL_PORT: "54325"
     depends_on:

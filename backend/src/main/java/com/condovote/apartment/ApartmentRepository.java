@@ -28,8 +28,15 @@ public interface ApartmentRepository extends CrudRepository<Apartment, UUID> {
           FROM apartment
           WHERE condominium_id = :condominiumId
           ORDER BY COALESCE(block, '') ASC, LENGTH(unit_number) ASC, unit_number ASC
+          LIMIT :limit OFFSET :offset
           """)
-  List<Apartment> findByCondominiumIdOrdered(@Param("condominiumId") UUID condominiumId);
+  List<Apartment> findByCondominiumIdOrderedPaged(
+      @Param("condominiumId") UUID condominiumId,
+      @Param("limit") int limit,
+      @Param("offset") int offset);
+
+  @Query("SELECT COUNT(*) FROM apartment WHERE condominium_id = :condominiumId")
+  long countByCondominiumId(@Param("condominiumId") UUID condominiumId);
 
   @Modifying
   @Query("UPDATE apartment SET is_delinquent = :isDelinquent WHERE id = :id")

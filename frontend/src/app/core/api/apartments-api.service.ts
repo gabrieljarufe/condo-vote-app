@@ -1,7 +1,15 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+
+export interface Page<T> {
+  readonly content: ReadonlyArray<T>;
+  readonly page: number;
+  readonly size: number;
+  readonly totalElements: number;
+  readonly totalPages: number;
+}
 
 export interface Apartment {
   readonly id: string;
@@ -37,9 +45,11 @@ export interface BatchCreateResponse {
 export class ApartmentsApiService {
   private readonly http = inject(HttpClient);
 
-  list(condominiumId: string): Observable<Apartment[]> {
-    return this.http.get<Apartment[]>(
+  list(condominiumId: string, page = 0, size = 10): Observable<Page<Apartment>> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return this.http.get<Page<Apartment>>(
       `${environment.apiUrl}/api/condominiums/${condominiumId}/apartments`,
+      { params },
     );
   }
 

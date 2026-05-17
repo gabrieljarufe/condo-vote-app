@@ -11,6 +11,7 @@ import { Router, RouterLink } from '@angular/router';
 import { Apartment, ApartmentsApiService, CreateApartmentRequest } from '../../core/api/apartments-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
+import { Paginator } from '../../shared/ui/paginator';
 import { Spinner } from '../../shared/ui/spinner';
 import { ApartmentCreateChooser } from './apartment-create-chooser';
 import { ApartmentForm } from './apartment-form';
@@ -20,7 +21,15 @@ type PageState = 'loading' | 'error' | 'ready';
 
 @Component({
   selector: 'app-apartments-page',
-  imports: [AppHeader, Spinner, ApartmentList, ApartmentForm, ApartmentCreateChooser, RouterLink],
+  imports: [
+    AppHeader,
+    Spinner,
+    ApartmentList,
+    ApartmentForm,
+    ApartmentCreateChooser,
+    Paginator,
+    RouterLink,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -50,6 +59,16 @@ type PageState = 'loading' | 'error' | 'ready';
               [apartments]="apartments()"
               (toggleDelinquent)="onToggleDelinquent($event)"
             />
+            @if (totalElements() > 0) {
+              <app-paginator
+                [page]="page()"
+                [size]="size()"
+                [totalElements]="totalElements()"
+                [totalPages]="totalPages()"
+                (pageChange)="onPageChange($event)"
+                (sizeChange)="onSizeChange($event)"
+              />
+            }
           </section>
 
           @if (!showForm()) {
@@ -99,16 +118,27 @@ export default class ApartmentsPage implements OnInit {
   protected readonly errorMessage = signal('');
   protected readonly showForm = signal(false);
   protected readonly showChooser = signal(false);
+  protected readonly page = signal(0);
+  protected readonly size = signal(10);
+  protected readonly totalElements = signal(0);
+  protected readonly totalPages = signal(0);
   protected readonly dashboardLink = computed(() => {
     const id = this.tenant.activeCondominiumId();
     return id ? `/app/condominiums/${id}` : '/app';
   });
 
   ngOnInit(): void {
+    this.loadPage();
+  }
+
+  private loadPage(): void {
     const condoId = this.tenant.activeCondominiumId()!;
-    this.api.list(condoId).subscribe({
+    this.pageState.set('loading');
+    this.api.list(condoId, this.page(), this.size()).subscribe({
       next: (data) => {
-        this.apartments.set(data);
+        this.apartments.set([...data.content]);
+        this.totalElements.set(data.totalElements);
+        this.totalPages.set(data.totalPages);
         this.pageState.set('ready');
       },
       error: (e: unknown) => {
@@ -116,6 +146,17 @@ export default class ApartmentsPage implements OnInit {
         this.pageState.set('error');
       },
     });
+  }
+
+  protected onPageChange(newPage: number): void {
+    this.page.set(newPage);
+    this.loadPage();
+  }
+
+  protected onSizeChange(newSize: number): void {
+    this.size.set(newSize);
+    this.page.set(0);
+    this.loadPage();
   }
 
   protected onChooseOne(): void {
@@ -133,13 +174,9 @@ export default class ApartmentsPage implements OnInit {
     const condoId = this.tenant.activeCondominiumId();
     if (!condoId) return;
     this.api.create(condoId, request).subscribe({
-      next: (created) => {
+      next: () => {
         this.showForm.set(false);
-        const sorted = [...this.apartments(), created].sort((a, b) => {
-          const blockCmp = (a.block ?? '').localeCompare(b.block ?? '');
-          return blockCmp !== 0 ? blockCmp : a.unitNumber.localeCompare(b.unitNumber);
-        });
-        this.apartments.set(sorted);
+        this.loadPage();
       },
       error: () => {
         this.form?.setError('Erro ao cadastrar. Verifique se a unidade já existe neste bloco.');

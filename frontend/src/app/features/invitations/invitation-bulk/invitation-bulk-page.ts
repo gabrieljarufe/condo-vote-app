@@ -113,8 +113,9 @@ export default class InvitationBulkPage implements OnInit {
     const condoId = this.tenant.activeCondominiumId();
     if (!condoId) return;
 
-    this.apartmentsApi.list(condoId).subscribe({
-      next: (apts) => this.apartments.set(apts),
+    // Condomínios com >100 unidades precisam paginar aqui também (pendência conhecida).
+    this.apartmentsApi.list(condoId, 0, 100).subscribe({
+      next: (page) => this.apartments.set([...page.content]),
       error: () => {
         // Non-fatal: preview grid will show "not found" for all apts
       },

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
@@ -18,6 +18,16 @@ import { Spinner } from '../../shared/ui/spinner';
           <p class="text-sm text-on-surface-variant mb-8">
             Acesse com seu e-mail e senha cadastrados.
           </p>
+
+          @if (registeredToast()) {
+            <p
+              class="text-sm text-on-success-container bg-success-container rounded-lg p-3 mb-4"
+              role="status"
+              aria-live="polite"
+            >
+              Conta criada com sucesso. Faça login para continuar.
+            </p>
+          }
 
           <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-5" novalidate>
             <app-form-field
@@ -75,10 +85,18 @@ import { Spinner } from '../../shared/ui/spinner';
     </div>
   `,
 })
-export default class Login {
+export default class Login implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+
+  protected readonly registeredToast = signal(false);
+
+  ngOnInit(): void {
+    if (this.route.snapshot.queryParamMap.get('registered') === '1') {
+      this.registeredToast.set(true);
+    }
+  }
 
   protected readonly form = new FormGroup({
     email: new FormControl('', {

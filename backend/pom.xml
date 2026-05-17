@@ -112,6 +112,13 @@
             <version>1.6.0</version>
         </dependency>
 
+        <!-- Bucket4j — rate-limit in-memory para endpoints públicos (H4 onboarding) -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>8.10.1</version>
+        </dependency>
+
         <!-- PostgreSQL driver -->
         <dependency>
             <groupId>org.postgresql</groupId>

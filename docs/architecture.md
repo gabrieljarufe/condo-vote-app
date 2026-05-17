@@ -466,6 +466,11 @@ src/main/java/com/condovote/
 │   ├── Invitation.java               entity: inv.accept(), inv.revoke(userId), inv.isExpired()
 │   ├── InvitationRepository.java     interface Spring Data JDBC (extends CrudRepository)
 │   └── dto/
+├── onboarding/                   ← validação magic link + rate limiting (H4)
+│   ├── OnboardingController.java     GET /api/public/invitations/validate + POST /api/public/register/complete
+│   ├── OnboardingService.java        valida token Redis, cria auth.users via SupabaseAdminGateway
+│   ├── PublicEndpointsRateLimitFilter.java  Bucket4j 20 req/min/IP em /api/public/**
+│   └── dto/
 ├── notification/                 ← email outbox
 │   ├── EmailNotificationService.java  enfileira emails na mesma transação
 │   ├── EmailSenderJob.java            job assíncrono: processa PENDING, retry com backoff
@@ -852,21 +857,25 @@ A spec define 8 tipos de notificação por e-mail na v1.
 | Provider de e-mail | **Resend** | 3K emails/mês grátis (suficiente para piloto). API moderna com SDK Java. Developer experience boa. $20/mês para 50K quando escalar. Sem overhead de setup como SES (sem sandbox, sem IAM) |
 | Síncrono vs assíncrono | **Assíncrono via transactional outbox** | Já definido no data model: `email_notification` (tabela outbox). Service enfileira na mesma transação da operação de domínio. `EmailSenderJob` (@Scheduled cada 30s) processa PENDING. Se Resend estiver fora, emails ficam na fila — sem perda. Retry com backoff para FAILED |
 | Renderização de templates | **Thymeleaf no Spring Boot** | Templates `.html` no classpath (`src/main/resources/templates/email/`), versionados no git. Spring renderiza com variáveis (poll_title, voter_name, link). Mesma engine que o Spring já integra nativamente |
-| Abstração de provider | **Interface `EmailSender` + `ResendEmailSender`** | Interface abstrai o envio; v1 tem apenas Resend. Se Resend cair ou precisar trocar, implementa outro provider sem mudar `EmailSenderJob`. Evita over-engineering de multi-provider agora |
+| Abstração de provider | **Interface `EmailGateway` + `ResendEmailGateway` + `SmtpEmailGateway`** | Interface abstrai o envio; v1 tem 2 implementações: `ResendEmailGateway` (prod, via HTTP API do Resend) e `SmtpEmailGateway` (dev/test, via SMTP contra Inbucket local ou GreenMail em IT). `EmailSenderJob` depende apenas da interface. Evita over-engineering de multi-provider agora |
 
-### Abstração de provider: EmailSender
+### Abstração de provider: EmailGateway
 
 ```java
-public interface EmailSender {
+public interface EmailGateway {
     void send(String to, String subject, String htmlBody);
 }
 ```
 
-Implementação v1: `ResendEmailSender` — chama a API do Resend. `EmailSenderJob` depende apenas da interface.
+Implementações:
+- `ResendEmailGateway` — chama a API HTTP do Resend (perfil `prod` / `APP_EMAIL_PROVIDER=resend`).
+- `SmtpEmailGateway` — envia via SMTP genérico (dev: Inbucket do Supabase CLI na porta 54325; test: GreenMail in-memory via `greenmail-junit5`).
+
+`EmailSenderJob` depende apenas da interface.
 
 Para adicionar fallback futuro:
-1. Criar `MailgunEmailSender` (ou qualquer provider)
-2. Criar `FallbackEmailSender` que tenta o primário e, se falhar, tenta o secundário
+1. Criar `MailgunEmailGateway` (ou qualquer provider)
+2. Criar `FallbackEmailGateway` que tenta o primário e, se falhar, tenta o secundário
 3. Trocar o bean `@Primary` — zero mudanças no job ou nos services
 
 ### Templates de e-mail (v1)
@@ -1200,7 +1209,7 @@ Domínio de produção: **`condovote.com.br`**. Zona registrada no Cloudflare (D
 
 | Decis��o | Escolha | Justificativa |
 |---------|---------|---------------|
-| Rate limiting | **Bucket4j no Spring (endpoints públicos)** | Rate limit em `/api/invitations/validate` e `/api/register/complete` (públicos ou semi-públicos). Supabase já protege seus endpoints de auth (login, signup, reset). Bucket4j armazena contadores em memória (suficiente para 1 instância v1) |
+| Rate limiting | **Bucket4j no Spring (endpoints públicos)** | Rate limit de 20 requests/minuto por IP em todo `/api/public/**` (`PublicEndpointsRateLimitFilter`), configurável via `app.onboarding.rate-limit.requests-per-minute`. Supabase já protege seus endpoints de auth (login, signup, reset). Bucket4j armazena contadores em memória (suficiente para 1 instância v1) |
 | CORS | **Whitelist de origens** | Local: `http://localhost:4200`. Prod: `https://<domínio-final>`. Configurado em `SecurityConfig`. Sem wildcard `*` — apenas origens explícitas |
 | Gestão de chave de criptografia | **AES-256 determinístico (SIV), chave em variável de ambiente** | `CPF_ENCRYPTION_KEY` como env var no Coolify (Secrets, criptografada em repouso). Criptografia determinística: mesmo CPF → mesmo ciphertext (necessário para UNIQUE constraint no banco e comparação no onboarding). Classe utilitária `CpfEncryptor` com `encrypt()`/`decrypt()`. Para v1, env var é suficiente. Migrar para AWS KMS ou HashiCorp Vault se/quando houver requisito de compliance |
 | Auditoria | **Tabela `audit_event` (append-only)** | Já definida no data model. Todas as ações de síndico (criar poll, cancelar, convidar, remover morador) geram um INSERT na mesma transação. Não é event sourcing — é log append-only para rastreabilidade. Campos: `event_type`, `actor_user_id`, `target_entity`, `payload` (JSONB) |
@@ -1227,12 +1236,12 @@ Ver análise completa em `docs/analysis/2026-04-27-supabase-linter-rls-warnings.
 
 ```
 Endpoints protegidos:
-  /api/invitations/validate   → 10 requests/minuto por IP
-  /api/register/complete      → 5 requests/minuto por IP
+  /api/public/**  → 20 requests/minuto por IP (configurável via
+                    app.onboarding.rate-limit.requests-per-minute)
 
 Implementação:
-  - Bucket4j com Caffeine cache (in-memory)
-  - Filter no Spring Security chain (antes do controller)
+  - PublicEndpointsRateLimitFilter: Servlet filter que intercepta /api/public/**
+  - Bucket4j com mapa em memória (ConcurrentHashMap<IP, Bucket>)
   - Se exceder limite: HTTP 429 Too Many Requests
 
 Nota: endpoints autenticados (ex: /api/polls) não precisam de rate limit

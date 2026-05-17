@@ -50,7 +50,7 @@ public abstract class AbstractIntegrationTest {
 
   @MockitoBean
   @SuppressWarnings("rawtypes")
-  RedisCommands redisCommands;
+  protected RedisCommands redisCommands;
 
   @DynamicPropertySource
   static void overrideProperties(DynamicPropertyRegistry registry) {

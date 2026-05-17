@@ -116,7 +116,7 @@ class ApartmentControllerIT extends AbstractIntegrationTest {
   // --- GET /api/condominiums/{id}/apartments ---
 
   @Test
-  void list_adminComApartamentos_retorna200() throws Exception {
+  void list_adminComApartamentos_retorna200ComPageResponseDefault() throws Exception {
     UUID condoId = insertCondo("Condo List");
     UUID userId = UuidV7.generate();
     insertAdmin(condoId, userId);
@@ -129,7 +129,61 @@ class ApartmentControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(userId.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(2)));
+        .andExpect(jsonPath("$.content", hasSize(2)))
+        .andExpect(jsonPath("$.page").value(0))
+        .andExpect(jsonPath("$.size").value(10))
+        .andExpect(jsonPath("$.totalElements").value(2))
+        .andExpect(jsonPath("$.totalPages").value(1));
+  }
+
+  @Test
+  void list_paginacaoSegundaPagina_retornaItensRestantes() throws Exception {
+    UUID condoId = insertCondo("Condo Paged");
+    UUID userId = UuidV7.generate();
+    insertAdmin(condoId, userId);
+    for (int i = 1; i <= 25; i++) {
+      insertApartment(condoId, String.valueOf(100 + i));
+    }
+
+    mvc.perform(
+            get("/api/condominiums/{id}/apartments", condoId)
+                .param("page", "0")
+                .param("size", "10")
+                .accept(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(10)))
+        .andExpect(jsonPath("$.totalElements").value(25))
+        .andExpect(jsonPath("$.totalPages").value(3));
+
+    mvc.perform(
+            get("/api/condominiums/{id}/apartments", condoId)
+                .param("page", "2")
+                .param("size", "10")
+                .accept(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(5)))
+        .andExpect(jsonPath("$.page").value(2))
+        .andExpect(jsonPath("$.totalElements").value(25));
+  }
+
+  @Test
+  void list_sizeAcimaDoLimite_retorna400() throws Exception {
+    UUID condoId = insertCondo("Condo Size 400");
+    UUID userId = UuidV7.generate();
+    insertAdmin(condoId, userId);
+
+    mvc.perform(
+            get("/api/condominiums/{id}/apartments", condoId)
+                .param("page", "0")
+                .param("size", "101")
+                .accept(MediaType.APPLICATION_JSON)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(userId.toString()))))
+        .andExpect(status().isBadRequest());
   }
 
   @Test

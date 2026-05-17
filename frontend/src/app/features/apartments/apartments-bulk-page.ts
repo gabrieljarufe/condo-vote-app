@@ -70,9 +70,10 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
           </div>
         }
 
-        @if (batchStatus() === 'partial') {
+        @if (batchStatus() === 'partial' && partialVisible()) {
           <div
-            class="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 flex flex-col gap-2"
+            class="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 flex flex-col gap-2 transition-opacity duration-300"
+            [class.opacity-0]="partialFading()"
             role="status"
           >
             <div class="flex items-center justify-between gap-4">
@@ -82,10 +83,14 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
               </p>
               <button
                 type="button"
-                (click)="navigateToApartments()"
-                class="px-4 py-1.5 rounded-lg bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 whitespace-nowrap"
+                (click)="dismissPartial()"
+                aria-label="Fechar"
+                class="text-yellow-500 hover:text-yellow-700 transition-colors shrink-0"
               >
-                Ver lista
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
               </button>
             </div>
             @if ((batchResult()?.skipped?.length ?? 0) > 0) {
@@ -136,6 +141,8 @@ export default class ApartmentsBulkPage {
   protected readonly batchStatus = signal<BatchStatus>('idle');
   protected readonly batchResult = signal<BatchCreateResponse | null>(null);
   protected readonly batchError = signal('');
+  protected readonly partialVisible = signal(true);
+  protected readonly partialFading = signal(false);
 
   protected readonly apartmentsLink = computed(() => {
     const id = this.tenant.activeCondominiumId();
@@ -165,6 +172,8 @@ export default class ApartmentsBulkPage {
           this.batchStatus.set('success');
           setTimeout(() => this.navigateToApartments(), 1500);
         } else {
+          this.partialVisible.set(true);
+          this.partialFading.set(false);
           this.batchStatus.set('partial');
         }
       },
@@ -175,6 +184,11 @@ export default class ApartmentsBulkPage {
         );
       },
     });
+  }
+
+  protected dismissPartial(): void {
+    this.partialFading.set(true);
+    setTimeout(() => this.partialVisible.set(false), 300);
   }
 
   protected navigateToApartments(): void {

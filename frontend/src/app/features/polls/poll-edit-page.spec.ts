@@ -12,7 +12,7 @@ import {
   PollsApiService,
 } from '../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
-import PollEditPage from './poll-edit-page';
+import PollEditPage, { toLocalDatetimeInput } from './poll-edit-page';
 import { PollFormValue } from './poll-form';
 
 const mockSupabase = {
@@ -162,7 +162,8 @@ describe('PollEditPage', () => {
     const { component } = await setup();
     const val = component.initialValue() as PollFormValue;
     expect(val.title).toBe('Votação existente');
-    expect(val.scheduledStart).toBe('2026-06-01T10:00'); // slice(0,16)
+    // scheduledStart: '2026-06-01T10:00:00Z' = '2026-06-01T07:00' em America/Sao_Paulo (UTC-3)
+    expect(val.scheduledStart).toBe('2026-06-01T07:00');
     expect(val.options).toEqual(['Sim', 'Não']);
   });
 
@@ -245,5 +246,27 @@ describe('PollEditPage', () => {
   it('detailLink é construído com condoId e pollId', async () => {
     const { component } = await setup();
     expect(component.detailLink()).toBe('/app/condominiums/condo-1/polls/poll-1');
+  });
+});
+
+describe('toLocalDatetimeInput', () => {
+  it('converte ISO UTC para hora local sem Z (formato datetime-local)', () => {
+    // TZ=America/Sao_Paulo (UTC-3): 22:00Z → 19:00 local
+    const result = toLocalDatetimeInput('2026-05-17T22:00:00Z');
+    expect(result).toBe('2026-05-17T19:00');
+    expect(result).not.toContain('Z');
+    expect(result).toHaveLength(16);
+  });
+
+  it('preserva data correta ao cruzar meia-noite UTC→BRT', () => {
+    // 01:00Z no dia 18 = 22:00 do dia 17 em BRT
+    const result = toLocalDatetimeInput('2026-05-18T01:00:00Z');
+    expect(result).toBe('2026-05-17T22:00');
+  });
+
+  it('funciona com horário que já está em hora local (sem conversão inesperada)', () => {
+    // 12:00Z = 09:00 BRT
+    const result = toLocalDatetimeInput('2026-05-17T12:00:00Z');
+    expect(result).toBe('2026-05-17T09:00');
   });
 });

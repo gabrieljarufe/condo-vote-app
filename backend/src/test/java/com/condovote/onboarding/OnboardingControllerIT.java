@@ -130,6 +130,130 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void completeRegistration_ownerAceita_setaEligibleVoterUserIdNoApartamento() throws Exception {
+    UUID condoId = insertCondo("Onboarding EligibleVoter OWNER");
+    UUID aptId = insertApartment(condoId, "501");
+    UUID adminId = UuidV7.generate();
+    UUID invitationId = UuidV7.generate();
+    String cpf = "111.444.777-35";
+    byte[] cpfBytes = cpfEncryptor.encryptToBytes(cpf);
+    String email = "owner-501@example.com";
+    Instant expiresAt = Instant.now().plusSeconds(3600);
+
+    jdbc.update(
+        """
+            INSERT INTO invitation
+                (id, condominium_id, apartment_id, email, cpf_encrypted, role,
+                 status, expires_at, created_by_user_id, created_at)
+            VALUES (?, ?, ?, ?, ?, 'OWNER'::resident_role, 'PENDING'::invitation_status,
+                    ?, ?, now())
+            """,
+        invitationId,
+        condoId,
+        aptId,
+        email,
+        cpfBytes,
+        java.sql.Timestamp.from(expiresAt),
+        adminId);
+
+    String token = UUID.randomUUID().toString();
+    String redisPayload =
+        "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}";
+    when(redisCommands.get("invitation:token:" + token)).thenReturn(redisPayload);
+
+    UUID newUserId = UuidV7.generate();
+    when(supabaseAdminGateway.createUser(email, "senha-forte-1!")).thenReturn(newUserId);
+
+    String body =
+        """
+        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Owner Test"}
+        """
+            .formatted(token, cpf);
+
+    mvc.perform(
+            post("/api/public/register/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isCreated());
+
+    // eligible_voter_user_id deve ter sido setado para o novo userId (OWNER)
+    UUID eligibleVoterUserId =
+        jdbc.queryForObject(
+            "SELECT eligible_voter_user_id FROM apartment WHERE id = ?", UUID.class, aptId);
+    assertThat(eligibleVoterUserId).isEqualTo(newUserId);
+
+    // audit APARTMENT_ELIGIBLE_VOTER_SET deve ter sido publicado
+    Long auditCount =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM audit_event WHERE event_type = 'APARTMENT_ELIGIBLE_VOTER_SET'::audit_event_type AND entity_id = ?",
+            Long.class,
+            aptId);
+    assertThat(auditCount).isEqualTo(1L);
+  }
+
+  @Test
+  void completeRegistration_tenantAceita_naoAlteraEligibleVoterUserId() throws Exception {
+    UUID condoId = insertCondo("Onboarding EligibleVoter TENANT");
+    UUID aptId = insertApartment(condoId, "502");
+    UUID adminId = UuidV7.generate();
+    UUID invitationId = UuidV7.generate();
+    String cpf = "111.444.777-35";
+    byte[] cpfBytes = cpfEncryptor.encryptToBytes(cpf);
+    String email = "tenant-502@example.com";
+    Instant expiresAt = Instant.now().plusSeconds(3600);
+
+    jdbc.update(
+        """
+            INSERT INTO invitation
+                (id, condominium_id, apartment_id, email, cpf_encrypted, role,
+                 status, expires_at, created_by_user_id, created_at)
+            VALUES (?, ?, ?, ?, ?, 'TENANT'::resident_role, 'PENDING'::invitation_status,
+                    ?, ?, now())
+            """,
+        invitationId,
+        condoId,
+        aptId,
+        email,
+        cpfBytes,
+        java.sql.Timestamp.from(expiresAt),
+        adminId);
+
+    String token = UUID.randomUUID().toString();
+    String redisPayload =
+        "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}";
+    when(redisCommands.get("invitation:token:" + token)).thenReturn(redisPayload);
+
+    UUID newUserId = UuidV7.generate();
+    when(supabaseAdminGateway.createUser(email, "senha-forte-1!")).thenReturn(newUserId);
+
+    String body =
+        """
+        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Tenant Test"}
+        """
+            .formatted(token, cpf);
+
+    mvc.perform(
+            post("/api/public/register/complete")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isCreated());
+
+    // eligible_voter_user_id deve permanecer NULL para TENANT (sem delegação — H6)
+    UUID eligibleVoterUserId =
+        jdbc.queryForObject(
+            "SELECT eligible_voter_user_id FROM apartment WHERE id = ?", UUID.class, aptId);
+    assertThat(eligibleVoterUserId).isNull();
+
+    // nenhum audit APARTMENT_ELIGIBLE_VOTER_SET deve ter sido publicado
+    Long auditCount =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM audit_event WHERE event_type = 'APARTMENT_ELIGIBLE_VOTER_SET'::audit_event_type AND entity_id = ?",
+            Long.class,
+            aptId);
+    assertThat(auditCount).isEqualTo(0L);
+  }
+
+  @Test
   void completeRegistration_cpfNaoBate_retorna400() throws Exception {
     UUID condoId = insertCondo("Onboarding CPF");
     UUID aptId = insertApartment(condoId, "402");

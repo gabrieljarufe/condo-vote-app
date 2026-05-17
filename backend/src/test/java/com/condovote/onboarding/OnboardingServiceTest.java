@@ -2,9 +2,12 @@ package com.condovote.onboarding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.condovote.apartment.ApartmentRepository;
@@ -19,6 +22,7 @@ import com.condovote.shared.crypto.CpfEncryptor;
 import com.condovote.shared.exception.ConflictException;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -158,5 +162,131 @@ class OnboardingServiceTest {
                         new CompleteRegistrationRequest(
                             "x", "11144477735", "senha-forte-1!", "Nome")))
         .isInstanceOf(ConflictException.class);
+  }
+
+  /**
+   * OWNER aceita convite → eligible_voter_user_id deve ser setado e audit publicado.
+   *
+   * <p>Invariante: condo-vote-principles.md §4 — OWNER ativo sem delegação → eligible_voter_user_id
+   * = owner.user_id.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void complete_ownerAceitaConvite_setaEligibleVoterUserId() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID newUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+    byte[] cpfBytes = {5, 6, 7};
+
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), anyString())).thenReturn(0L);
+    when(supabaseAdminGateway.createUser(anyString(), anyString())).thenReturn(newUserId);
+    when(cpfEncryptor.encryptToBytes(anyString())).thenReturn(cpfBytes);
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            "owner@example.com",
+            cpfBytes,
+            "OWNER",
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+
+    // Todos os updates retornam 1 (includes: INSERT app_user, INSERT apartment_resident,
+    // UPDATE apartment eligible_voter_user_id, UPDATE invitation)
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class), any(), any())).thenReturn(1);
+    lenient()
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(), any(), any(), any(), any()))
+        .thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+
+    newService()
+        .complete(new CompleteRegistrationRequest(token, "11144477735", "senha-forte-1!", "OWNER"));
+
+    // Verifica que o audit APARTMENT_ELIGIBLE_VOTER_SET foi publicado
+    verify(auditEventPublisher)
+        .publish(
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            eq("apartment"),
+            eq(aptId),
+            any(Map.class),
+            eq(condoId),
+            eq(newUserId));
+  }
+
+  /**
+   * TENANT aceita convite → eligible_voter_user_id NÃO deve ser tocado; nenhum audit
+   * APARTMENT_ELIGIBLE_VOTER_SET publicado.
+   *
+   * <p>Delegação de TENANT é escopo H6.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void complete_tenantAceitaConvite_naoAlteraEligibleVoterUserId() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID newUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+    byte[] cpfBytes = {5, 6, 7};
+
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), anyString())).thenReturn(0L);
+    when(supabaseAdminGateway.createUser(anyString(), anyString())).thenReturn(newUserId);
+    when(cpfEncryptor.encryptToBytes(anyString())).thenReturn(cpfBytes);
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            "tenant@example.com",
+            cpfBytes,
+            "TENANT",
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class), any(), any())).thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+
+    newService()
+        .complete(
+            new CompleteRegistrationRequest(token, "11144477735", "senha-forte-1!", "TENANT"));
+
+    // Nenhuma chamada de audit para APARTMENT_ELIGIBLE_VOTER_SET deve ter ocorrido
+    verify(auditEventPublisher, never())
+        .publish(
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            anyString(),
+            any(UUID.class),
+            any(Map.class),
+            any(UUID.class),
+            any(UUID.class));
   }
 }

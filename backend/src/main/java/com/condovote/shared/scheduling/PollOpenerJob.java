@@ -66,7 +66,8 @@ public class PollOpenerJob {
             "PollOpenerJob falhou ao abrir poll {} (condo {}): {}",
             pollId,
             condoId,
-            e.getMessage());
+            e.getMessage(),
+            e);
       } finally {
         TenantContext.clear();
       }

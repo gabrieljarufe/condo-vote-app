@@ -66,7 +66,8 @@ public class PollCloserJob {
             "PollCloserJob falhou ao fechar poll {} (condo {}): {}",
             pollId,
             condoId,
-            e.getMessage());
+            e.getMessage(),
+            e);
       } finally {
         TenantContext.clear();
       }

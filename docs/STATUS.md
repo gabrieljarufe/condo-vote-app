@@ -71,12 +71,23 @@
 - **Payload Redis do token mudou para JSON:** o valor da chave `invitation:token:{token}` passou de `invitation_id` (UUID puro) para `{"invitationId":"...","condominiumId":"..."}`. Necessário porque o endpoint público `/api/public/invitations/validate` precisa setar `SET LOCAL app.current_tenant` antes de consultar o banco — e para isso precisa do `condominiumId` antes de carregar o convite.
 - **`SupabaseAdminGateway` com `service_role` key:** criação de `auth.users` exige a chave `SUPABASE_SERVICE_ROLE_KEY` (não a anon key). Em prod essa variável precisa estar configurada no Coolify; o app falha cedo se ausente. Ver `docs/features/h4-onboarding-magic-link.md` para pré-requisitos completos.
 
-  - ⏳ H5 — Morador vê apartamentos onde reside
-  - ⏳ H6 — Síndico promove morador / delega voto
-  - ⏳ H7 — Síndico cria votação (CRUD + snapshot)
-  - ⏳ H8 — Morador vota e vê resultado
-  - ⏳ H9 — Timeline de auditoria
-  - ⏳ H10 — Jobs residuais (RetentionPruner placeholder)
+  - ✅ **H5** — Morador vê apartamentos onde reside
+  - 🔶 **H7** — Síndico cria votação (lifecycle completo: DRAFT/SCHEDULED/OPEN/CLOSED/INVALIDATED/CANCELLED) — Backend: aggregates Poll/PollOption/PollEligibleSnapshot/PollResult, PollResultCalculator (função pura cobrindo SIMPLE/ABSOLUTE/QUALIFIED_2_3/QUALIFIED_3_4 × FIRST/SECOND), PollService + PollOpener + PollCloser, 8 endpoints REST, PollOpenerJob/PollCloserJob @Scheduled(5min), 198 UTs + 120 ITs verdes. Frontend: feature `polls/` com lista paginada filtrada, page de criar/editar com FormArray de opções, page de detalhe com ações condicionais por status, dialog de cancelar com motivo obrigatório (≥10 chars), badge de status colorido. Migrations V12 (enum values POLL_PUBLISHED/POLL_UPDATED/POLL_OPENED_AUTO + index parcial idx_poll_open_by_condo) e V13 (`MANUAL` em poll_close_trigger). Smoke E2E prod pendente — ver `docs/features/h7-criar-votacao.md`. PR `feat/h7-poll-lifecycle`.
+  - ⏳ H6 — Síndico promove morador / delega voto (stretch — só entra se sobrar tempo)
+  - ⏳ H8 — Morador vota e vê resultado (MVP — próxima)
+  - ⏳ H9 — Timeline de auditoria (stretch)
+  - ⏳ H10 — Jobs residuais (RetentionPruner placeholder, stretch)
+
+### Descobertas não-óbvias da H7 (2026-05-17)
+
+- **`${flyway:executeInTransaction=false}` é placeholder, não directive:** tentar usar a sintaxe no header do `.sql` faz Flyway tentar resolver como placeholder e falhar com "Failed to populate value for default placeholder". A forma correta é um arquivo `.conf` ao lado da migration (mesmo nome + `.conf`) com o conteúdo `executeInTransaction=false`. Necessário porque `ALTER TYPE ADD VALUE` não pode rodar em bloco transacional no PostgreSQL.
+- **Enum `poll_close_trigger` originalmente só tinha valores `AUTOMATIC_*`** (V7) — V13 adiciona `MANUAL` para permitir `poll_result.close_trigger='MANUAL'` quando o síndico encerra. Sem isso, `PollCloser` não conseguia inserir o resultado para fechamentos manuais.
+- **Convocação correta no enum é `'FIRST'`/`'SECOND'`** (V1), não `'GENERAL'` como o doc h7 MVP original sugeria. INSERT com `'GENERAL'` falharia. Plano original foi reescrito.
+- **`PollOpener` precisa atualizar status + opened_at + opened_by_user_id + eligible_count num único UPDATE** para satisfazer atomicamente os CHECKs `chk_poll_opened` e `chk_poll_eligible_count`. Tentar INSERT da poll com `status='OPEN'` e `eligible_count=NULL` viola CHECK na criação.
+- **Jobs `@Scheduled` precisam setar `TenantContext` por iteração ANTES de chamar o componente `@Transactional`** — query inicial é via `JdbcTemplate` cru (cross-tenant, sem RLS), depois cada iteração entra em transação própria que aciona `TenantTransactionAspect` automaticamente. Try/catch por iteração para não bloquear outras polls.
+- **`?::poll_status` não funciona em prepared statements JDBC** — cast de enum precisa ser inlineado no SQL (`'SCHEDULED'::poll_status`). Vale para todos os enums Postgres consumidos via JdbcTemplate.
+- **`@Output` com EventEmitter clássico + `@Input` com setter via ngOnChanges** nos componentes novos do frontend (ao invés de `output()`/`input.required()`) — padrão consistente com `apartment-bulk-preview-grid.spec.ts`. Vitest neste setup tem limitação NG0303 quando `fixture.componentRef.setInput` é usado com signal inputs em componentes substituídos via `overrideComponent`.
+- **ShedLock para jobs `@Scheduled`** confirmado como deferido para v2 — backend v1 é single-instance (alinhado com `InvitationExpirerJob`, `EmailSenderJob`, Bucket4j da H4). Documentado no workflow.md watch list.
 
 ---
 

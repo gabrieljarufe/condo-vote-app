@@ -249,4 +249,93 @@ describe('PollDetailPage', () => {
     expect(component.pageState()).toBe('error');
     expect(component.errorMessage()).toContain('Erro ao carregar votação');
   });
+
+  it('renderiza breakdown quando status=CLOSED', async () => {
+    const closedDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'CLOSED' }),
+      options: [
+        { id: 'opt1', label: 'A', displayOrder: 1 },
+        { id: 'opt2', label: 'B', displayOrder: 2 },
+      ],
+      result: {
+        totalVotes: 8,
+        winningOptionId: 'opt1',
+        quorumReached: true,
+        closeTrigger: 'MANUAL',
+        invalidationReason: null,
+        determinedAt: '2026-06-01T18:00:00Z',
+        optionsBreakdown: '{"opt1":5,"opt2":3}',
+      },
+    };
+
+    const { fixture, component } = await setup({
+      getById: vi.fn(() => of(closedDetail)),
+    });
+    fixture.detectChanges();
+
+    const rows = component.breakdownRows(closedDetail) as Array<{ optionId: string; label: string; votes: number; percentage: number; isWinner: boolean }>;
+    const rowA = rows.find((r) => r.optionId === 'opt1');
+    const rowB = rows.find((r) => r.optionId === 'opt2');
+
+    expect(rowA).toBeDefined();
+    expect(rowA!.votes).toBe(5);
+    expect(rowA!.percentage).toBe(62.5);
+    expect(rowA!.isWinner).toBe(true);
+
+    expect(rowB).toBeDefined();
+    expect(rowB!.votes).toBe(3);
+    expect(rowB!.percentage).toBe(37.5);
+    expect(rowB!.isWinner).toBe(false);
+
+    // Vencedora aparece primeiro (ordenado por votos DESC)
+    expect(rows[0].optionId).toBe('opt1');
+  });
+
+  it('renderiza breakdown quando status=INVALIDATED (sem badge Vencedora)', async () => {
+    const invalidatedDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'INVALIDATED' }),
+      options: [
+        { id: 'opt1', label: 'A', displayOrder: 1 },
+        { id: 'opt2', label: 'B', displayOrder: 2 },
+      ],
+      result: {
+        totalVotes: 4,
+        winningOptionId: null,
+        quorumReached: false,
+        closeTrigger: 'SCHEDULER',
+        invalidationReason: 'PRESENCE_QUORUM_NOT_REACHED',
+        determinedAt: '2026-06-01T18:00:00Z',
+        optionsBreakdown: '{"opt1":2,"opt2":2}',
+      },
+    };
+
+    const { component } = await setup({
+      getById: vi.fn(() => of(invalidatedDetail)),
+    });
+
+    const rows = component.breakdownRows(invalidatedDetail) as Array<{ isWinner: boolean }>;
+    expect(rows.every((r) => !r.isWinner)).toBe(true);
+    expect(rows).toHaveLength(2);
+  });
+
+  it('não renderiza breakdown quando status=OPEN ou DRAFT', async () => {
+    const openDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'OPEN' }),
+      options: mockOptions,
+      result: null,
+    };
+
+    const { component } = await setup({
+      getById: vi.fn(() => of(openDetail)),
+    });
+
+    expect(component.breakdownRows(openDetail)).toHaveLength(0);
+
+    const draftDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'DRAFT' }),
+      options: mockOptions,
+      result: null,
+    };
+    expect(component.breakdownRows(draftDetail)).toHaveLength(0);
+  });
 });

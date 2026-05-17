@@ -21,6 +21,14 @@ import { PollCancelDialog } from './poll-cancel-dialog';
 
 type PageState = 'loading' | 'error' | 'ready';
 
+interface BreakdownRow {
+  optionId: string;
+  label: string;
+  votes: number;
+  percentage: number;
+  isWinner: boolean;
+}
+
 type PollStatus = PollResponse['status'];
 
 const QUORUM_LABELS: Record<string, string> = {
@@ -168,9 +176,36 @@ function extractErrorMessage(e: unknown, fallback: string): string {
                   <dt class="text-on-surface-variant font-medium">Total de votos</dt>
                   <dd class="text-on-surface">{{ d.result.totalVotes }}</dd>
                 </div>
-                <p class="text-xs text-on-surface-variant italic mt-2">
-                  Detalhamento por opção disponível em H8/H9.
-                </p>
+                @if (d.poll.status === 'CLOSED' || d.poll.status === 'INVALIDATED') {
+                  <div class="mt-4">
+                    <h3 class="text-sm font-medium text-on-surface mb-3">Resultado por opção</h3>
+                    <ul class="flex flex-col gap-3">
+                      @for (row of breakdownRows(d); track row.optionId) {
+                        <li class="flex flex-col gap-1">
+                          <div class="flex justify-between items-baseline">
+                            <span class="text-sm text-on-surface flex items-center gap-2">
+                              {{ row.label }}
+                              @if (row.isWinner) {
+                                <span class="text-xs bg-primary text-on-primary rounded-full px-2 py-0.5">Vencedora</span>
+                              }
+                            </span>
+                            <span class="text-xs text-on-surface-variant tabular-nums">
+                              {{ row.votes }} votos · {{ row.percentage }}%
+                            </span>
+                          </div>
+                          <div class="h-2 rounded-full bg-surface-container-high overflow-hidden">
+                            <div
+                              class="h-full rounded-full transition-all"
+                              [class.bg-primary]="row.isWinner"
+                              [class.bg-secondary]="!row.isWinner"
+                              [style.width.%]="row.percentage"
+                            ></div>
+                          </div>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
               </dl>
             </section>
           }
@@ -401,6 +436,29 @@ export default class PollDetailPage implements OnInit {
 
   protected onCancelClose(): void {
     this.showCancelDialog.set(false);
+  }
+
+  protected breakdownRows(d: PollDetailResponse): BreakdownRow[] {
+    if (!d.result) return [];
+    let rawCounts: Record<string, number> = {};
+    try {
+      rawCounts = JSON.parse(d.result.optionsBreakdown) as Record<string, number>;
+    } catch {
+      return [];
+    }
+    const total = d.result.totalVotes || 1; // evita div/0
+    const rows: BreakdownRow[] = d.options.map((opt) => {
+      const votes = rawCounts[opt.id] ?? 0;
+      return {
+        optionId: opt.id,
+        label: opt.label,
+        votes,
+        percentage: total > 0 ? Math.round((votes / total) * 1000) / 10 : 0,
+        isWinner: d.result?.winningOptionId === opt.id,
+      };
+    });
+    rows.sort((a, b) => b.votes - a.votes);
+    return rows;
   }
 
   // Expose for tests

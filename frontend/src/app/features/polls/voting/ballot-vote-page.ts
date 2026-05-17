@@ -35,7 +35,7 @@ type LoadState =
         }
         @case ('error') {
           <div class="bg-error-container text-on-error-container rounded-2xl p-6">
-            <p class="text-sm mb-3">{{ state().message }}</p>
+            <p class="text-sm mb-3">{{ errorMessage() }}</p>
             <a [routerLink]="['/app/condominiums', condoId, 'my-polls']"
                class="text-sm underline">Voltar para minhas votações</a>
           </div>
@@ -155,6 +155,11 @@ export default class BallotVotePage {
   protected readonly pollDetail = computed(() => {
     const s = this.state();
     return s.kind === 'ready' ? s.pollDetail : null;
+  });
+
+  protected readonly errorMessage = computed(() => {
+    const s = this.state();
+    return s.kind === 'error' ? s.message : '';
   });
 
   protected onOptionChange(optionId: string): void {

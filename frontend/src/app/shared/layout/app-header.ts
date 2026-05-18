@@ -31,6 +31,15 @@ import { TenantService } from '../../core/tenant/tenant.service';
                 Apartamentos
               </a>
             }
+            @if (pollsLink()) {
+              <a
+                [routerLink]="pollsLink()"
+                routerLinkActive="text-secondary font-semibold"
+                class="text-sm text-on-surface-variant hover:text-on-surface"
+              >
+                Votações
+              </a>
+            }
             <button
               type="button"
               (click)="switchCondo()"
@@ -68,6 +77,11 @@ export class AppHeader {
   protected readonly apartmentsLink = computed(() => {
     const condoId = this.tenant.activeCondominiumId();
     return condoId ? `/app/condominiums/${condoId}/apartments` : null;
+  });
+
+  protected readonly pollsLink = computed(() => {
+    const condoId = this.tenant.activeCondominiumId();
+    return condoId ? `/app/condominiums/${condoId}/polls` : null;
   });
 
   protected switchCondo(): void {

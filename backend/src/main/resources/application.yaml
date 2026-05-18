@@ -67,6 +67,11 @@ app:
       api-url: ${RESEND_API_URL:https://api.resend.com/emails}
   invitation:
     token-ttl-hours: ${INVITATION_TOKEN_TTL_HOURS:24}
+  poll:
+    opener-job:
+      fixed-delay-ms: 300000   # 5 minutos
+    closer-job:
+      fixed-delay-ms: 300000   # 5 minutos
   onboarding:
     rate-limit:
       requests-per-minute: ${ONBOARDING_RATE_LIMIT_RPM:20}

@@ -16,7 +16,7 @@
       "release-type": "node",
       "component": "frontend",
       "changelog-path": "CHANGELOG.md",
-      "bump-patch-for-minor-pre-major": false
+      "initial-version": "0.1.0"
     }
   }
 }

@@ -1,0 +1,9 @@
+app:
+  invitation:
+    expirer-job:
+      fixed-delay-ms: 99999999  # desabilita disparo automático durante ITs
+  poll:
+    opener-job:
+      fixed-delay-ms: 99999999  # desabilita disparo automático durante ITs
+    closer-job:
+      fixed-delay-ms: 99999999  # desabilita disparo automático durante ITs

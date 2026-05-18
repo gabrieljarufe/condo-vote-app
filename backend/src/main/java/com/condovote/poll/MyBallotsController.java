@@ -1,7 +1,7 @@
 package com.condovote.poll;
 
 import com.condovote.auth.AuthGateway;
-import com.condovote.poll.dto.MyBallotResponse;
+import com.condovote.poll.dto.MyBallotsResponse;
 import com.condovote.poll.dto.MyPendingPollResponse;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -16,20 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 public class MyBallotsController {
-
-  private static final String LIST_MY_BALLOTS =
-      """
-      SELECT s.apartment_id,
-             TRIM(COALESCE(NULLIF(a.block, ''), '') || ' ' || a.unit_number) AS label,
-             (v.id IS NOT NULL) AS already_voted,
-             v.poll_option_id AS voted_option_id
-        FROM poll_eligible_snapshot s
-        JOIN apartment a ON a.id = s.apartment_id
-   LEFT JOIN vote v ON v.poll_id = s.poll_id AND v.apartment_id = s.apartment_id
-       WHERE s.poll_id = :pollId
-         AND s.eligible_voter_user_id = :userId
-       ORDER BY label
-      """;
 
   private static final String LIST_MY_PENDING =
       """
@@ -51,24 +37,18 @@ public class MyBallotsController {
 
   private final NamedParameterJdbcTemplate jdbc;
   private final AuthGateway authGateway;
+  private final MyBallotsService myBallotsService;
 
-  public MyBallotsController(NamedParameterJdbcTemplate jdbc, AuthGateway authGateway) {
+  public MyBallotsController(
+      NamedParameterJdbcTemplate jdbc, AuthGateway authGateway, MyBallotsService myBallotsService) {
     this.jdbc = jdbc;
     this.authGateway = authGateway;
+    this.myBallotsService = myBallotsService;
   }
 
   @GetMapping("/polls/{pollId}/my-ballots")
-  public List<MyBallotResponse> myBallots(@PathVariable UUID pollId) {
-    UUID userId = authGateway.getCurrentUserId();
-    return jdbc.query(
-        LIST_MY_BALLOTS,
-        new MapSqlParameterSource("pollId", pollId).addValue("userId", userId),
-        (rs, i) ->
-            new MyBallotResponse(
-                (UUID) rs.getObject("apartment_id"),
-                rs.getString("label"),
-                rs.getBoolean("already_voted"),
-                (UUID) rs.getObject("voted_option_id")));
+  public MyBallotsResponse myBallots(@PathVariable UUID pollId) {
+    return myBallotsService.getMyBallots(pollId);
   }
 
   @GetMapping("/condominiums/{condoId}/my-pending-polls")

@@ -95,3 +95,36 @@ INSERT INTO apartment (id, condominium_id, block, unit_number, is_delinquent, cr
     ('019de5e8-a735-757a-a1bc-39b24ba6eb15', '019de5e8-a735-757a-a1bc-39af03edee05', 'B', '202', false, now()),
     ('019de5e8-a735-757a-a1bc-39b305dda261', '019de5e8-a735-757a-a1bc-39af03edee05', 'B', '203', false, now())
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- 5. Morador Dev — OWNER do A101 (Condomínio Teste Local)
+--    id = b0b0b0b0-... é v4 fake memorizável; deve existir em
+--    infra/supabase/supabase/seed.sql como auth.users + auth.identities.
+--    Credenciais de login: morador@local.dev / password123
+-- ============================================================
+INSERT INTO app_user (id, name, email, cpf_encrypted, is_active, consent_accepted_at, consent_policy_version, created_at)
+VALUES (
+    'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0',
+    'Morador Dev',
+    'morador@local.dev',
+    '\x00',
+    true,
+    now(),
+    'v1',
+    now()
+) ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at)
+VALUES (
+    '019dd4f8-57fa-77b1-ace2-c9fbbb000001',
+    '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e',
+    '019dd4f8-57fa-77b1-ace2-c9f78d6fc50c',
+    'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0',
+    'OWNER',
+    now()
+) ON CONFLICT (id) DO NOTHING;
+
+-- Marca A101 como tendo morador elegível para votação
+UPDATE apartment
+SET eligible_voter_user_id = 'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0'
+WHERE id = '019dd4f8-57fa-77b1-ace2-c9f78d6fc50c';

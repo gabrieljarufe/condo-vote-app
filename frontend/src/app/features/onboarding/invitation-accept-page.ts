@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import {
   FormControl,
   FormGroup,
@@ -13,6 +13,7 @@ import {
   OnboardingApiService,
   ValidateInvitationResponse,
 } from '../../core/api/onboarding-api.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { FormField } from '../../shared/ui/form-field';
 import { Spinner } from '../../shared/ui/spinner';
 
@@ -21,6 +22,8 @@ const passwordsMatch: ValidatorFn = (group) => {
   const confirm = group.get('confirmPassword')?.value;
   return pwd && confirm && pwd !== confirm ? { passwordMismatch: true } : null;
 };
+
+type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
 
 @Component({
   selector: 'app-invitation-accept-page',
@@ -49,112 +52,223 @@ const passwordsMatch: ValidatorFn = (group) => {
                 ({{ invitation()?.role === 'OWNER' ? 'Proprietário' : 'Inquilino' }}).
               </p>
 
-              <form
-                [formGroup]="form"
-                (ngSubmit)="submit()"
-                class="flex flex-col gap-5"
-                novalidate
-              >
-                <app-form-field label="E-mail" [control]="form.controls.email" #emailField>
-                  <input
-                    [id]="emailField.fieldId"
-                    type="email"
-                    formControlName="email"
-                    readonly
-                    class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container text-on-surface-variant cursor-not-allowed"
-                  />
-                </app-form-field>
+              @switch (mode()) {
+                @case ('CREATE') {
+                  <form
+                    [formGroup]="form"
+                    (ngSubmit)="submit()"
+                    class="flex flex-col gap-5"
+                    novalidate
+                  >
+                    <app-form-field label="E-mail" [control]="form.controls.email" #emailField>
+                      <input
+                        [id]="emailField.fieldId"
+                        type="email"
+                        formControlName="email"
+                        readonly
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container text-on-surface-variant cursor-not-allowed"
+                      />
+                    </app-form-field>
 
-                <app-form-field
-                  label="Nome completo"
-                  [control]="form.controls.fullName"
-                  [errors]="{ required: 'Nome é obrigatório' }"
-                  #nameField
-                >
-                  <input
-                    [id]="nameField.fieldId"
-                    type="text"
-                    autocomplete="name"
-                    formControlName="fullName"
-                    class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-                  />
-                </app-form-field>
+                    <app-form-field
+                      label="Nome completo"
+                      [control]="form.controls.fullName"
+                      [errors]="{ required: 'Nome é obrigatório' }"
+                      #nameField
+                    >
+                      <input
+                        [id]="nameField.fieldId"
+                        type="text"
+                        autocomplete="name"
+                        formControlName="fullName"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                      />
+                    </app-form-field>
 
-                <app-form-field
-                  label="CPF"
-                  [control]="form.controls.cpf"
-                  [errors]="{ required: 'CPF é obrigatório', pattern: 'CPF inválido' }"
-                  #cpfField
-                >
-                  <input
-                    [id]="cpfField.fieldId"
-                    type="text"
-                    inputmode="numeric"
-                    autocomplete="off"
-                    placeholder="000.000.000-00"
-                    formControlName="cpf"
-                    (input)="onCpfInput($event)"
-                    class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-                  />
-                </app-form-field>
+                    <app-form-field
+                      label="CPF"
+                      [control]="form.controls.cpf"
+                      [errors]="{ required: 'CPF é obrigatório', pattern: 'CPF inválido' }"
+                      #cpfField
+                    >
+                      <input
+                        [id]="cpfField.fieldId"
+                        type="text"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        placeholder="000.000.000-00"
+                        formControlName="cpf"
+                        (input)="onCpfInput($event, form.controls.cpf)"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                      />
+                    </app-form-field>
 
-                <app-form-field
-                  label="Senha"
-                  [control]="form.controls.password"
-                  [errors]="{
-                    required: 'Senha é obrigatória',
-                    minlength: 'Senha deve ter ao menos 8 caracteres'
-                  }"
-                  #passwordField
-                >
-                  <input
-                    [id]="passwordField.fieldId"
-                    type="password"
-                    autocomplete="new-password"
-                    formControlName="password"
-                    class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-                  />
-                </app-form-field>
+                    <app-form-field
+                      label="Senha"
+                      [control]="form.controls.password"
+                      [errors]="{
+                        required: 'Senha é obrigatória',
+                        minlength: 'Senha deve ter ao menos 8 caracteres'
+                      }"
+                      #passwordField
+                    >
+                      <input
+                        [id]="passwordField.fieldId"
+                        type="password"
+                        autocomplete="new-password"
+                        formControlName="password"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                      />
+                    </app-form-field>
 
-                <app-form-field
-                  label="Confirmar senha"
-                  [control]="form.controls.confirmPassword"
-                  [errors]="{ required: 'Confirme a senha' }"
-                  #confirmField
-                >
-                  <input
-                    [id]="confirmField.fieldId"
-                    type="password"
-                    autocomplete="new-password"
-                    formControlName="confirmPassword"
-                    class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-                  />
-                </app-form-field>
+                    <app-form-field
+                      label="Confirmar senha"
+                      [control]="form.controls.confirmPassword"
+                      [errors]="{ required: 'Confirme a senha' }"
+                      #confirmField
+                    >
+                      <input
+                        [id]="confirmField.fieldId"
+                        type="password"
+                        autocomplete="new-password"
+                        formControlName="confirmPassword"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                      />
+                    </app-form-field>
 
-                @if (form.hasError('passwordMismatch') && form.touched) {
-                  <p class="text-xs text-error" role="alert" aria-live="polite">
-                    As senhas não conferem.
-                  </p>
+                    @if (form.hasError('passwordMismatch') && form.touched) {
+                      <p class="text-xs text-error" role="alert" aria-live="polite">
+                        As senhas não conferem.
+                      </p>
+                    }
+
+                    <label
+                      class="flex gap-3 text-sm text-on-surface items-start cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        formControlName="acceptanceConfirmed"
+                        class="mt-1 w-4 h-4"
+                      />
+                      <span>
+                        Declaro que sou
+                        <strong>{{
+                          invitation()?.role === 'OWNER' ? 'Proprietário' : 'Inquilino'
+                        }}</strong>
+                        do apartamento <strong>{{ invitation()?.apartmentLabel }}</strong> no
+                        condomínio <strong>{{ invitation()?.condominiumName }}</strong>. Entendo
+                        que este vínculo dá acesso a votações condominiais e fica registrado para
+                        auditoria.
+                      </span>
+                    </label>
+
+                    @if (errorMessage()) {
+                      <p class="text-sm text-error" role="alert" aria-live="polite">
+                        {{ errorMessage() }}
+                      </p>
+                    }
+
+                    <button
+                      type="submit"
+                      [disabled]="submitting() || form.invalid"
+                      class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
+                    >
+                      @if (submitting()) {
+                        <app-spinner label="Criando conta…" />
+                      } @else {
+                        Criar conta
+                      }
+                    </button>
+                  </form>
                 }
-
-                @if (errorMessage()) {
-                  <p class="text-sm text-error" role="alert" aria-live="polite">
-                    {{ errorMessage() }}
+                @case ('LOGIN_REQUIRED') {
+                  <p class="text-sm text-on-surface-variant mb-6">
+                    Já existe uma conta para <strong>{{ invitation()?.email }}</strong>. Faça
+                    login para aceitar este convite.
                   </p>
+                  <button
+                    type="button"
+                    (click)="goToLogin()"
+                    class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                  >
+                    Entrar
+                  </button>
                 }
+                @case ('LINK') {
+                  <p class="text-sm text-on-surface-variant mb-6">
+                    Confirme a declaração abaixo para vincular este apartamento à sua conta.
+                  </p>
+                  <form
+                    [formGroup]="linkForm"
+                    (ngSubmit)="submitLink()"
+                    class="flex flex-col gap-5"
+                    novalidate
+                  >
+                    <div class="flex flex-col gap-1">
+                      <span class="text-sm text-on-surface-variant">E-mail</span>
+                      <input
+                        type="email"
+                        [value]="invitation()?.email ?? ''"
+                        readonly
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container text-on-surface-variant cursor-not-allowed"
+                      />
+                    </div>
 
-                <button
-                  type="submit"
-                  [disabled]="submitting() || form.invalid"
-                  class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
-                >
-                  @if (submitting()) {
-                    <app-spinner label="Criando conta…" />
-                  } @else {
-                    Criar conta
-                  }
-                </button>
-              </form>
+                    <label
+                      class="flex gap-3 text-sm text-on-surface items-start cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        formControlName="acceptanceConfirmed"
+                        class="mt-1 w-4 h-4"
+                      />
+                      <span>
+                        Declaro que sou
+                        <strong>{{
+                          invitation()?.role === 'OWNER' ? 'Proprietário' : 'Inquilino'
+                        }}</strong>
+                        do apartamento <strong>{{ invitation()?.apartmentLabel }}</strong> no
+                        condomínio <strong>{{ invitation()?.condominiumName }}</strong>. Entendo
+                        que este vínculo dá acesso a votações condominiais e fica registrado para
+                        auditoria.
+                      </span>
+                    </label>
+
+                    @if (errorMessage()) {
+                      <p class="text-sm text-error" role="alert" aria-live="polite">
+                        {{ errorMessage() }}
+                      </p>
+                    }
+
+                    <button
+                      type="submit"
+                      [disabled]="submitting() || linkForm.invalid"
+                      class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
+                    >
+                      @if (submitting()) {
+                        <app-spinner label="Vinculando…" />
+                      } @else {
+                        Aceitar convite
+                      }
+                    </button>
+                  </form>
+                }
+                @case ('WRONG_USER') {
+                  <p class="text-sm text-on-surface-variant mb-6">
+                    Você está logado como
+                    <strong>{{ auth.session()?.user?.email }}</strong
+                    >, mas o convite é para <strong>{{ invitation()?.email }}</strong>. Saia da
+                    conta e faça login com o e-mail correto.
+                  </p>
+                  <button
+                    type="button"
+                    (click)="signOutAndReload()"
+                    class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                  >
+                    Sair
+                  </button>
+                }
+              }
             }
             @case ('NOT_FOUND') {
               <h1 class="text-2xl font-semibold text-on-surface mb-2">Convite inválido</h1>
@@ -208,11 +322,23 @@ export default class InvitationAcceptPage implements OnInit {
   private readonly api = inject(OnboardingApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly auth = inject(AuthService);
 
   protected readonly uiState = signal<InvitationState | 'LOADING'>('LOADING');
   protected readonly invitation = signal<ValidateInvitationResponse | null>(null);
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+
+  protected readonly mode = computed<ValidMode | null>(() => {
+    const inv = this.invitation();
+    if (!inv || inv.state !== 'VALID') return null;
+    if (!inv.emailHasAccount) return 'CREATE';
+    const session = this.auth.session();
+    if (!session) return 'LOGIN_REQUIRED';
+    const sessEmail = session.user.email?.toLowerCase();
+    const invEmail = inv.email?.toLowerCase();
+    return sessEmail === invEmail ? 'LINK' : 'WRONG_USER';
+  });
 
   protected readonly form = new FormGroup(
     {
@@ -233,9 +359,20 @@ export default class InvitationAcceptPage implements OnInit {
         nonNullable: true,
         validators: [Validators.required],
       }),
+      acceptanceConfirmed: new FormControl<boolean>(false, {
+        nonNullable: true,
+        validators: [Validators.requiredTrue],
+      }),
     },
     { validators: [passwordsMatch] },
   );
+
+  protected readonly linkForm = new FormGroup({
+    acceptanceConfirmed: new FormControl<boolean>(false, {
+      nonNullable: true,
+      validators: [Validators.requiredTrue],
+    }),
+  });
 
   ngOnInit(): void {
     const token = this.route.snapshot.paramMap.get('token');
@@ -257,7 +394,7 @@ export default class InvitationAcceptPage implements OnInit {
     });
   }
 
-  protected onCpfInput(ev: Event): void {
+  protected onCpfInput(ev: Event, control: FormControl<string>): void {
     const input = ev.target as HTMLInputElement;
     const digits = input.value.replace(/\D/g, '').slice(0, 11);
     let masked = digits;
@@ -268,7 +405,7 @@ export default class InvitationAcceptPage implements OnInit {
     } else if (digits.length > 3) {
       masked = `${digits.slice(0, 3)}.${digits.slice(3)}`;
     }
-    this.form.controls.cpf.setValue(masked, { emitEvent: false });
+    control.setValue(masked, { emitEvent: false });
   }
 
   protected submit(): void {
@@ -283,6 +420,7 @@ export default class InvitationAcceptPage implements OnInit {
       cpf: raw.cpf,
       password: raw.password,
       fullName: raw.fullName.trim(),
+      acceptanceConfirmed: true,
     };
 
     this.submitting.set(true);
@@ -307,5 +445,43 @@ export default class InvitationAcceptPage implements OnInit {
         }
       },
     });
+  }
+
+  protected submitLink(): void {
+    if (this.linkForm.invalid) {
+      this.linkForm.markAllAsTouched();
+      return;
+    }
+    const token = this.route.snapshot.paramMap.get('token')!;
+    this.submitting.set(true);
+    this.errorMessage.set(null);
+    this.api.acceptAsExisting(token, { acceptanceConfirmed: true }).subscribe({
+      next: () => {
+        this.router.navigate(['/app']);
+      },
+      error: (err) => {
+        this.submitting.set(false);
+        const status = err?.status;
+        if (status === 403) {
+          this.errorMessage.set('Convite não pertence a esta conta.');
+        } else if (status === 409) {
+          this.errorMessage.set('Convite não está mais pendente.');
+        } else if (status === 429) {
+          this.errorMessage.set('Muitas tentativas. Aguarde um minuto e tente novamente.');
+        } else {
+          this.errorMessage.set('Não foi possível vincular o convite. Tente novamente.');
+        }
+      },
+    });
+  }
+
+  protected goToLogin(): void {
+    const token = this.route.snapshot.paramMap.get('token')!;
+    this.router.navigate(['/login'], { queryParams: { redirect: `/invite/${token}` } });
+  }
+
+  protected async signOutAndReload(): Promise<void> {
+    await this.auth.signOut();
+    window.location.reload();
   }
 }

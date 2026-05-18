@@ -19,10 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>Delega o cálculo do desfecho a {@link PollResultCalculator} (função pura) e persiste o
  * resultado em {@code poll_result}. Reutilizado pelo {@link PollService} (encerramento manual) e
- * pelo job automático de T7.5.
+ * pelo job automático de T7.5, e pelo {@link VoteService} (auto-close 100%).
  */
 @Component
 public class PollCloser {
+
+  /** Origem do encerramento — mapeada diretamente para o enum {@code poll_close_trigger} no DB. */
+  public enum CloseTrigger {
+    MANUAL,
+    AUTOMATIC_END_TIME,
+    AUTOMATIC_ALL_VOTED
+  }
 
   private static final String UPDATE_POLL_CLOSE =
       """
@@ -82,9 +89,27 @@ public class PollCloser {
    * @return poll atualizada com status CLOSED ou INVALIDATED
    * @throws NotFoundException se a votação não existir
    * @throws ConflictException se a votação não estiver em OPEN
+   * @deprecated Use {@link #close(UUID, UUID, CloseTrigger)} para type-safety no trigger.
    */
   @Transactional
   public Poll close(UUID pollId, UUID actorUserId, boolean automatic) {
+    return close(
+        pollId, actorUserId, automatic ? CloseTrigger.AUTOMATIC_END_TIME : CloseTrigger.MANUAL);
+  }
+
+  /**
+   * Fecha a votação com trigger explícito, calculando resultado e persistindo em {@code
+   * poll_result}.
+   *
+   * @param pollId id da votação
+   * @param actorUserId usuário que disparou o encerramento
+   * @param trigger origem do encerramento (MANUAL, AUTOMATIC_END_TIME, AUTOMATIC_ALL_VOTED)
+   * @return poll atualizada com status CLOSED ou INVALIDATED
+   * @throws NotFoundException se a votação não existir
+   * @throws ConflictException se a votação não estiver em OPEN
+   */
+  @Transactional
+  public Poll close(UUID pollId, UUID actorUserId, CloseTrigger trigger) {
     Poll poll =
         pollRepository
             .findById(pollId)
@@ -128,8 +153,7 @@ public class PollCloser {
         UPDATE_POLL_CLOSE,
         new MapSqlParameterSource().addValue("pollId", pollId).addValue("outcome", outcomeStatus));
 
-    // Determinar close_trigger
-    String closeTrigger = automatic ? "AUTOMATIC_END_TIME" : "MANUAL";
+    boolean automatic = trigger != CloseTrigger.MANUAL;
 
     // Calcular quorum_reached
     boolean quorumReached = PollResultCalculator.OUTCOME_CLOSED.equals(outcomeStatus);
@@ -159,7 +183,7 @@ public class PollCloser {
             .addValue(
                 "invalidationReason",
                 output.invalidationReason() != null ? output.invalidationReason() : null)
-            .addValue("closeTrigger", closeTrigger)
+            .addValue("closeTrigger", trigger.name())
             .addValue("votesPerOption", votesPerOptionJson));
 
     // Publicar auditoria

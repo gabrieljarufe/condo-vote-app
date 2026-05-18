@@ -64,6 +64,29 @@ export interface CancelPollRequest {
   readonly reason: string;
 }
 
+export interface VoteResponse {
+  readonly id: string;
+  readonly pollId: string;
+  readonly apartmentId: string;
+  readonly optionId: string;
+  readonly votedAt: string;
+}
+
+export interface MyBallotResponse {
+  readonly apartmentId: string;
+  readonly apartmentLabel: string;
+  readonly alreadyVoted: boolean;
+  readonly votedOptionId: string | null;
+}
+
+export interface MyPendingPollResponse {
+  readonly pollId: string;
+  readonly title: string;
+  readonly scheduledEnd: string;
+  readonly pendingBallotsCount: number;
+  readonly totalBallotsCount: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PollsApiService {
   private readonly http = inject(HttpClient);
@@ -124,6 +147,34 @@ export class PollsApiService {
   getById(pollId: string): Observable<PollDetailResponse> {
     return this.http.get<PollDetailResponse>(
       `${environment.apiUrl}/api/polls/${pollId}`,
+    );
+  }
+
+  submitVote(
+    pollId: string,
+    apartmentId: string,
+    optionId: string,
+    bulkOperation: boolean,
+  ): Observable<VoteResponse> {
+    const headers: Record<string, string> = bulkOperation
+      ? { 'X-Bulk-Operation': 'true' }
+      : {};
+    return this.http.post<VoteResponse>(
+      `${environment.apiUrl}/api/polls/${pollId}/vote`,
+      { apartmentId, optionId },
+      { headers },
+    );
+  }
+
+  getMyBallots(pollId: string): Observable<ReadonlyArray<MyBallotResponse>> {
+    return this.http.get<ReadonlyArray<MyBallotResponse>>(
+      `${environment.apiUrl}/api/polls/${pollId}/my-ballots`,
+    );
+  }
+
+  getMyPendingPolls(condoId: string): Observable<ReadonlyArray<MyPendingPollResponse>> {
+    return this.http.get<ReadonlyArray<MyPendingPollResponse>>(
+      `${environment.apiUrl}/api/condominiums/${condoId}/my-pending-polls`,
     );
   }
 }

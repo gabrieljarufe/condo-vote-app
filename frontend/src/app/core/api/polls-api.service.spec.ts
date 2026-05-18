@@ -2,7 +2,15 @@ import { HttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { of } from 'rxjs';
-import { PollsApiService, PollResponse, PollDetailResponse, Page } from './polls-api.service';
+import {
+  PollsApiService,
+  PollResponse,
+  PollDetailResponse,
+  Page,
+  VoteResponse,
+  MyBallotResponse,
+  MyPendingPollResponse,
+} from './polls-api.service';
 
 const mockPoll: PollResponse = {
   id: 'poll-1',
@@ -172,5 +180,81 @@ describe('PollsApiService', () => {
     );
     expect((result as PollDetailResponse | null)?.options).toHaveLength(1);
     expect((result as PollDetailResponse | null)?.result).toBeNull();
+  });
+
+  it('submitVote_callsCorrectEndpoint: faz POST no endpoint correto sem header X-Bulk-Operation quando bulkOperation=false', () => {
+    const mockVote: VoteResponse = {
+      id: 'vote-1',
+      pollId: 'poll-1',
+      apartmentId: 'apt-1',
+      optionId: 'opt-1',
+      votedAt: '2026-01-01T00:00:00Z',
+    };
+    httpMock.post.mockReturnValue(of(mockVote));
+    let result: VoteResponse | null = null;
+    service.submitVote('poll-1', 'apt-1', 'opt-1', false).subscribe((r) => (result = r));
+    expect(httpMock.post).toHaveBeenCalledWith(
+      expect.stringContaining('/polls/poll-1/vote'),
+      { apartmentId: 'apt-1', optionId: 'opt-1' },
+      { headers: {} },
+    );
+    const options = httpMock.post.mock.calls[0][2] as { headers: Record<string, string> };
+    expect(options.headers['X-Bulk-Operation']).toBeUndefined();
+    expect((result as VoteResponse | null)?.id).toBe('vote-1');
+  });
+
+  it('submitVote_withBulk_setsHeader: inclui header X-Bulk-Operation: true quando bulkOperation=true', () => {
+    const mockVote: VoteResponse = {
+      id: 'vote-2',
+      pollId: 'poll-1',
+      apartmentId: 'apt-2',
+      optionId: 'opt-1',
+      votedAt: '2026-01-01T00:00:00Z',
+    };
+    httpMock.post.mockReturnValue(of(mockVote));
+    service.submitVote('poll-1', 'apt-2', 'opt-1', true).subscribe();
+    expect(httpMock.post).toHaveBeenCalledWith(
+      expect.stringContaining('/polls/poll-1/vote'),
+      { apartmentId: 'apt-2', optionId: 'opt-1' },
+      { headers: { 'X-Bulk-Operation': 'true' } },
+    );
+    const options = httpMock.post.mock.calls[0][2] as { headers: Record<string, string> };
+    expect(options.headers['X-Bulk-Operation']).toBe('true');
+  });
+
+  it('getMyBallots_callsCorrectEndpoint: faz GET no endpoint correto e retorna lista de ballots', () => {
+    const mockBallots: MyBallotResponse[] = [
+      { apartmentId: 'apt-1', apartmentLabel: '101', alreadyVoted: true, votedOptionId: 'opt-1' },
+      { apartmentId: 'apt-2', apartmentLabel: '102', alreadyVoted: false, votedOptionId: null },
+    ];
+    httpMock.get.mockReturnValue(of(mockBallots));
+    let result: ReadonlyArray<MyBallotResponse> | null = null;
+    service.getMyBallots('poll-1').subscribe((r) => (result = r));
+    expect(httpMock.get).toHaveBeenCalledWith(
+      expect.stringContaining('/polls/poll-1/my-ballots'),
+    );
+    expect((result as ReadonlyArray<MyBallotResponse> | null)).toHaveLength(2);
+    expect((result as ReadonlyArray<MyBallotResponse>)[0].alreadyVoted).toBe(true);
+    expect((result as ReadonlyArray<MyBallotResponse>)[1].votedOptionId).toBeNull();
+  });
+
+  it('getMyPendingPolls_callsCorrectEndpoint: faz GET no endpoint correto e retorna polls pendentes', () => {
+    const mockPending: MyPendingPollResponse[] = [
+      {
+        pollId: 'poll-1',
+        title: 'Votação pendente',
+        scheduledEnd: '2026-06-01T18:00:00Z',
+        pendingBallotsCount: 3,
+        totalBallotsCount: 10,
+      },
+    ];
+    httpMock.get.mockReturnValue(of(mockPending));
+    let result: ReadonlyArray<MyPendingPollResponse> | null = null;
+    service.getMyPendingPolls('condo-1').subscribe((r) => (result = r));
+    expect(httpMock.get).toHaveBeenCalledWith(
+      expect.stringContaining('/condominiums/condo-1/my-pending-polls'),
+    );
+    expect((result as ReadonlyArray<MyPendingPollResponse> | null)).toHaveLength(1);
+    expect((result as ReadonlyArray<MyPendingPollResponse>)[0].pendingBallotsCount).toBe(3);
   });
 });

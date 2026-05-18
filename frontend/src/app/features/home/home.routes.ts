@@ -53,6 +53,21 @@ const routes: Routes = [
     loadComponent: () => import('../polls/poll-edit-page'),
   },
   {
+    path: 'condominiums/:condoId/my-polls',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/voting/resident-pending-polls-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId/vote',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/voting/ballot-vote-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId/vote/review',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/voting/ballot-review-page'),
+  },
+  {
     path: '**',
     redirectTo: '',
   },

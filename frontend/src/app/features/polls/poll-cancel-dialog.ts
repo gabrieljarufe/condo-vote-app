@@ -55,7 +55,7 @@ import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
                 <span></span>
               }
               <span class="text-xs text-on-surface-variant shrink-0">
-                {{ reasonControl.value?.length ?? 0 }}/500
+                {{ reasonControl.value.length }}/500
               </span>
             </div>
           </div>

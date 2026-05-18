@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -20,6 +21,7 @@ import com.condovote.onboarding.dto.ValidateInvitationResponse;
 import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.crypto.CpfEncryptor;
 import com.condovote.shared.exception.ConflictException;
+import com.condovote.shared.exception.ForbiddenException;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Instant;
 import java.util.Map;
@@ -27,9 +29,11 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 
 @ExtendWith(MockitoExtension.class)
 class OnboardingServiceTest {
@@ -65,6 +69,93 @@ class OnboardingServiceTest {
     when(redisCommands.get(anyString())).thenReturn(null);
     ValidateInvitationResponse resp = newService().validate("abc");
     assertThat(resp.state()).isEqualTo(ValidateInvitationResponse.State.NOT_FOUND);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void validate_pending_emailComConta_retornaEmailHasAccountTrue() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+    String email = "morador@example.com";
+
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(Long.class), eq(email)))
+        .thenReturn(1L);
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            email,
+            new byte[] {1, 2, 3},
+            "OWNER",
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+    when(apartmentRepository.findById(aptId)).thenReturn(Optional.empty());
+    when(condominiumRepository.findById(condoId)).thenReturn(Optional.empty());
+
+    ValidateInvitationResponse resp = newService().validate(token);
+
+    assertThat(resp.state()).isEqualTo(ValidateInvitationResponse.State.VALID);
+    assertThat(resp.emailHasAccount()).isTrue();
+    assertThat(resp.email()).isEqualTo(email);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void validate_pending_emailSemConta_retornaEmailHasAccountFalse() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+    String email = "novo@example.com";
+
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(Long.class), eq(email)))
+        .thenReturn(0L);
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            email,
+            new byte[] {1, 2, 3},
+            "OWNER",
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+    when(apartmentRepository.findById(aptId)).thenReturn(Optional.empty());
+    when(condominiumRepository.findById(condoId)).thenReturn(Optional.empty());
+
+    ValidateInvitationResponse resp = newService().validate(token);
+
+    assertThat(resp.state()).isEqualTo(ValidateInvitationResponse.State.VALID);
+    assertThat(resp.emailHasAccount()).isFalse();
   }
 
   @Test
@@ -105,7 +196,7 @@ class OnboardingServiceTest {
                 newService()
                     .complete(
                         new CompleteRegistrationRequest(
-                            token, "11144477735", "senha-forte-1!", "Nome")))
+                            token, "11144477735", "senha-forte-1!", "Nome", true)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("CPF não confere");
   }
@@ -147,7 +238,7 @@ class OnboardingServiceTest {
                 newService()
                     .complete(
                         new CompleteRegistrationRequest(
-                            token, "11144477735", "senha-forte-1!", "Nome")))
+                            token, "11144477735", "senha-forte-1!", "Nome", true)))
         .isInstanceOf(ConflictException.class);
   }
 
@@ -160,7 +251,7 @@ class OnboardingServiceTest {
                 newService()
                     .complete(
                         new CompleteRegistrationRequest(
-                            "x", "11144477735", "senha-forte-1!", "Nome")))
+                            "x", "11144477735", "senha-forte-1!", "Nome", true)))
         .isInstanceOf(ConflictException.class);
   }
 

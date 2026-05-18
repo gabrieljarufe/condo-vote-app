@@ -7,30 +7,27 @@ services:
     container_name: condo-vote-backend
     ports:
       - "8080:8080"
+    # IMPORTANTE: usar SEMPRE .env.local (Supabase local). Não usar .env — ele aponta
+    # para o Supabase de PRODUÇÃO e provoca side effects reais (criação de usuários,
+    # envio de e-mails, etc.) ao testar o backend localmente.
+    env_file:
+      - ./.env.local
     environment:
+      # Overrides obrigatórios — vars de .env.local apontam pra "localhost", que dentro
+      # do container resolve pro próprio container, não pro host onde Supabase/Redis rodam.
       SPRING_PROFILES_ACTIVE: local
-      # Sobrescreve application-local.yaml: dentro do container, "localhost" aponta
-      # pro próprio container; host.docker.internal alcança o host onde o Supabase CLI roda.
       SPRING_DATASOURCE_URL: jdbc:postgresql://host.docker.internal:54322/postgres
       SPRING_DATASOURCE_USERNAME: postgres
       SPRING_DATASOURCE_PASSWORD: postgres
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
       SUPABASE_URL: http://host.docker.internal:54321
-      APP_CORS_ALLOWED_ORIGINS: http://localhost:4200
       APP_REDIS_URL: redis://redis:6379
-      # E-mail via Resend (HTTP). Para voltar ao SMTP local (Inbucket/Mailpit),
-      # trocar EMAIL_PROVIDER=smtp e descomentar MAIL_HOST/MAIL_PORT.
+      APP_CORS_ALLOWED_ORIGINS: http://localhost:4200
       APP_EMAIL_PROVIDER: resend
       APP_EMAIL_FROM: onboarding@resend.dev
       APP_EMAIL_ACCEPT_BASE_URL: http://localhost:4200
-      APP_EMAIL_RESEND_API_KEY: ${RESEND_API_KEY:?defina RESEND_API_KEY no shell antes de subir o compose}
       APP_EMAIL_RESEND_API_URL: https://api.resend.com/emails
-      # H4 — Supabase Admin API (criar auth.users no aceite de convite).
-      # Opcional: sem ela o backend sobe normalmente, mas POST /api/public/register/complete
-      # falha com 500 e mensagem clara apontando para esta env.
-      # Obter via: supabase status | grep service_role
-      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
-      SUPABASE_URL: ${SUPABASE_URL:-http://host.docker.internal:54321}
+      # APP_EMAIL_RESEND_API_KEY e SUPABASE_SERVICE_ROLE_KEY vêm de .env.local
       # MAIL_HOST: host.docker.internal
       # MAIL_PORT: "54325"
     depends_on:

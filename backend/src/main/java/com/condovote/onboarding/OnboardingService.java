@@ -14,6 +14,7 @@ import com.condovote.shared.UuidV7;
 import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.crypto.CpfEncryptor;
 import com.condovote.shared.exception.ConflictException;
+import com.condovote.shared.exception.ForbiddenException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.lettuce.core.api.sync.RedisCommands;
@@ -96,8 +97,15 @@ public class OnboardingService {
                 .orElse("—");
         String condoName =
             condominiumRepository.findById(payload.condominiumId).map(c -> c.name()).orElse("—");
+        boolean emailHasAccount = existsUserByEmail(inv.email());
         yield new ValidateInvitationResponse(
-            State.VALID, inv.email(), aptLabel, condoName, inv.role(), inv.expiresAt());
+            State.VALID,
+            inv.email(),
+            aptLabel,
+            condoName,
+            inv.role(),
+            inv.expiresAt(),
+            emailHasAccount);
       }
       default -> ValidateInvitationResponse.of(State.NOT_FOUND);
     };
@@ -133,11 +141,9 @@ public class OnboardingService {
       throw new IllegalArgumentException("CPF não confere com o convite");
     }
 
-    Long existsByEmail =
-        jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM app_user WHERE lower(email) = lower(?)", Long.class, inv.email());
-    if (existsByEmail != null && existsByEmail > 0) {
-      throw new ConflictException("Já existe conta para este e-mail. Faça login.");
+    if (existsUserByEmail(inv.email())) {
+      throw new ConflictException(
+          "Já existe conta para este e-mail. Faça login para aceitar este convite.");
     }
 
     UUID authUserId = supabaseAdminGateway.createUser(inv.email(), req.password());
@@ -154,13 +160,14 @@ public class OnboardingService {
         cpfBytes,
         CONSENT_POLICY_VERSION);
 
+    UUID residentRowId = UuidV7.generate();
     jdbcTemplate.update(
         """
             INSERT INTO apartment_resident
                 (id, condominium_id, apartment_id, user_id, role, joined_at)
             VALUES (?, ?, ?, ?, ?::resident_role, now())
             """,
-        UuidV7.generate(),
+        residentRowId,
         payload.condominiumId,
         inv.apartmentId(),
         authUserId,
@@ -218,11 +225,151 @@ public class OnboardingService {
         Map.of(
             "email", inv.email(),
             "apartmentId", inv.apartmentId().toString(),
-            "role", inv.role()),
+            "role", inv.role(),
+            "flow", "CREATE_NEW_USER"),
+        payload.condominiumId,
+        authUserId);
+
+    auditEventPublisher.publish(
+        "RESIDENT_JOINED",
+        "apartment_resident",
+        residentRowId,
+        Map.of(
+            "apartmentId", inv.apartmentId().toString(),
+            "userId", authUserId.toString(),
+            "role", inv.role(),
+            "via", "INVITATION",
+            "invitationId", payload.invitationId.toString(),
+            "acceptanceConfirmedAt", Instant.now().toString()),
         payload.condominiumId,
         authUserId);
 
     return new CompleteRegistrationResponse(authUserId);
+  }
+
+  /**
+   * Vincula um apartamento de um convite PENDING a uma conta {@code app_user} já existente. JWT é
+   * obrigatório — o usuário já está logado. Auditoria dual: sempre publica {@code
+   * INVITATION_ACCEPTED}; só publica {@code RESIDENT_JOINED} se a residência ativa não existia
+   * (idempotente caso já exista).
+   */
+  @Transactional
+  public void acceptAsExistingUser(String token, String jwtEmail, UUID jwtUserId) {
+    TokenPayload payload = readToken(token);
+    if (payload == null) {
+      throw new ConflictException("Convite inválido ou expirado");
+    }
+    setTenant(payload.condominiumId);
+
+    Invitation inv =
+        invitationRepository
+            .findById(payload.invitationId)
+            .orElseThrow(() -> new ConflictException("Convite inválido ou expirado"));
+
+    if (!"PENDING".equals(inv.status())) {
+      throw new ConflictException("Convite não está mais pendente (status=" + inv.status() + ")");
+    }
+    if (inv.expiresAt().isBefore(Instant.now())) {
+      throw new ConflictException("Convite expirado");
+    }
+
+    // Email no JWT precisa bater com o e-mail do convite — impede usuário X aceitar convite de Y.
+    if (jwtEmail == null || !inv.email().equalsIgnoreCase(jwtEmail)) {
+      throw new ForbiddenException("Convite é para outro e-mail");
+    }
+
+    // Verifica que o app_user referenciado pelo JWT existe. Protege contra JWT órfão de auth.users.
+    Long exists =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM app_user WHERE id = ?", Long.class, jwtUserId);
+    if (exists == null || exists == 0) {
+      throw new ConflictException("Conta não encontrada — refaça o cadastro");
+    }
+
+    // Idempotência: se já existe residência ativa para (apt, user), não criamos outra.
+    // apartment_resident não tem unique em (apartment_id, user_id) — SELECT-before-INSERT.
+    Optional<UUID> existingResident =
+        jdbcTemplate.query(
+            "SELECT id FROM apartment_resident "
+                + "WHERE apartment_id = ? AND user_id = ? AND ended_at IS NULL "
+                + "LIMIT 1",
+            rs ->
+                rs.next()
+                    ? Optional.of(UUID.fromString(rs.getString("id")))
+                    : Optional.<UUID>empty(),
+            inv.apartmentId(),
+            jwtUserId);
+
+    boolean wasIdempotent = existingResident != null && existingResident.isPresent();
+    UUID residentRowId;
+    if (wasIdempotent) {
+      residentRowId = existingResident.get();
+    } else {
+      residentRowId = UuidV7.generate();
+      jdbcTemplate.update(
+          """
+              INSERT INTO apartment_resident
+                  (id, condominium_id, apartment_id, user_id, role, joined_at)
+              VALUES (?, ?, ?, ?, ?::resident_role, now())
+              """,
+          residentRowId,
+          payload.condominiumId,
+          inv.apartmentId(),
+          jwtUserId,
+          inv.role());
+    }
+
+    int updated =
+        jdbcTemplate.update(
+            """
+                UPDATE invitation
+                SET status = 'ACCEPTED'::invitation_status, accepted_at = now()
+                WHERE id = ? AND status = 'PENDING'::invitation_status
+                """,
+            payload.invitationId);
+    if (updated == 0) {
+      throw new ConflictException("Convite não está mais pendente");
+    }
+
+    redisCommands.del("invitation:token:" + token);
+
+    auditEventPublisher.publish(
+        "INVITATION_ACCEPTED",
+        "invitation",
+        payload.invitationId,
+        Map.of(
+            "email",
+            inv.email(),
+            "apartmentId",
+            inv.apartmentId().toString(),
+            "role",
+            inv.role(),
+            "flow",
+            wasIdempotent ? "LINK_EXISTING_USER_IDEMPOTENT" : "LINK_EXISTING_USER"),
+        payload.condominiumId,
+        jwtUserId);
+
+    if (!wasIdempotent) {
+      auditEventPublisher.publish(
+          "RESIDENT_JOINED",
+          "apartment_resident",
+          residentRowId,
+          Map.of(
+              "apartmentId",
+              inv.apartmentId().toString(),
+              "userId",
+              jwtUserId.toString(),
+              "role",
+              inv.role(),
+              "via",
+              "INVITATION",
+              "invitationId",
+              payload.invitationId.toString(),
+              "acceptanceConfirmedAt",
+              Instant.now().toString()),
+          payload.condominiumId,
+          jwtUserId);
+    }
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
@@ -246,6 +393,13 @@ public class OnboardingService {
     } catch (JsonProcessingException | IllegalArgumentException e) {
       return null;
     }
+  }
+
+  private boolean existsUserByEmail(String email) {
+    Long count =
+        jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM app_user WHERE lower(email) = lower(?)", Long.class, email);
+    return count != null && count > 0;
   }
 
   private void setTenant(UUID condominiumId) {

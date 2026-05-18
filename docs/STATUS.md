@@ -71,12 +71,31 @@
 - **Payload Redis do token mudou para JSON:** o valor da chave `invitation:token:{token}` passou de `invitation_id` (UUID puro) para `{"invitationId":"...","condominiumId":"..."}`. Necessário porque o endpoint público `/api/public/invitations/validate` precisa setar `SET LOCAL app.current_tenant` antes de consultar o banco — e para isso precisa do `condominiumId` antes de carregar o convite.
 - **`SupabaseAdminGateway` com `service_role` key:** criação de `auth.users` exige a chave `SUPABASE_SERVICE_ROLE_KEY` (não a anon key). Em prod essa variável precisa estar configurada no Coolify; o app falha cedo se ausente. Ver `docs/features/h4-onboarding-magic-link.md` para pré-requisitos completos.
 
-  - ⏳ H5 — Morador vê apartamentos onde reside
-  - ⏳ H6 — Síndico promove morador / delega voto
-  - ⏳ H7 — Síndico cria votação (CRUD + snapshot)
-  - ⏳ H8 — Morador vota e vê resultado
-  - ⏳ H9 — Timeline de auditoria
-  - ⏳ H10 — Jobs residuais (RetentionPruner placeholder)
+  - ✅ **H5** — Morador vê apartamentos onde reside
+  - 🔶 **H7** — Síndico cria votação (lifecycle completo: DRAFT/SCHEDULED/OPEN/CLOSED/INVALIDATED/CANCELLED) — Backend: aggregates Poll/PollOption/PollEligibleSnapshot/PollResult, PollResultCalculator (função pura cobrindo SIMPLE/ABSOLUTE/QUALIFIED_2_3/QUALIFIED_3_4 × FIRST/SECOND), PollService + PollOpener + PollCloser, 8 endpoints REST, PollOpenerJob/PollCloserJob @Scheduled(5min), 198 UTs + 120 ITs verdes. Frontend: feature `polls/` com lista paginada filtrada, page de criar/editar com FormArray de opções, page de detalhe com ações condicionais por status, dialog de cancelar com motivo obrigatório (≥10 chars), badge de status colorido. Migrations V12 (enum values POLL_PUBLISHED/POLL_UPDATED/POLL_OPENED_AUTO + index parcial idx_poll_open_by_condo) e V13 (`MANUAL` em poll_close_trigger). Smoke E2E prod pendente — ver `docs/features/h7-criar-votacao.md`. PR `feat/h7-poll-lifecycle`.
+  - ⏳ H6 — Síndico promove morador / delega voto (stretch — só entra se sobrar tempo)
+  - 🔶 **H8** — Morador registra voto + auto-close + breakdown — Backend: `Vote` + `VoteRepository` (tally por opção + namedJdbc direto), `VoteService.castVote` com lock pessimista (`SELECT poll FOR UPDATE` na 1ª linha da transação), validações de elegibilidade contra snapshot, dedup 1-voto/apto, audit `VOTE_CAST` com `bulkOperation`, auto-close 100% via `PollCloser.close(pollId, actor, CloseTrigger.AUTOMATIC_ALL_VOTED)`, `VoteController` + `MyBallotsController`. `PollCloser` refatorado com enum `CloseTrigger { MANUAL, AUTOMATIC_END_TIME, AUTOMATIC_ALL_VOTED }`. V14 adiciona `VOTE_CAST` ao enum `audit_event_type`. Frontend: `BallotVotePage` (1 cédula + CTA bulk), `BallotReviewPage` (N cards + override + bulk submit paralelo + tolerância a falha parcial + retry), `BallotCard` (dumb, `@Input`/`@Output` decorators), tile "Minhas votações" condicional a `isResident()` com badge contador, breakdown real por opção no `poll-detail-page` (%, barra, badge "Vencedora") quando CLOSED/INVALIDATED. 127 testes backend + 285 Vitest frontend verdes. Smoke E2E prod pendente — ver `docs/features/h8-votar.md`. PR `feat/h8-poll-vote`.
+  - ⏳ H9 — Timeline de auditoria (stretch)
+  - ⏳ H10 — Jobs residuais (RetentionPruner placeholder, stretch)
+
+### Descobertas não-óbvias da H8 (2026-05-17)
+
+- **Spring Data JDBC com `@Id` pré-setado executa UPDATE, não INSERT.** Para entidades com UUID v7 gerado no Java, o padrão do projeto é `namedJdbc.update("INSERT INTO ...")` diretamente. `VoteRepository.insert()` segue esse padrão; `save()` não pode ser usado para `Vote`.
+- **Lock pessimista vai no `poll`, não no `vote`.** `VoteService.castVote` executa `SELECT FROM poll WHERE id=? FOR UPDATE` na 1ª linha da transação para serializar votos concorrentes sem deadlock entre linhas de `vote` que ainda não existem.
+- **`poll_close_trigger` já tinha `AUTOMATIC_ALL_VOTED` desde V7** — V14 só adicionou `VOTE_CAST` ao `audit_event_type`. Enum `CloseTrigger` Java foi adicionado em H8, mas o valor no banco já existia.
+- **`PollCloser` já consultava votos do banco (premissa P5 do plano estava errada).** `loadVotesByOption()` estava em `PollCloser` desde H7. H8 apenas refatorou a assinatura para aceitar `CloseTrigger` explícito e adicionou a chamada do `VoteService`.
+- **Vitest + Angular JIT: signal inputs não funcionam em componentes substituídos via `overrideComponent`.** `BallotCard` usa `@Input()`/`@Output()` decorators clássicos. `fixture.componentRef.setInput` com `input.required()` causa `NG0303` neste setup (mesma limitação já documentada em H7 para `poll-cancel-dialog`).
+
+### Descobertas não-óbvias da H7 (2026-05-17)
+
+- **`${flyway:executeInTransaction=false}` é placeholder, não directive:** tentar usar a sintaxe no header do `.sql` faz Flyway tentar resolver como placeholder e falhar com "Failed to populate value for default placeholder". A forma correta é um arquivo `.conf` ao lado da migration (mesmo nome + `.conf`) com o conteúdo `executeInTransaction=false`. Necessário porque `ALTER TYPE ADD VALUE` não pode rodar em bloco transacional no PostgreSQL.
+- **Enum `poll_close_trigger` originalmente só tinha valores `AUTOMATIC_*`** (V7) — V13 adiciona `MANUAL` para permitir `poll_result.close_trigger='MANUAL'` quando o síndico encerra. Sem isso, `PollCloser` não conseguia inserir o resultado para fechamentos manuais.
+- **Convocação correta no enum é `'FIRST'`/`'SECOND'`** (V1), não `'GENERAL'` como o doc h7 MVP original sugeria. INSERT com `'GENERAL'` falharia. Plano original foi reescrito.
+- **`PollOpener` precisa atualizar status + opened_at + opened_by_user_id + eligible_count num único UPDATE** para satisfazer atomicamente os CHECKs `chk_poll_opened` e `chk_poll_eligible_count`. Tentar INSERT da poll com `status='OPEN'` e `eligible_count=NULL` viola CHECK na criação.
+- **Jobs `@Scheduled` precisam setar `TenantContext` por iteração ANTES de chamar o componente `@Transactional`** — query inicial é via `JdbcTemplate` cru (cross-tenant, sem RLS), depois cada iteração entra em transação própria que aciona `TenantTransactionAspect` automaticamente. Try/catch por iteração para não bloquear outras polls.
+- **`?::poll_status` não funciona em prepared statements JDBC** — cast de enum precisa ser inlineado no SQL (`'SCHEDULED'::poll_status`). Vale para todos os enums Postgres consumidos via JdbcTemplate.
+- **`@Output` com EventEmitter clássico + `@Input` com setter via ngOnChanges** nos componentes novos do frontend (ao invés de `output()`/`input.required()`) — padrão consistente com `apartment-bulk-preview-grid.spec.ts`. Vitest neste setup tem limitação NG0303 quando `fixture.componentRef.setInput` é usado com signal inputs em componentes substituídos via `overrideComponent`.
+- **ShedLock para jobs `@Scheduled`** confirmado como deferido para v2 — backend v1 é single-instance (alinhado com `InvitationExpirerJob`, `EmailSenderJob`, Bucket4j da H4). Documentado no workflow.md watch list.
 
 ---
 

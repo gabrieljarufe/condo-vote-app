@@ -38,8 +38,8 @@ A virada é **fatiar por história de usuário**: cada PR materializa um caminho
 | H3 | Como síndico, convido um morador para um apartamento (com e-mail) | [h3-convite-morador.md](h3-convite-morador.md) | F2 ✅ + F3 (parte) ✅ + F4 (expiração) ✅ | H2, F1 ✅ | ✅ feito |
 | H4 | Como convidado, valido o link e completo cadastro com CPF | [h4-onboarding-magic-link.md](h4-onboarding-magic-link.md) | F2 (resto) ✅ + F1 ✅ + F8 ✅ | H3 | ✅ feito |
 | H5 | Como morador logado, vejo os apartamentos onde sou residente | `h5-resident-view.md` _(a criar)_ — ver [`docs/features/h5-resident-view.md`](../../../features/h5-resident-view.md) | F5 (read) ✅ | H4 | ✅ feito |
-| **H7** | **Como síndico, crio uma votação (CRUD + snapshot ao abrir)** | `h7-poll-create.md` _(a criar)_ | F6 (parte) + F4 (fechamento) | H5 _(ver obs.)_ | 🎯 **MVP — próxima** |
-| **H8** | **Como morador, voto numa votação aberta e vejo o resultado** | `h8-poll-vote.md` _(a criar)_ | F6 (resto) + F4 (lembretes) | H7 | 🎯 **MVP** |
+| H7 | Como síndico, crio votação com lifecycle completo (DRAFT/SCHEDULED/OPEN/CLOSED/INVALIDATED/CANCELLED) + snapshot ao abrir + jobs de abertura/fechamento | [h7-criar-votacao.md](h7-criar-votacao.md) — ver [`docs/features/h7-criar-votacao.md`](../../../features/h7-criar-votacao.md) | F6 ✅ + F4 (abertura/fechamento) ✅ | H5 | 🔶 em review |
+| **H8** | **Como morador, voto numa votação aberta e vejo o resultado** | [h8-votar.md](h8-votar.md) — ver [`docs/features/h8-votar.md`](../../../features/h8-votar.md) | F6 ✅ + F4 (lembretes H10) | H7 | 🔶 em review |
 | H6 | Como síndico, promovo morador a co-síndico ou delego voto | `h6-promote-delegate.md` _(a criar)_ | F5 (resto) | H5 | 🕒 stretch |
 | H9 | Como síndico, vejo a timeline de auditoria do condomínio | `h9-audit-timeline.md` _(a criar)_ | F7 | H8 | 🕒 stretch |
 | H10 | Jobs agendados residuais (RetentionPrunerJob placeholder) | `h10-jobs-residual.md` _(a criar)_ | F4 (resto) | H8 | 🕒 stretch |
@@ -72,9 +72,9 @@ Tabela inversa para confirmar que nenhum requisito técnico caiu na transição 
 | F1 | CpfEncryptor (AES-256-SIV) + chave + CLI | ✅ Concluído na Fase 6 (T6.3a). Consumido em H4. |
 | F2 | Invitations + Redis token + `/register/complete` | ✅ H3 (criar/listar/expirar/revoke/resend/fix-email + token Redis 24h) + H4 (validar/completar) |
 | F3 | Email outbox + EmailSender + 7 templates Thymeleaf | ✅ H3 (transactional outbox + `EmailGateway` SMTP/Resend + `EmailSenderJob` 30s + template `invitation.html`) + templates restantes distribuídos quando o caso de uso aparecer (H7 abrir/encerrar poll, H8 lembrete de votação, etc.) |
-| F4 | Jobs `@Scheduled` (6 jobs + RetentionPrunerJob placeholder) | ✅ H3 (`InvitationExpirerJob` 1h + `EmailSenderJob` 30s) + H7 (fechar poll) + H8 (lembrete pré-fechamento) + H10 (RetentionPruner placeholder + qualquer job residual) |
+| F4 | Jobs `@Scheduled` (6 jobs + RetentionPrunerJob placeholder) | ✅ H3 (`InvitationExpirerJob` 1h + `EmailSenderJob` 30s) + ✅ H7 (`PollOpenerJob` + `PollCloserJob` 5min) + H8 (lembrete pré-fechamento) + H10 (RetentionPruner placeholder + qualquer job residual) |
 | F5 | Apartment + Resident CRUD + Delegação + Promoção | H2 (apartment CRUD) + H5 (resident read) + H6 (promoção + delegação) |
-| F6 | Poll CRUD + snapshot + vote + result | H7 (CRUD + snapshot ao abrir) + H8 (voto + resultado) |
+| F6 | Poll CRUD + snapshot + vote + result | ✅ H7 (CRUD lifecycle completo + snapshot ao abrir + cálculo de quórum) + ✅ H8 (voto + auto-close + breakdown) |
 | F7 | Audit timeline (queries read-only) | H9 |
 | F8 | Rate limiting Bucket4j | ✅ H4 (in-memory, single-instance; endpoints de H3 são autenticados — rate-limit por JWT) |
 

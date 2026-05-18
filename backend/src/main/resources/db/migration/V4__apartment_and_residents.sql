@@ -35,6 +35,10 @@ CREATE TABLE apartment_resident (
     CONSTRAINT pk_apartment_resident PRIMARY KEY (id),
     CONSTRAINT fk_apartment_resident_condominium FOREIGN KEY (condominium_id) REFERENCES condominium (id),
     CONSTRAINT fk_apartment_resident_apartment   FOREIGN KEY (apartment_id)   REFERENCES apartment (id),
+    -- composite FK: garante que apartment_id + condominium_id apontam para o mesmo par
+    -- na tabela pai (defesa contra mismatch silencioso de tenant)
+    CONSTRAINT fk_apartment_resident_apartment_tenant
+        FOREIGN KEY (apartment_id, condominium_id) REFERENCES apartment (id, condominium_id),
 
     -- coerência de encerramento: ended_at preenchido exige autor e motivo
     CONSTRAINT chk_apartment_resident_end

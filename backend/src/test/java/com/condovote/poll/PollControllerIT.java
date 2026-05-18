@@ -803,6 +803,66 @@ class PollControllerIT extends AbstractIntegrationTest {
   }
 
   // =====================================================================
+  // Acesso de moradores (read-only)
+  // =====================================================================
+
+  @Test
+  void list_residenteDoCondo_retorna200() throws Exception {
+    UUID condoId = insertCondo("Condo Residente List");
+    UUID adminId = UuidV7.generate();
+    UUID residentId = UuidV7.generate();
+    insertAdmin(condoId, adminId);
+    UUID aptId = insertApartment(condoId, "101");
+    insertResident(condoId, aptId, residentId, "OWNER");
+
+    criarDraftPoll(condoId, adminId);
+
+    mvc.perform(
+            get("/api/condominiums/{condoId}/polls", condoId)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(residentId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content", hasSize(greaterThanOrEqualTo(1))));
+  }
+
+  @Test
+  void getById_residenteDoCondo_retorna200() throws Exception {
+    UUID condoId = insertCondo("Condo Residente GetById");
+    UUID adminId = UuidV7.generate();
+    UUID residentId = UuidV7.generate();
+    insertAdmin(condoId, adminId);
+    UUID aptId = insertApartment(condoId, "101");
+    insertResident(condoId, aptId, residentId, "OWNER");
+
+    String pollId = criarDraftPoll(condoId, adminId);
+
+    mvc.perform(
+            get("/api/polls/{id}", pollId)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(residentId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.poll.title").value("Votação Teste"))
+        .andExpect(jsonPath("$.options").isArray());
+  }
+
+  @Test
+  void getById_naoMembro_retorna403() throws Exception {
+    UUID condoId = insertCondo("Condo NaoMembro GetById");
+    UUID adminId = UuidV7.generate();
+    UUID estranhoId = UuidV7.generate();
+    insertAdmin(condoId, adminId);
+
+    String pollId = criarDraftPoll(condoId, adminId);
+
+    // estranhoId não tem vínculo nenhum com condoId → 403
+    mvc.perform(
+            get("/api/polls/{id}", pollId)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(estranhoId.toString()))))
+        .andExpect(status().isForbidden());
+  }
+
+  // =====================================================================
   // RLS / Cross-tenant
   // =====================================================================
 
@@ -817,7 +877,7 @@ class PollControllerIT extends AbstractIntegrationTest {
 
     criarDraftPoll(condoA, adminA);
 
-    // adminB tenta listar polls do condoA → não é admin de A → 403
+    // adminB tenta listar polls do condoA → não é membro de A → 403
     mvc.perform(
             get("/api/condominiums/{condoId}/polls", condoA)
                 .header("X-Tenant-Id", condoB.toString())
@@ -836,7 +896,7 @@ class PollControllerIT extends AbstractIntegrationTest {
 
     String pollId = criarDraftPoll(condoA, adminA);
 
-    // adminB tenta buscar poll de condoA → não é admin de A → 403 ou 404
+    // adminB tenta buscar poll de condoA → não é membro de A → 403 ou 404
     MvcResult result =
         mvc.perform(
                 get("/api/polls/{id}", pollId)

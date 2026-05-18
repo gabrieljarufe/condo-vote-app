@@ -495,7 +495,7 @@ class PollServiceTest {
 
   @Test
   void listByCondominium_adminLista_retornaPagina() {
-    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
     when(pollRepository.findByCondominiumIdFilteredPaged(condoId, null, 20, 0))
         .thenReturn(List.of(draftPoll()));
     when(pollRepository.countByCondominiumIdFiltered(condoId, null)).thenReturn(1L);
@@ -508,7 +508,7 @@ class PollServiceTest {
 
   @Test
   void listByCondominium_comFiltroStatus_passaFiltroAoRepository() {
-    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
     when(pollRepository.findByCondominiumIdFilteredPaged(condoId, "OPEN", 10, 0))
         .thenReturn(List.of(openPoll()));
     when(pollRepository.countByCondominiumIdFiltered(condoId, "OPEN")).thenReturn(1L);
@@ -520,11 +520,24 @@ class PollServiceTest {
   }
 
   @Test
-  void listByCondominium_naoAdmin_lancaForbidden() {
-    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
+  void listByCondominium_naoMembro_lancaForbidden() {
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(false);
 
     assertThatThrownBy(() -> service.listByCondominium(condoId, null, 0, 20))
         .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  void listByCondominium_residenteNaoAdmin_retornaPagina() {
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
+    when(pollRepository.findByCondominiumIdFilteredPaged(condoId, null, 20, 0))
+        .thenReturn(List.of(draftPoll()));
+    when(pollRepository.countByCondominiumIdFiltered(condoId, null)).thenReturn(1L);
+
+    PageResponse<PollResponse> result = service.listByCondominium(condoId, null, 0, 20);
+
+    assertThat(result.content()).hasSize(1);
+    assertThat(result.totalElements()).isEqualTo(1L);
   }
 
   @Test
@@ -546,7 +559,7 @@ class PollServiceTest {
   @Test
   void getById_pollExiste_retornaDetalhe() {
     when(pollRepository.findById(pollId)).thenReturn(Optional.of(draftPoll()));
-    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
     when(pollOptionRepository.findByPollIdOrderByDisplayOrder(pollId))
         .thenReturn(List.of(new PollOption(UuidV7.generate(), pollId, "Sim", 0)));
     when(pollResultRepository.findByPollId(pollId)).thenReturn(Optional.empty());
@@ -559,9 +572,23 @@ class PollServiceTest {
   }
 
   @Test
+  void getById_residenteNaoAdmin_retornaDetalhe() {
+    when(pollRepository.findById(pollId)).thenReturn(Optional.of(draftPoll()));
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
+    when(pollOptionRepository.findByPollIdOrderByDisplayOrder(pollId))
+        .thenReturn(List.of(new PollOption(UuidV7.generate(), pollId, "Sim", 0)));
+    when(pollResultRepository.findByPollId(pollId)).thenReturn(Optional.empty());
+
+    PollDetailResponse result = service.getById(pollId);
+
+    assertThat(result.poll()).isNotNull();
+    assertThat(result.options()).hasSize(1);
+  }
+
+  @Test
   void getById_comResultado_incluiResult() {
     when(pollRepository.findById(pollId)).thenReturn(Optional.of(closedPoll()));
-    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(true);
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
     when(pollOptionRepository.findByPollIdOrderByDisplayOrder(pollId)).thenReturn(List.of());
     UUID optId = UuidV7.generate();
     PollResult pr =
@@ -585,9 +612,9 @@ class PollServiceTest {
   }
 
   @Test
-  void getById_naoAdmin_lancaForbidden() {
+  void getById_naoMembro_lancaForbidden() {
     when(pollRepository.findById(pollId)).thenReturn(Optional.of(draftPoll()));
-    when(membershipRepository.isAdminOfTenant(userId, condoId)).thenReturn(false);
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(false);
 
     assertThatThrownBy(() -> service.getById(pollId)).isInstanceOf(ForbiddenException.class);
   }

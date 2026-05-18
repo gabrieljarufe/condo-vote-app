@@ -257,4 +257,18 @@ describe('BallotVotePage', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Você já votou em todas as suas cédulas');
   });
+
+  it('quando myBallots vazia mostra painel "não pode votar" sem CTA de voto', async () => {
+    const { fixture, component } = await setup({
+      getMyBallots: vi.fn(() => of([])),
+    });
+    fixture.detectChanges();
+    expect(component.voteEligibility()).toBe('not-eligible');
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Você não pode votar nesta votação');
+    expect(el.textContent).toContain('inadimplente');
+    // Não deve exibir o botão "Confirmar voto"
+    const button = el.querySelector('button');
+    expect(button).toBeNull();
+  });
 });

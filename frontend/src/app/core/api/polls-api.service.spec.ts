@@ -233,9 +233,9 @@ describe('PollsApiService', () => {
     expect(httpMock.get).toHaveBeenCalledWith(
       expect.stringContaining('/polls/poll-1/my-ballots'),
     );
-    expect((result as ReadonlyArray<MyBallotResponse> | null)).toHaveLength(2);
-    expect((result as ReadonlyArray<MyBallotResponse>)[0].alreadyVoted).toBe(true);
-    expect((result as ReadonlyArray<MyBallotResponse>)[1].votedOptionId).toBeNull();
+    expect((result as unknown as ReadonlyArray<MyBallotResponse>)).toHaveLength(2);
+    expect((result as unknown as ReadonlyArray<MyBallotResponse>)[0].alreadyVoted).toBe(true);
+    expect((result as unknown as ReadonlyArray<MyBallotResponse>)[1].votedOptionId).toBeNull();
   });
 
   it('getMyPendingPolls_callsCorrectEndpoint: faz GET no endpoint correto e retorna polls pendentes', () => {
@@ -254,7 +254,7 @@ describe('PollsApiService', () => {
     expect(httpMock.get).toHaveBeenCalledWith(
       expect.stringContaining('/condominiums/condo-1/my-pending-polls'),
     );
-    expect((result as ReadonlyArray<MyPendingPollResponse> | null)).toHaveLength(1);
-    expect((result as ReadonlyArray<MyPendingPollResponse>)[0].pendingBallotsCount).toBe(3);
+    expect((result as unknown as ReadonlyArray<MyPendingPollResponse>)).toHaveLength(1);
+    expect((result as unknown as ReadonlyArray<MyPendingPollResponse>)[0].pendingBallotsCount).toBe(3);
   });
 });

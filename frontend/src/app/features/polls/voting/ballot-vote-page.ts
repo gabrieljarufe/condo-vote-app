@@ -50,40 +50,72 @@ type LoadState =
             </p>
           }
 
-          @if (pendingBallots().length === 0) {
-            <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center">
-              <p class="text-sm text-on-surface-variant mb-4">
-                Você já votou em todas as suas cédulas para esta votação.
-              </p>
-              <a [routerLink]="['/app/condominiums', condoId, 'my-polls']"
-                 class="text-primary text-sm underline">Voltar para minhas votações</a>
-            </div>
-          } @else {
-            @if (pendingBallots().length > 1) {
-              <p class="text-xs text-on-surface-variant mb-4">
-                Você tem {{ pendingBallots().length }} apartamentos elegíveis nesta votação.
-                Votaremos primeiro no apto {{ firstBallot()!.apartmentLabel }}.
-              </p>
+          <!-- Opções da poll (leitura — visível em todos os casos) -->
+          @if (pollDetail()!.options.length > 0) {
+            <section class="bg-surface-container-low rounded-2xl border border-outline-variant p-5 mb-6">
+              <h2 class="text-sm font-semibold text-on-surface mb-3">Opções de voto</h2>
+              <ul class="flex flex-col gap-2">
+                @for (opt of pollDetail()!.options; track opt.id) {
+                  <li class="text-sm text-on-surface flex items-center gap-2">
+                    <span class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-medium text-on-surface-variant shrink-0">
+                      {{ opt.displayOrder + 1 }}
+                    </span>
+                    {{ opt.label }}
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          @switch (voteEligibility()) {
+            @case ('not-eligible') {
+              <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8">
+                <p class="text-sm font-semibold text-on-surface mb-2">Você não pode votar nesta votação.</p>
+                <p class="text-sm text-on-surface-variant mb-4">
+                  Possíveis motivos: você não é o eleitor designado de nenhum apartamento,
+                  ou o apartamento estava inadimplente quando a votação foi aberta.
+                  Você ainda pode acompanhar o andamento e o resultado.
+                </p>
+                <a [routerLink]="['/app/condominiums', condoId, 'polls', pollId]"
+                   class="text-primary text-sm underline">Ver detalhe da votação</a>
+              </div>
             }
-
-            <app-ballot-card
-              [apartmentLabel]="firstBallot()!.apartmentLabel"
-              [options]="pollDetail()!.options"
-              [selectedOptionId]="selectedOptionId()"
-              (optionChange)="onOptionChange($event)"
-            />
-
-            @if (submitError()) {
-              <p class="text-error text-sm mt-4">{{ submitError() }}</p>
+            @case ('all-voted') {
+              <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center">
+                <p class="text-sm text-on-surface-variant mb-4">
+                  Você já votou em todas as suas cédulas para esta votação.
+                </p>
+                <a [routerLink]="['/app/condominiums', condoId, 'my-polls']"
+                   class="text-primary text-sm underline">Voltar para minhas votações</a>
+              </div>
             }
+            @case ('can-vote') {
+              @if (pendingBallots().length > 1) {
+                <p class="text-xs text-on-surface-variant mb-4">
+                  Você tem {{ pendingBallots().length }} apartamentos elegíveis nesta votação.
+                  Votaremos primeiro no apto {{ firstBallot()!.apartmentLabel }}.
+                </p>
+              }
 
-            <button
-              class="w-full mt-6 bg-primary text-on-primary rounded-2xl py-3 font-semibold disabled:opacity-50"
-              [disabled]="!selectedOptionId() || submitting()"
-              (click)="onConfirm()"
-            >
-              {{ submitting() ? 'Enviando…' : 'Confirmar voto' }}
-            </button>
+              <app-ballot-card
+                [apartmentLabel]="firstBallot()!.apartmentLabel"
+                [options]="pollDetail()!.options"
+                [selectedOptionId]="selectedOptionId()"
+                (optionChange)="onOptionChange($event)"
+              />
+
+              @if (submitError()) {
+                <p class="text-error text-sm mt-4">{{ submitError() }}</p>
+              }
+
+              <button
+                class="w-full mt-6 bg-primary text-on-primary rounded-2xl py-3 font-semibold disabled:opacity-50"
+                [disabled]="!selectedOptionId() || submitting()"
+                (click)="onConfirm()"
+              >
+                {{ submitting() ? 'Enviando…' : 'Confirmar voto' }}
+              </button>
+            }
           }
 
           @if (showBulkPrompt()) {
@@ -151,6 +183,15 @@ export default class BallotVotePage {
   });
 
   protected readonly firstBallot = computed(() => this.pendingBallots()[0] ?? null);
+
+  protected readonly voteEligibility = computed<'not-eligible' | 'all-voted' | 'can-vote'>(() => {
+    const s = this.state();
+    if (s.kind !== 'ready') return 'can-vote';
+    const ballots = s.myBallots;
+    if (ballots.length === 0) return 'not-eligible';
+    if (ballots.every((b) => b.alreadyVoted)) return 'all-voted';
+    return 'can-vote';
+  });
 
   protected readonly pollDetail = computed(() => {
     const s = this.state();

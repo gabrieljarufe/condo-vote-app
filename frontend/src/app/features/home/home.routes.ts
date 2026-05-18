@@ -34,7 +34,7 @@ const routes: Routes = [
   },
   {
     path: 'condominiums/:condoId/polls',
-    canActivate: [tenantRestoreGuard, adminGuard],
+    canActivate: [tenantRestoreGuard],
     loadComponent: () => import('../polls/polls-page'),
   },
   {
@@ -44,7 +44,7 @@ const routes: Routes = [
   },
   {
     path: 'condominiums/:condoId/polls/:pollId',
-    canActivate: [tenantRestoreGuard, adminGuard],
+    canActivate: [tenantRestoreGuard],
     loadComponent: () => import('../polls/poll-detail-page'),
   },
   {

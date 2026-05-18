@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   inject,
   signal,
 } from '@angular/core';
@@ -14,6 +15,7 @@ import {
   PollResultResponse,
   PollsApiService,
 } from '../../core/api/polls-api.service';
+import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 import { PollStatusBadge } from './poll-status-badge';
@@ -223,8 +225,8 @@ function extractErrorMessage(e: unknown, fallback: string): string {
             <p class="text-sm text-error" role="alert">{{ actionError() }}</p>
           }
 
-          <!-- Conditional actions -->
-          @if (hasActions(d.poll.status)) {
+          <!-- Conditional actions (apenas síndico) -->
+          @if (isAdmin() && hasActions(d.poll.status)) {
             <div class="flex flex-wrap gap-3">
               @if (d.poll.status === 'DRAFT' || d.poll.status === 'SCHEDULED') {
                 <button
@@ -295,7 +297,9 @@ export default class PollDetailPage implements OnInit {
   private readonly pollsApi = inject(PollsApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly tenant = inject(TenantService);
 
+  protected readonly isAdmin = computed(() => this.tenant.isAdmin());
   protected readonly pageState = signal<PageState>('loading');
   protected readonly detail = signal<PollDetailResponse | null>(null);
   protected readonly errorMessage = signal('');

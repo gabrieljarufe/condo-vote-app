@@ -17,6 +17,9 @@ CREATE TABLE invitation (
     CONSTRAINT pk_invitation PRIMARY KEY (id),
     CONSTRAINT fk_invitation_condominium FOREIGN KEY (condominium_id) REFERENCES condominium (id),
     CONSTRAINT fk_invitation_apartment   FOREIGN KEY (apartment_id)   REFERENCES apartment (id),
+    -- composite FK: defesa contra mismatch silencioso de tenant
+    CONSTRAINT fk_invitation_apartment_tenant
+        FOREIGN KEY (apartment_id, condominium_id) REFERENCES apartment (id, condominium_id),
 
     CONSTRAINT chk_invitation_accepted CHECK (status != 'ACCEPTED' OR accepted_at IS NOT NULL),
     CONSTRAINT chk_invitation_revoked  CHECK (status != 'REVOKED'  OR revoked_at  IS NOT NULL)

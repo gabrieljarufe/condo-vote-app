@@ -84,6 +84,17 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
                 </span>
               }
             </a>
+
+            <a
+              [routerLink]="['/app/condominiums', condoId(), 'polls']"
+              class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+            >
+              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">ballot</span>
+              <div>
+                <p class="font-semibold text-on-surface">Todas as votações</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Acompanhe o andamento e resultados</p>
+              </div>
+            </a>
           }
         </div>
 

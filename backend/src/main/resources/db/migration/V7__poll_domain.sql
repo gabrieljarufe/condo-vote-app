@@ -61,6 +61,10 @@ CREATE INDEX idx_poll_status         ON poll (condominium_id, status);
 CREATE INDEX idx_poll_due_to_open  ON poll (scheduled_start) WHERE status = 'SCHEDULED';
 CREATE INDEX idx_poll_due_to_close ON poll (scheduled_end)   WHERE status = 'OPEN';
 
+-- partial index forward-looking: H6 (delegação/promoção/remoção) precisa consultar
+-- "esse apartamento tem poll OPEN no snapshot?" rapidamente.
+CREATE INDEX idx_poll_open_by_condo ON poll (condominium_id) WHERE status = 'OPEN';
+
 -- poll_option --------------------------------------------------------------
 CREATE TABLE poll_option (
     id             UUID         NOT NULL,
@@ -88,6 +92,11 @@ CREATE TABLE poll_eligible_snapshot (
     CONSTRAINT fk_poll_eligible_snapshot_condominium FOREIGN KEY (condominium_id) REFERENCES condominium (id),
     CONSTRAINT fk_poll_eligible_snapshot_poll        FOREIGN KEY (poll_id)        REFERENCES poll (id),
     CONSTRAINT fk_poll_eligible_snapshot_apartment   FOREIGN KEY (apartment_id)   REFERENCES apartment (id),
+    -- composite FKs: defesa contra mismatch silencioso de tenant
+    CONSTRAINT fk_poll_eligible_snapshot_poll_tenant
+        FOREIGN KEY (poll_id, condominium_id) REFERENCES poll (id, condominium_id),
+    CONSTRAINT fk_poll_eligible_snapshot_apartment_tenant
+        FOREIGN KEY (apartment_id, condominium_id) REFERENCES apartment (id, condominium_id),
 
     CONSTRAINT uq_poll_eligible_snapshot UNIQUE (poll_id, apartment_id)
 );
@@ -125,6 +134,11 @@ CREATE TABLE vote (
     CONSTRAINT fk_vote_poll         FOREIGN KEY (poll_id)        REFERENCES poll (id),
     CONSTRAINT fk_vote_poll_option  FOREIGN KEY (poll_option_id) REFERENCES poll_option (id),
     CONSTRAINT fk_vote_apartment    FOREIGN KEY (apartment_id)   REFERENCES apartment (id),
+    -- composite FKs: defesa contra mismatch silencioso de tenant
+    CONSTRAINT fk_vote_poll_tenant
+        FOREIGN KEY (poll_id, condominium_id) REFERENCES poll (id, condominium_id),
+    CONSTRAINT fk_vote_apartment_tenant
+        FOREIGN KEY (apartment_id, condominium_id) REFERENCES apartment (id, condominium_id),
 
     CONSTRAINT uq_vote_one_per_apartment UNIQUE (poll_id, apartment_id)
 );

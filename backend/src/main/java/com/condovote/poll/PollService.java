@@ -391,7 +391,7 @@ public class PollService {
       throw new IllegalArgumentException("size deve estar entre 1 e 100");
     }
     UUID userId = authGateway.getCurrentUserId();
-    requireAdmin(userId, condoId);
+    requireMember(userId, condoId);
 
     int offset = page * size;
     List<PollResponse> content =
@@ -416,7 +416,7 @@ public class PollService {
   public PollDetailResponse getById(UUID pollId) {
     Poll poll = requirePoll(pollId);
     UUID userId = authGateway.getCurrentUserId();
-    requireAdmin(userId, poll.condominiumId());
+    requireMember(userId, poll.condominiumId());
 
     List<PollOptionResponse> options =
         pollOptionRepository.findByPollIdOrderByDisplayOrder(pollId).stream()
@@ -440,6 +440,12 @@ public class PollService {
   private void requireAdmin(UUID userId, UUID condoId) {
     if (!membershipRepository.isAdminOfTenant(userId, condoId)) {
       throw new ForbiddenException("Apenas síndicos podem gerenciar votações");
+    }
+  }
+
+  private void requireMember(UUID userId, UUID condoId) {
+    if (!membershipRepository.userBelongsToTenant(userId, condoId)) {
+      throw new ForbiddenException("Você não é membro deste condomínio");
     }
   }
 

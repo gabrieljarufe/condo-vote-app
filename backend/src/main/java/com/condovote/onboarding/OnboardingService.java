@@ -185,6 +185,37 @@ public class OnboardingService {
       throw new ConflictException("Convite não está mais pendente");
     }
 
+    // Mantém invariante: OWNER ativo sem delegação → eligible_voter_user_id = owner.user_id
+    // Guard IS NULL é defensivo: não sobrescreve delegação ativa (H6 futura).
+    // TENANT não recebe o eligible_voter_user_id (H6 cuida do fluxo de delegação).
+    if ("OWNER".equals(inv.role())) {
+      int rowsUpdated =
+          jdbcTemplate.update(
+              """
+              UPDATE apartment
+                 SET eligible_voter_user_id = ?
+               WHERE id = ?
+                 AND condominium_id = ?
+                 AND eligible_voter_user_id IS NULL
+              """,
+              authUserId,
+              inv.apartmentId(),
+              payload.condominiumId);
+      if (rowsUpdated > 0) {
+        auditEventPublisher.publish(
+            "APARTMENT_ELIGIBLE_VOTER_SET",
+            "apartment",
+            inv.apartmentId(),
+            Map.of(
+                "eligibleVoterUserId",
+                authUserId.toString(),
+                "reason",
+                "OWNER_ACCEPTED_INVITATION"),
+            payload.condominiumId,
+            authUserId);
+      }
+    }
+
     redisCommands.del("invitation:token:" + req.token());
 
     auditEventPublisher.publish(

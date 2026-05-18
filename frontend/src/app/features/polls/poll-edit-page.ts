@@ -21,6 +21,18 @@ type PageState = 'loading' | 'blocked' | 'ready' | 'error';
 
 const EDITABLE_STATUSES = new Set(['DRAFT', 'SCHEDULED']);
 
+/**
+ * Converte uma string ISO 8601 UTC em formato datetime-local (yyyy-MM-ddTHH:mm)
+ * usando a hora local do browser — necessário para preencher inputs do tipo datetime-local.
+ *
+ * Exemplo: "2026-05-17T22:00:00Z" no fuso America/Sao_Paulo → "2026-05-17T19:00"
+ */
+export function toLocalDatetimeInput(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 @Component({
   selector: 'app-poll-edit-page',
   imports: [AppHeader, RouterLink, PollForm, Spinner],
@@ -111,9 +123,8 @@ export default class PollEditPage implements OnInit {
           description: poll.description ?? '',
           convocation: poll.convocation,
           quorumMode: poll.quorumMode,
-          // Convert ISO 8601 UTC to datetime-local format (strip seconds/tz)
-          scheduledStart: poll.scheduledStart.slice(0, 16),
-          scheduledEnd: poll.scheduledEnd.slice(0, 16),
+            scheduledStart: toLocalDatetimeInput(poll.scheduledStart),
+          scheduledEnd: toLocalDatetimeInput(poll.scheduledEnd),
           options: options.map((o) => o.label),
         });
         this.pageState.set('ready');

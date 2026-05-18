@@ -276,7 +276,7 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
 
     String body =
         """
-        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Owner Test"}
+        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Owner Test","acceptanceConfirmed":true}
         """
             .formatted(token, cpf);
 
@@ -338,7 +338,7 @@ class OnboardingControllerIT extends AbstractIntegrationTest {
 
     String body =
         """
-        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Tenant Test"}
+        {"token":"%s","cpf":"%s","password":"senha-forte-1!","fullName":"Tenant Test","acceptanceConfirmed":true}
         """
             .formatted(token, cpf);
 

@@ -21,7 +21,6 @@ import com.condovote.onboarding.dto.ValidateInvitationResponse;
 import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.crypto.CpfEncryptor;
 import com.condovote.shared.exception.ConflictException;
-import com.condovote.shared.exception.ForbiddenException;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Instant;
 import java.util.Map;
@@ -29,11 +28,9 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.ResultSetExtractor;
 
 @ExtendWith(MockitoExtension.class)
 class OnboardingServiceTest {
@@ -307,7 +304,8 @@ class OnboardingServiceTest {
     lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
 
     newService()
-        .complete(new CompleteRegistrationRequest(token, "11144477735", "senha-forte-1!", "OWNER"));
+        .complete(
+            new CompleteRegistrationRequest(token, "11144477735", "senha-forte-1!", "OWNER", true));
 
     // Verifica que o audit APARTMENT_ELIGIBLE_VOTER_SET foi publicado
     verify(auditEventPublisher)
@@ -368,7 +366,8 @@ class OnboardingServiceTest {
 
     newService()
         .complete(
-            new CompleteRegistrationRequest(token, "11144477735", "senha-forte-1!", "TENANT"));
+            new CompleteRegistrationRequest(
+                token, "11144477735", "senha-forte-1!", "TENANT", true));
 
     // Nenhuma chamada de audit para APARTMENT_ELIGIBLE_VOTER_SET deve ter ocorrido
     verify(auditEventPublisher, never())

@@ -43,27 +43,47 @@ function makePageResult(content: PollResponse[] = [mockPoll]): Page<PollResponse
   };
 }
 
-const mockTenant = {
-  activeCondominiumId: () => 'condo-1',
-  activeRoles: () => new Set(['ADMIN']),
-  isAdmin: () => true,
-  isResident: () => false,
-  hasActiveTenant: () => true,
-  setActive: vi.fn(),
-  clear: vi.fn(),
-};
+function makeAdminTenant() {
+  return {
+    activeCondominiumId: () => 'condo-1',
+    activeRoles: () => new Set(['ADMIN']),
+    isAdmin: () => true,
+    isResident: () => false,
+    hasActiveTenant: () => true,
+    setActive: vi.fn(),
+    clear: vi.fn(),
+  };
+}
 
-const mockRouter = { navigate: vi.fn(), navigateByUrl: vi.fn() };
+function makeResidentTenant() {
+  return {
+    activeCondominiumId: () => 'condo-1',
+    activeRoles: () => new Set(['OWNER']),
+    isAdmin: () => false,
+    isResident: () => true,
+    hasActiveTenant: () => true,
+    setActive: vi.fn(),
+    clear: vi.fn(),
+  };
+}
 
-const mockActivatedRoute = {
-  snapshot: { params: { condoId: 'condo-1' } },
-  params: { subscribe: vi.fn() },
-  queryParams: { subscribe: vi.fn() },
-};
+const mockRouter = { navigate: vi.fn().mockResolvedValue(true), navigateByUrl: vi.fn() };
 
-function makePollsApi(overrides: Partial<{ list: unknown }> = {}) {
+function makeActivatedRoute(tab: string | null = null) {
+  return {
+    snapshot: {
+      params: { condoId: 'condo-1' },
+      queryParamMap: { get: (key: string) => (key === 'tab' ? tab : null) },
+    },
+    params: { subscribe: vi.fn() },
+    queryParams: { subscribe: vi.fn() },
+  };
+}
+
+function makePollsApi(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     list: vi.fn(() => of(makePageResult())),
+    getMyPendingPolls: vi.fn(() => of([])),
     create: vi.fn(),
     update: vi.fn(),
     publish: vi.fn(),
@@ -75,7 +95,12 @@ function makePollsApi(overrides: Partial<{ list: unknown }> = {}) {
   };
 }
 
-async function setup(pollsApi = makePollsApi(), tenant = mockTenant) {
+async function setup(
+  pollsApi: ReturnType<typeof makePollsApi> = makePollsApi(),
+  tenant: ReturnType<typeof makeAdminTenant> | ReturnType<typeof makeResidentTenant> = makeAdminTenant(),
+  route: ReturnType<typeof makeActivatedRoute> = makeActivatedRoute(),
+) {
+  mockRouter.navigate.mockClear();
   await TestBed.configureTestingModule({
     imports: [PollsPage],
     providers: [
@@ -83,7 +108,7 @@ async function setup(pollsApi = makePollsApi(), tenant = mockTenant) {
       { provide: TenantService, useValue: tenant },
       { provide: SUPABASE_CLIENT, useValue: mockSupabase },
       { provide: Router, useValue: mockRouter },
-      { provide: ActivatedRoute, useValue: mockActivatedRoute },
+      { provide: ActivatedRoute, useValue: route },
     ],
   }).compileComponents();
   const fixture = TestBed.createComponent(PollsPage);
@@ -96,40 +121,83 @@ async function setup(pollsApi = makePollsApi(), tenant = mockTenant) {
 describe('PollsPage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('carrega lista no init com condoId da rota', async () => {
+  it('admin: default tab é "em-andamento" e carrega list com status OPEN,SCHEDULED', async () => {
     const api = makePollsApi();
     const { component } = await setup(api);
-    expect(api.list).toHaveBeenCalledWith('condo-1', undefined, 0, 10);
-    expect(component.pageState()).toBe('ready');
-    expect(component.polls()).toHaveLength(1);
-    expect(component.totalElements()).toBe(1);
+    expect(component.activeTab()).toBe('em-andamento');
+    expect(api.list).toHaveBeenCalledWith('condo-1', ['OPEN', 'SCHEDULED'], 0, 10);
+    expect(api.getMyPendingPolls).not.toHaveBeenCalled();
   });
 
-  it('troca de filtro de status reseta page para 0 e recarrega', async () => {
-    const api = makePollsApi();
-    const { component } = await setup(api);
-    component.page.set(2);
-    component.statusFilter.set('OPEN');
-    component.page.set(0);
-    component['loadPage']();
-    expect(api.list).toHaveBeenLastCalledWith('condo-1', 'OPEN', 0, 10);
+  it('admin não vê tab "Pendentes"', async () => {
+    const { component } = await setup();
+    const tabs = component.visibleTabs() as Array<{ value: string }>;
+    expect(tabs.map((t) => t.value)).not.toContain('pendentes');
   });
 
-  it('mudança de página dispara reload com nova página', async () => {
+  it('morador: default tab é "pendentes" e carrega my-pending-polls', async () => {
+    const api = makePollsApi({
+      getMyPendingPolls: vi.fn(() =>
+        of([
+          {
+            pollId: 'p1',
+            title: 'Assembleia',
+            scheduledEnd: '2026-06-01T18:00:00Z',
+            pendingBallotsCount: 2,
+            totalBallotsCount: 3,
+          },
+        ]),
+      ),
+    });
+    const { component } = await setup(api, makeResidentTenant());
+    expect(component.activeTab()).toBe('pendentes');
+    expect(api.getMyPendingPolls).toHaveBeenCalledWith('condo-1');
+    expect(component.pendingPolls()).toHaveLength(1);
+    expect(component.pendingCount()).toBe(1);
+  });
+
+  it('queryParam tab override default', async () => {
+    const { component } = await setup(makePollsApi(), makeAdminTenant(), makeActivatedRoute('encerradas'));
+    expect(component.activeTab()).toBe('encerradas');
+  });
+
+  it('tab "encerradas" envia status CLOSED,INVALIDATED,CANCELLED', async () => {
     const api = makePollsApi();
     const { component } = await setup(api);
+    api.list.mockClear();
+    component.onTabChange('encerradas');
+    expect(api.list).toHaveBeenLastCalledWith(
+      'condo-1',
+      ['CLOSED', 'INVALIDATED', 'CANCELLED'],
+      0,
+      10,
+    );
+  });
+
+  it('tab "todas" envia status undefined (sem filtro)', async () => {
+    const api = makePollsApi();
+    const { component } = await setup(api);
+    api.list.mockClear();
+    component.onTabChange('todas');
+    expect(api.list).toHaveBeenLastCalledWith('condo-1', undefined, 0, 10);
+  });
+
+  it('mudar tab navega com queryParam', async () => {
+    const { component } = await setup();
+    component.onTabChange('encerradas');
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({ queryParams: { tab: 'encerradas' } }),
+    );
+  });
+
+  it('mudança de página dispara reload da tab ativa', async () => {
+    const api = makePollsApi();
+    const { component } = await setup(api);
+    api.list.mockClear();
     component.onPageChange(1);
     expect(component.page()).toBe(1);
-    expect(api.list).toHaveBeenLastCalledWith('condo-1', undefined, 1, 10);
-  });
-
-  it('mudança de size reseta page e dispara reload', async () => {
-    const api = makePollsApi();
-    const { component } = await setup(api);
-    component.onSizeChange(20);
-    expect(component.page()).toBe(0);
-    expect(component.size()).toBe(20);
-    expect(api.list).toHaveBeenLastCalledWith('condo-1', undefined, 0, 20);
+    expect(api.list).toHaveBeenCalledWith('condo-1', ['OPEN', 'SCHEDULED'], 1, 10);
   });
 
   it('exibe mensagem de erro quando service falha', async () => {

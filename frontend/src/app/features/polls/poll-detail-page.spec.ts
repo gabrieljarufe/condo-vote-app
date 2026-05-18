@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -11,6 +11,7 @@ import {
   PollsApiService,
 } from '../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
+import { TenantService } from '../../core/tenant/tenant.service';
 import PollDetailPage from './poll-detail-page';
 
 const mockSupabase = {
@@ -80,6 +81,7 @@ function makeApi(overrides: Partial<{
   open: unknown;
   close: unknown;
   cancel: unknown;
+  getMyBallots: unknown;
 }> = {}) {
   return {
     list: vi.fn(),
@@ -90,13 +92,31 @@ function makeApi(overrides: Partial<{
     close: vi.fn(() => of(makePoll({ status: 'CLOSED' }))),
     cancel: vi.fn(() => of(makePoll({ status: 'CANCELLED' }))),
     getById: vi.fn(() => of(makeDetail())),
+    getMyBallots: vi.fn(() =>
+      of({ ballots: [], excludedApartments: [], totalVotesSoFar: null, eligibleCount: 0 }),
+    ),
     ...overrides,
   };
 }
 
 const mockRouter = { navigate: vi.fn() };
 
-async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
+function makeTenant(opts: { isAdmin?: boolean; isResident?: boolean } = {}) {
+  return {
+    activeCondominiumId: () => 'condo-1',
+    activeRoles: () => new Set(['ADMIN']),
+    isAdmin: () => opts.isAdmin ?? true,
+    isResident: () => opts.isResident ?? false,
+    hasActiveTenant: () => true,
+    setActive: vi.fn(),
+    clear: vi.fn(),
+  };
+}
+
+async function setup(
+  apiOverrides: Parameters<typeof makeApi>[0] = {},
+  tenantOpts: { isAdmin?: boolean; isResident?: boolean } = {},
+) {
   const api = makeApi(apiOverrides);
   await TestBed.configureTestingModule({
     imports: [PollDetailPage],
@@ -105,10 +125,11 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
       { provide: ActivatedRoute, useValue: mockActivatedRoute },
       { provide: Router, useValue: mockRouter },
       { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+      { provide: TenantService, useValue: makeTenant(tenantOpts) },
     ],
   })
     .overrideComponent(PollDetailPage, {
-      set: { imports: [AppHeaderStub, PollStatusBadgeStub, PollCancelDialogStub] },
+      set: { imports: [AppHeaderStub, PollStatusBadgeStub, PollCancelDialogStub, RouterLink] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(PollDetailPage);
@@ -337,5 +358,85 @@ describe('PollDetailPage', () => {
       result: null,
     };
     expect(component.breakdownRows(draftDetail)).toHaveLength(0);
+  });
+
+  // ── Painel "Sua participação" (morador) ────────────────────────────────────
+
+  it('morador vê painel "Sua participação" com aptos votados e pendentes', async () => {
+    const { fixture, component } = await setup(
+      {
+        getById: vi.fn(() => of(makeDetail({ status: 'OPEN' }))),
+        getMyBallots: vi.fn(() =>
+          of({
+            ballots: [
+              { apartmentId: 'apt-101', apartmentLabel: '101', alreadyVoted: true, votedOptionId: 'opt-1' },
+              { apartmentId: 'apt-102', apartmentLabel: '102', alreadyVoted: false, votedOptionId: null },
+            ],
+            excludedApartments: [],
+            totalVotesSoFar: null,
+            eligibleCount: 2,
+          }),
+        ),
+      },
+      { isResident: true, isAdmin: false },
+    );
+    expect(component.myBallots()).not.toBeNull();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Sua participação');
+    expect(el.textContent).toContain('Apto 101');
+    expect(el.textContent).toContain('Sim'); // option label for opt-1
+    expect(el.textContent).toContain('Apto 102');
+    expect(el.textContent).toContain('Votar →');
+  });
+
+  it('admin não vê painel "Sua participação"', async () => {
+    const { fixture } = await setup({}, { isAdmin: true, isResident: false });
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).not.toContain('Sua participação');
+  });
+
+  it('morador vê aptos excluídos com label "Não elegível"', async () => {
+    const { fixture } = await setup(
+      {
+        getById: vi.fn(() => of(makeDetail({ status: 'OPEN' }))),
+        getMyBallots: vi.fn(() =>
+          of({
+            ballots: [],
+            excludedApartments: [
+              { apartmentId: 'apt-202', apartmentLabel: '202', reason: 'EXCLUDED' as const },
+            ],
+            totalVotesSoFar: null,
+            eligibleCount: 5,
+          }),
+        ),
+      },
+      { isResident: true, isAdmin: false },
+    );
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Apto 202');
+    expect(el.textContent).toContain('Não elegível');
+  });
+
+  it('totalVotesSoFar não é exibido em poll OPEN (sigilo do voto)', async () => {
+    const { fixture } = await setup(
+      {
+        getById: vi.fn(() => of(makeDetail({ status: 'OPEN' }))),
+        getMyBallots: vi.fn(() =>
+          of({
+            ballots: [
+              { apartmentId: 'apt-101', apartmentLabel: '101', alreadyVoted: false, votedOptionId: null },
+            ],
+            excludedApartments: [],
+            // Backend já garante null em OPEN; teste UI confirma que nenhum número de votos vaza
+            totalVotesSoFar: null,
+            eligibleCount: 10,
+          }),
+        ),
+      },
+      { isResident: true, isAdmin: false },
+    );
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('10 apartamento(s) elegível(is)');
+    expect(el.textContent ?? '').not.toContain(' votos já');
   });
 });

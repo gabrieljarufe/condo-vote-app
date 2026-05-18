@@ -321,7 +321,8 @@ DELETE FROM vote WHERE poll_id = ':pollId' LIMIT 1;
 
 #### O que ainda falta testar
 
-- ⏳ **Banner de inadimplência na UI do morador** — frontend não informa qual apartamento foi excluído do snapshot por inadimplência. Bloco 4 validou o comportamento do backend; a UX do morador está incompleta.
+- ✅ **Banner de inadimplência na UI do morador** — implementado em `ballot-vote-page.ts`; `MyBallotsResponse.excludedApartments` lista aptos do morador fora do snapshot, e a UI exibe banner amarelo com a lista. Resolvido na entrega `feat: unifica votações no dashboard`.
+- ✅ **Painel "Sua participação" no detalhe da poll** — `poll-detail-page.ts` mostra, para morador, status por apto (votado, pendente com CTA "Votar →", não-elegível) + total elegível em pollas OPEN (sem totalVotesSoFar, por sigilo §5).
 - ⏳ **Retry parcial em rede flaky real** — o Bloco 5 usa 409 simulado; comportamento com timeout de rede (504/502) não exercitado.
 - ⏳ **Fluxo quando morador tem acesso a >10 apartamentos** — sem cap de paginação testado no bulk.
 - ⏳ **Integração com H9 (timeline de auditoria)** — quando H9 entrar, o evento `VOTE_CAST` deve aparecer na timeline do síndico; não validado ainda.
@@ -351,9 +352,11 @@ DELETE FROM vote WHERE poll_id = ':pollId' LIMIT 1;
 - `GET /api/polls/{pollId}/my-ballots` — cédulas do morador para a poll
 - `GET /api/condominiums/{condoId}/my-pending-polls` — polls OPEN com cédulas pendentes
 
-**Frontend (todas em `/app/condominiums/:condoId/...`, protegidas por `tenantRestoreGuard + residentGuard`):**
-- `/my-polls` — lista de polls com cédulas pendentes
-- `/polls/:pollId/vote` — BallotVotePage
+**Frontend (todas em `/app/condominiums/:condoId/...`, protegidas por `tenantRestoreGuard`):**
+- `/polls` — lista unificada com chips (Pendentes • Em andamento • Encerradas • Todas); default `Pendentes` para morador
+- `/my-polls` — **redirect** para `/polls?tab=pendentes` (compat com links antigos)
+- `/polls/:pollId` — PollDetailPage (com painel "Sua participação" para morador)
+- `/polls/:pollId/vote` — BallotVotePage (com banner de inadimplência)
 - `/polls/:pollId/vote/review` — BallotReviewPage
 
 ## Referências

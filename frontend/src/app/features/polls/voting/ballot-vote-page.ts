@@ -1,5 +1,3 @@
-// B6: Adicionar banner de inadimplência quando tiver API para comparar
-// cédulas no snapshot com lista completa de apartments do usuário no condo.
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -7,6 +5,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { combineLatest, catchError, map, startWith } from 'rxjs';
 import {
   MyBallotResponse,
+  MyBallotsResponse,
   PollDetailResponse,
   PollsApiService,
 } from '../../../core/api/polls-api.service';
@@ -16,7 +15,7 @@ import { BallotCard } from './ballot-card';
 
 type LoadState =
   | { kind: 'loading' }
-  | { kind: 'ready'; pollDetail: PollDetailResponse; myBallots: ReadonlyArray<MyBallotResponse> }
+  | { kind: 'ready'; pollDetail: PollDetailResponse; myBallots: MyBallotsResponse }
   | { kind: 'error'; message: string };
 
 @Component({
@@ -48,6 +47,26 @@ type LoadState =
             <p class="text-sm text-on-surface-variant mb-6">
               {{ pollDetail()!.poll.description }}
             </p>
+          }
+
+          @if (excludedApartments().length > 0) {
+            <section
+              role="status"
+              class="bg-warning-container text-on-warning-container rounded-2xl border border-outline-variant p-5 mb-6"
+            >
+              <h2 class="text-sm font-semibold mb-2">
+                Apartamentos fora desta votação
+              </h2>
+              <p class="text-sm mb-3">
+                Os apartamentos abaixo ficaram fora do conjunto elegível quando a votação foi
+                aberta — geralmente por inadimplência.
+              </p>
+              <ul class="flex flex-col gap-1">
+                @for (apt of excludedApartments(); track apt.apartmentId) {
+                  <li class="text-sm">Apto {{ apt.apartmentLabel }}</li>
+                }
+              </ul>
+            </section>
           }
 
           <!-- Opções da poll (leitura — visível em todos os casos) -->
@@ -179,15 +198,20 @@ export default class BallotVotePage {
 
   protected readonly pendingBallots = computed<ReadonlyArray<MyBallotResponse>>(() => {
     const s = this.state();
-    return s.kind === 'ready' ? s.myBallots.filter((b) => !b.alreadyVoted) : [];
+    return s.kind === 'ready' ? s.myBallots.ballots.filter((b) => !b.alreadyVoted) : [];
   });
 
   protected readonly firstBallot = computed(() => this.pendingBallots()[0] ?? null);
 
+  protected readonly excludedApartments = computed(() => {
+    const s = this.state();
+    return s.kind === 'ready' ? s.myBallots.excludedApartments : [];
+  });
+
   protected readonly voteEligibility = computed<'not-eligible' | 'all-voted' | 'can-vote'>(() => {
     const s = this.state();
     if (s.kind !== 'ready') return 'can-vote';
-    const ballots = s.myBallots;
+    const ballots = s.myBallots.ballots;
     if (ballots.length === 0) return 'not-eligible';
     if (ballots.every((b) => b.alreadyVoted)) return 'all-voted';
     return 'can-vote';

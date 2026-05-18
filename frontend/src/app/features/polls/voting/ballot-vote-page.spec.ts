@@ -85,6 +85,18 @@ function makeBallot(overrides: Partial<MyBallotResponse> = {}): MyBallotResponse
   };
 }
 
+function makeMyBallots(
+  ballots: ReadonlyArray<MyBallotResponse>,
+  excluded: ReadonlyArray<{ apartmentId: string; apartmentLabel: string; reason: 'EXCLUDED' }> = [],
+) {
+  return {
+    ballots,
+    excludedApartments: excluded,
+    totalVotesSoFar: null,
+    eligibleCount: ballots.length,
+  };
+}
+
 function makeApi(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     list: vi.fn(),
@@ -95,7 +107,7 @@ function makeApi(overrides: Partial<Record<string, unknown>> = {}) {
     cancel: vi.fn(),
     close: vi.fn(),
     getById: vi.fn(() => of(makePollDetail())),
-    getMyBallots: vi.fn(() => of([makeBallot()])),
+    getMyBallots: vi.fn(() => of(makeMyBallots([makeBallot()]))),
     submitVote: vi.fn(() => of({ id: 'vote-1', pollId: 'poll-1', apartmentId: 'apt-101', optionId: 'opt-sim', votedAt: '' })),
     getMyPendingPolls: vi.fn(),
     ...overrides,
@@ -161,7 +173,7 @@ describe('BallotVotePage', () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component } = await setup({
-      getMyBallots: vi.fn(() => of([ballot1, ballot2])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
     expect(component.pendingBallots()).toHaveLength(2);
@@ -193,7 +205,7 @@ describe('BallotVotePage', () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component, api } = await setup({
-      getMyBallots: vi.fn(() => of([ballot1, ballot2])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
     component.selectedOptionId.set('opt-sim');
@@ -212,7 +224,7 @@ describe('BallotVotePage', () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component } = await setup({
-      getMyBallots: vi.fn(() => of([ballot1, ballot2])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
     component.selectedOptionId.set('opt-sim');
@@ -251,16 +263,41 @@ describe('BallotVotePage', () => {
   it('quando pendingBallots vazio mostra mensagem "já votou em todas"', async () => {
     const votedBallot = makeBallot({ alreadyVoted: true, votedOptionId: 'opt-sim' });
     const { fixture } = await setup({
-      getMyBallots: vi.fn(() => of([votedBallot])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([votedBallot]))),
     });
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Você já votou em todas as suas cédulas');
   });
 
+  it('banner de inadimplência aparece quando há apartamentos excluídos', async () => {
+    const { fixture, component } = await setup({
+      getMyBallots: vi.fn(() =>
+        of(
+          makeMyBallots(
+            [makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' })],
+            [{ apartmentId: 'apt-202', apartmentLabel: '202', reason: 'EXCLUDED' as const }],
+          ),
+        ),
+      ),
+    });
+    fixture.detectChanges();
+    expect(component.excludedApartments()).toHaveLength(1);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Apartamentos fora desta votação');
+    expect(el.textContent).toContain('Apto 202');
+  });
+
+  it('sem apartamentos excluídos, banner de inadimplência não aparece', async () => {
+    const { fixture } = await setup();
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).not.toContain('Apartamentos fora desta votação');
+  });
+
   it('quando myBallots vazia mostra painel "não pode votar" sem CTA de voto', async () => {
     const { fixture, component } = await setup({
-      getMyBallots: vi.fn(() => of([])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([]))),
     });
     fixture.detectChanges();
     expect(component.voteEligibility()).toBe('not-eligible');

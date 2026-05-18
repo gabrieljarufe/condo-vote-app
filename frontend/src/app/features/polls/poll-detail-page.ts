@@ -8,7 +8,9 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { forkJoin } from 'rxjs';
 import {
+  MyBallotsResponse,
   PollDetailResponse,
   PollOptionResponse,
   PollResponse,
@@ -159,6 +161,51 @@ function extractErrorMessage(e: unknown, fallback: string): string {
             </ul>
           </section>
 
+          <!-- Painel "Sua participação" (apenas morador) -->
+          @if (isResident() && myBallots(); as mb) {
+            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+              <h2 class="text-base font-semibold text-on-surface mb-3">Sua participação</h2>
+              @if (mb.ballots.length === 0 && mb.excludedApartments.length === 0) {
+                <p class="text-sm text-on-surface-variant">
+                  Você não tem apartamentos elegíveis nesta votação.
+                </p>
+              } @else {
+                <ul class="flex flex-col gap-2 text-sm">
+                  @for (b of mb.ballots; track b.apartmentId) {
+                    <li class="flex items-center justify-between gap-3">
+                      <span class="text-on-surface">Apto {{ b.apartmentLabel }}</span>
+                      @if (b.alreadyVoted) {
+                        <span class="text-on-surface-variant text-xs">
+                          Votou em: <strong>{{ votedOptionLabel(b.votedOptionId) }}</strong>
+                        </span>
+                      } @else if (d.poll.status === 'OPEN') {
+                        <a
+                          [routerLink]="voteHref()"
+                          class="text-primary text-xs underline font-medium"
+                          >Votar →</a
+                        >
+                      } @else {
+                        <span class="text-on-surface-variant text-xs">Não votou</span>
+                      }
+                    </li>
+                  }
+                  @for (apt of mb.excludedApartments; track apt.apartmentId) {
+                    <li class="flex items-center justify-between gap-3 text-on-surface-variant">
+                      <span>Apto {{ apt.apartmentLabel }}</span>
+                      <span class="text-xs">Não elegível</span>
+                    </li>
+                  }
+                </ul>
+                @if (d.poll.status === 'OPEN' && mb.eligibleCount > 0) {
+                  <!-- Apenas total elegível, sem expor participação parcial: sigilo do voto §5 -->
+                  <p class="text-xs text-on-surface-variant mt-4">
+                    {{ mb.eligibleCount }} apartamento(s) elegível(is) no total desta votação.
+                  </p>
+                }
+              }
+            </section>
+          }
+
           <!-- Result (only for CLOSED / INVALIDATED) -->
           @if (d.result) {
             <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
@@ -300,8 +347,10 @@ export default class PollDetailPage implements OnInit {
   private readonly tenant = inject(TenantService);
 
   protected readonly isAdmin = computed(() => this.tenant.isAdmin());
+  protected readonly isResident = computed(() => this.tenant.isResident());
   protected readonly pageState = signal<PageState>('loading');
   protected readonly detail = signal<PollDetailResponse | null>(null);
+  protected readonly myBallots = signal<MyBallotsResponse | null>(null);
   protected readonly errorMessage = signal('');
   protected readonly actionPending = signal(false);
   protected readonly actionError = signal('');
@@ -320,6 +369,23 @@ export default class PollDetailPage implements OnInit {
 
   private loadDetail(): void {
     this.pageState.set('loading');
+    if (this.tenant.isResident()) {
+      forkJoin({
+        detail: this.pollsApi.getById(this.pollId),
+        ballots: this.pollsApi.getMyBallots(this.pollId),
+      }).subscribe({
+        next: ({ detail, ballots }) => {
+          this.detail.set(detail);
+          this.myBallots.set(ballots);
+          this.pageState.set('ready');
+        },
+        error: (e: unknown) => {
+          this.errorMessage.set(extractErrorMessage(e, 'Erro ao carregar votação.'));
+          this.pageState.set('error');
+        },
+      });
+      return;
+    }
     this.pollsApi.getById(this.pollId).subscribe({
       next: (d) => {
         this.detail.set(d);
@@ -330,6 +396,16 @@ export default class PollDetailPage implements OnInit {
         this.pageState.set('error');
       },
     });
+  }
+
+  protected votedOptionLabel(optionId: string | null): string {
+    if (!optionId) return '—';
+    const opt = this.detail()?.options.find((o) => o.id === optionId);
+    return opt?.label ?? '—';
+  }
+
+  protected voteHref(): unknown[] {
+    return ['/app/condominiums', this.condoId, 'polls', this.pollId, 'vote'];
   }
 
   protected hasActions(status: PollStatus): boolean {

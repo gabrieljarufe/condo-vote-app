@@ -4,6 +4,8 @@ import com.condovote.auth.AuthGateway;
 import com.condovote.poll.dto.ExcludedApartmentResponse;
 import com.condovote.poll.dto.MyBallotResponse;
 import com.condovote.poll.dto.MyBallotsResponse;
+import com.condovote.poll.dto.MyPendingPollResponse;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -15,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MyBallotsService {
 
+  // Ordenamos por block (string) + unit_number numérico (NULLs-last) para evitar "A 10" antes
+  // de "A 9". unit_number ainda é textual no schema, então convertemos por regex para o trecho
+  // numérico inicial; em caso de unit não-numérico, cai no fallback lexicográfico de unit_number.
   private static final String LIST_MY_BALLOTS =
       """
       SELECT s.apartment_id,
@@ -26,7 +31,9 @@ public class MyBallotsService {
    LEFT JOIN vote v ON v.poll_id = s.poll_id AND v.apartment_id = s.apartment_id
        WHERE s.poll_id = :pollId
          AND s.eligible_voter_user_id = :userId
-       ORDER BY label
+       ORDER BY COALESCE(a.block, ''),
+                NULLIF(SUBSTRING(a.unit_number FROM '^[0-9]+'), '')::int NULLS LAST,
+                a.unit_number
       """;
 
   private static final String LIST_EXCLUDED_APARTMENTS =
@@ -41,7 +48,27 @@ public class MyBallotsService {
              SELECT 1 FROM poll_eligible_snapshot s
               WHERE s.poll_id = :pollId AND s.apartment_id = a.id
          )
-       ORDER BY label
+       ORDER BY COALESCE(a.block, ''),
+                NULLIF(SUBSTRING(a.unit_number FROM '^[0-9]+'), '')::int NULLS LAST,
+                a.unit_number
+      """;
+
+  private static final String LIST_MY_PENDING =
+      """
+      SELECT p.id AS poll_id,
+             p.title,
+             p.scheduled_end,
+             COUNT(*) FILTER (WHERE v.id IS NULL) AS pending,
+             COUNT(*) AS total
+        FROM poll p
+        JOIN poll_eligible_snapshot s ON s.poll_id = p.id
+   LEFT JOIN vote v ON v.poll_id = s.poll_id AND v.apartment_id = s.apartment_id
+       WHERE p.condominium_id = :condoId
+         AND p.status::text = 'OPEN'
+         AND s.eligible_voter_user_id = :userId
+    GROUP BY p.id, p.title, p.scheduled_end
+      HAVING COUNT(*) FILTER (WHERE v.id IS NULL) > 0
+    ORDER BY p.scheduled_end
       """;
 
   private static final String COUNT_ELIGIBLE =
@@ -100,5 +127,20 @@ public class MyBallotsService {
             : null;
 
     return new MyBallotsResponse(ballots, excluded, totalVotesSoFar, eligibleCount);
+  }
+
+  @Transactional(readOnly = true)
+  public List<MyPendingPollResponse> getMyPendingPolls(UUID condoId) {
+    UUID userId = authGateway.getCurrentUserId();
+    return jdbc.query(
+        LIST_MY_PENDING,
+        new MapSqlParameterSource("condoId", condoId).addValue("userId", userId),
+        (rs, i) ->
+            new MyPendingPollResponse(
+                (UUID) rs.getObject("poll_id"),
+                rs.getString("title"),
+                rs.getObject("scheduled_end", OffsetDateTime.class),
+                rs.getLong("pending"),
+                rs.getLong("total")));
   }
 }

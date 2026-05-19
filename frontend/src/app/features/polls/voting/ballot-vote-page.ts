@@ -9,6 +9,7 @@ import {
   PollDetailResponse,
   PollsApiService,
 } from '../../../core/api/polls-api.service';
+import { extractErrorMessage } from '../../../shared/http/error-message';
 import { AppHeader } from '../../../shared/layout/app-header';
 import { Spinner } from '../../../shared/ui/spinner';
 import { BallotCard } from './ballot-card';
@@ -26,7 +27,8 @@ type LoadState =
     <app-app-header />
 
     <main class="max-w-2xl mx-auto px-6 py-12">
-      @switch (state().kind) {
+      @let s = state();
+      @switch (s.kind) {
         @case ('loading') {
           <div class="flex justify-center py-12">
             <app-spinner label="Carregando…" />
@@ -34,22 +36,26 @@ type LoadState =
         }
         @case ('error') {
           <div class="bg-error-container text-on-error-container rounded-2xl p-6">
-            <p class="text-sm mb-3">{{ errorMessage() }}</p>
-            <a [routerLink]="['/app/condominiums', condoId, 'my-polls']"
-               class="text-sm underline">Voltar para minhas votações</a>
+            <p class="text-sm mb-3">{{ s.message }}</p>
+            <a
+              [routerLink]="['/app/condominiums', condoId, 'polls']"
+              [queryParams]="{ tab: 'pendentes' }"
+              class="text-sm underline"
+              >Voltar para minhas votações</a
+            >
           </div>
         }
         @case ('ready') {
           <h1 class="text-2xl font-semibold text-on-surface mb-2">
-            {{ pollDetail()!.poll.title }}
+            {{ s.pollDetail.poll.title }}
           </h1>
-          @if (pollDetail()!.poll.description) {
+          @if (s.pollDetail.poll.description) {
             <p class="text-sm text-on-surface-variant mb-6">
-              {{ pollDetail()!.poll.description }}
+              {{ s.pollDetail.poll.description }}
             </p>
           }
 
-          @if (excludedApartments().length > 0) {
+          @if (s.myBallots.excludedApartments.length > 0) {
             <section
               role="status"
               class="bg-warning-container text-on-warning-container rounded-2xl border border-outline-variant p-5 mb-6"
@@ -62,7 +68,7 @@ type LoadState =
                 aberta — geralmente por inadimplência.
               </p>
               <ul class="flex flex-col gap-1">
-                @for (apt of excludedApartments(); track apt.apartmentId) {
+                @for (apt of s.myBallots.excludedApartments; track apt.apartmentId) {
                   <li class="text-sm">Apto {{ apt.apartmentLabel }}</li>
                 }
               </ul>
@@ -70,11 +76,11 @@ type LoadState =
           }
 
           <!-- Opções da poll (leitura — visível em todos os casos) -->
-          @if (pollDetail()!.options.length > 0) {
+          @if (s.pollDetail.options.length > 0) {
             <section class="bg-surface-container-low rounded-2xl border border-outline-variant p-5 mb-6">
               <h2 class="text-sm font-semibold text-on-surface mb-3">Opções de voto</h2>
               <ul class="flex flex-col gap-2">
-                @for (opt of pollDetail()!.options; track opt.id) {
+                @for (opt of s.pollDetail.options; track opt.id) {
                   <li class="text-sm text-on-surface flex items-center gap-2">
                     <span class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-xs font-medium text-on-surface-variant shrink-0">
                       {{ opt.displayOrder + 1 }}
@@ -86,6 +92,8 @@ type LoadState =
             </section>
           }
 
+          @let pending = pendingBallots();
+          @let first = pending[0];
           @switch (voteEligibility()) {
             @case ('not-eligible') {
               <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8">
@@ -104,36 +112,42 @@ type LoadState =
                 <p class="text-sm text-on-surface-variant mb-4">
                   Você já votou em todas as suas cédulas para esta votação.
                 </p>
-                <a [routerLink]="['/app/condominiums', condoId, 'my-polls']"
-                   class="text-primary text-sm underline">Voltar para minhas votações</a>
+                <a
+                  [routerLink]="['/app/condominiums', condoId, 'polls']"
+                  [queryParams]="{ tab: 'pendentes' }"
+                  class="text-primary text-sm underline"
+                  >Voltar para minhas votações</a
+                >
               </div>
             }
             @case ('can-vote') {
-              @if (pendingBallots().length > 1) {
-                <p class="text-xs text-on-surface-variant mb-4">
-                  Você tem {{ pendingBallots().length }} apartamentos elegíveis nesta votação.
-                  Votaremos primeiro no apto {{ firstBallot()!.apartmentLabel }}.
-                </p>
+              @if (first) {
+                @if (pending.length > 1) {
+                  <p class="text-xs text-on-surface-variant mb-4">
+                    Você tem {{ pending.length }} apartamentos elegíveis nesta votação.
+                    Votaremos primeiro no apto {{ first.apartmentLabel }}.
+                  </p>
+                }
+
+                <app-ballot-card
+                  [apartmentLabel]="first.apartmentLabel"
+                  [options]="s.pollDetail.options"
+                  [selectedOptionId]="selectedOptionId()"
+                  (optionChange)="onOptionChange($event)"
+                />
+
+                @if (submitError()) {
+                  <p class="text-error text-sm mt-4">{{ submitError() }}</p>
+                }
+
+                <button
+                  class="w-full mt-6 bg-primary text-on-primary rounded-2xl py-3 font-semibold disabled:opacity-50"
+                  [disabled]="!selectedOptionId() || submitting()"
+                  (click)="onConfirm()"
+                >
+                  {{ submitting() ? 'Enviando…' : 'Confirmar voto' }}
+                </button>
               }
-
-              <app-ballot-card
-                [apartmentLabel]="firstBallot()!.apartmentLabel"
-                [options]="pollDetail()!.options"
-                [selectedOptionId]="selectedOptionId()"
-                (optionChange)="onOptionChange($event)"
-              />
-
-              @if (submitError()) {
-                <p class="text-error text-sm mt-4">{{ submitError() }}</p>
-              }
-
-              <button
-                class="w-full mt-6 bg-primary text-on-primary rounded-2xl py-3 font-semibold disabled:opacity-50"
-                [disabled]="!selectedOptionId() || submitting()"
-                (click)="onConfirm()"
-              >
-                {{ submitting() ? 'Enviando…' : 'Confirmar voto' }}
-              </button>
             }
           }
 
@@ -184,7 +198,7 @@ export default class BallotVotePage {
     ]).pipe(
       map(([pollDetail, myBallots]): LoadState => ({ kind: 'ready', pollDetail, myBallots })),
       catchError((err): LoadState[] => [
-        { kind: 'error', message: err?.message ?? 'Erro ao carregar votação.' },
+        { kind: 'error', message: extractErrorMessage(err, 'Erro ao carregar votação.') },
       ]),
       startWith<LoadState>({ kind: 'loading' }),
     ),
@@ -201,13 +215,6 @@ export default class BallotVotePage {
     return s.kind === 'ready' ? s.myBallots.ballots.filter((b) => !b.alreadyVoted) : [];
   });
 
-  protected readonly firstBallot = computed(() => this.pendingBallots()[0] ?? null);
-
-  protected readonly excludedApartments = computed(() => {
-    const s = this.state();
-    return s.kind === 'ready' ? s.myBallots.excludedApartments : [];
-  });
-
   protected readonly voteEligibility = computed<'not-eligible' | 'all-voted' | 'can-vote'>(() => {
     const s = this.state();
     if (s.kind !== 'ready') return 'can-vote';
@@ -217,22 +224,12 @@ export default class BallotVotePage {
     return 'can-vote';
   });
 
-  protected readonly pollDetail = computed(() => {
-    const s = this.state();
-    return s.kind === 'ready' ? s.pollDetail : null;
-  });
-
-  protected readonly errorMessage = computed(() => {
-    const s = this.state();
-    return s.kind === 'error' ? s.message : '';
-  });
-
   protected onOptionChange(optionId: string): void {
     this.selectedOptionId.set(optionId);
   }
 
   protected onConfirm(): void {
-    const ballot = this.firstBallot();
+    const ballot = this.pendingBallots()[0];
     const optId = this.selectedOptionId();
     if (!ballot || !optId) return;
     this.submitting.set(true);
@@ -243,22 +240,28 @@ export default class BallotVotePage {
         if (this.pendingBallots().length > 1) {
           this.showBulkPrompt.set(true);
         } else {
-          this.router.navigate(['/app/condominiums', this.condoId, 'my-polls']);
+          this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
+            queryParams: { tab: 'pendentes' },
+          });
         }
       },
-      error: (err) => {
+      error: (err: unknown) => {
         this.submitting.set(false);
+        const status =
+          err && typeof err === 'object' && 'status' in err ? (err as { status: number }).status : null;
         const msg =
-          err?.status === 409
+          status === 409
             ? 'A votação foi encerrada. Volte para a lista.'
-            : 'Falha ao registrar voto. Tente novamente.';
+            : extractErrorMessage(err, 'Falha ao registrar voto. Tente novamente.');
         this.submitError.set(msg);
       },
     });
   }
 
   protected onSkipBulk(): void {
-    this.router.navigate(['/app/condominiums', this.condoId, 'my-polls']);
+    this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
+      queryParams: { tab: 'pendentes' },
+    });
   }
 
   protected onApplyBulk(): void {

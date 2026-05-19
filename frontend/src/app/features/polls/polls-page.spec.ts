@@ -153,7 +153,8 @@ describe('PollsPage', () => {
     expect(component.activeTab()).toBe('pendentes');
     expect(api.getMyPendingPolls).toHaveBeenCalledWith('condo-1');
     expect(component.pendingPolls()).toHaveLength(1);
-    expect(component.pendingCount()).toBe(1);
+    // pendingCount conta cédulas, não polls (1 poll × 2 cédulas pendentes).
+    expect(component.pendingCount()).toBe(2);
   });
 
   it('queryParam tab override default', async () => {

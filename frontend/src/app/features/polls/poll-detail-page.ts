@@ -9,6 +9,7 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { forkJoin } from 'rxjs';
+import { extractErrorMessage } from '../../shared/http/error-message';
 import {
   MyBallotsResponse,
   PollDetailResponse,
@@ -61,13 +62,6 @@ function formatDatePtBR(iso: string | null | undefined): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(iso));
-}
-
-function extractErrorMessage(e: unknown, fallback: string): string {
-  if (e instanceof HttpErrorResponse) {
-    return (e.error?.message as string | undefined) ?? e.message;
-  }
-  return fallback;
 }
 
 @Component({
@@ -523,7 +517,12 @@ export default class PollDetailPage implements OnInit {
     let rawCounts: Record<string, number> = {};
     try {
       rawCounts = JSON.parse(d.result.optionsBreakdown) as Record<string, number>;
-    } catch {
+    } catch (e) {
+      // optionsBreakdown vem como JSON serializado do backend (jsonb). Falha aqui
+      // indica corrupção de dado ou contrato quebrado — registrar para investigação.
+      // Não chamamos actionError aqui porque breakdownRows roda no template (side-effects
+      // dentro de change detection geram ExpressionChangedAfterItHasBeenChecked).
+      console.error('Falha ao parsear optionsBreakdown', e, d.result.optionsBreakdown);
       return [];
     }
     const total = d.result.totalVotes || 1; // evita div/0

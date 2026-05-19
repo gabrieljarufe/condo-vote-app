@@ -86,7 +86,8 @@ INSERT INTO condominium_admin (id, condominium_id, user_id, granted_at) VALUES (
 INSERT INTO apartment (id, condominium_id, block, unit_number, is_delinquent, created_at) VALUES
     ('019dd4f8-57fa-77b1-ace2-c9f78d6fc50c', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '101', false, now()),
     ('019dd4f8-57fa-77b1-ace2-c9f8fb30cb4a', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '102', false, now()),
-    ('019dd4f8-57fa-77b1-ace2-c9f99d4168bd', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '103', false, now())
+    ('019dd4f8-57fa-77b1-ace2-c9f99d4168bd', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '103', false, now()),
+    ('019dd4f8-57fa-77b1-ace2-c9fabb000104', '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e', 'A', '104', false, now())
 ON CONFLICT (id) DO NOTHING;
 
 -- Condomínio 2 — bloco B
@@ -97,7 +98,7 @@ INSERT INTO apartment (id, condominium_id, block, unit_number, is_delinquent, cr
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================================
--- 5. Morador Dev — OWNER do A101 (Condomínio Teste Local)
+-- 5. Morador Dev — OWNER do A104 (Condomínio Teste Local)
 --    id = b0b0b0b0-... é v4 fake memorizável; deve existir em
 --    infra/supabase/supabase/seed.sql como auth.users + auth.identities.
 --    Credenciais de login: morador@local.dev / password123
@@ -107,7 +108,7 @@ VALUES (
     'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0',
     'Morador Dev',
     'morador@local.dev',
-    '\x00',
+    '\x01',
     true,
     now(),
     'v1',
@@ -118,13 +119,13 @@ INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role,
 VALUES (
     '019dd4f8-57fa-77b1-ace2-c9fbbb000001',
     '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e',
-    '019dd4f8-57fa-77b1-ace2-c9f78d6fc50c',
+    '019dd4f8-57fa-77b1-ace2-c9fabb000104',
     'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0',
     'OWNER',
     now()
 ) ON CONFLICT (id) DO NOTHING;
 
--- Marca A101 como tendo morador elegível para votação
+-- Marca A104 como tendo morador elegível para votação
 UPDATE apartment
 SET eligible_voter_user_id = 'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0'
-WHERE id = '019dd4f8-57fa-77b1-ace2-c9f78d6fc50c';
+WHERE id = '019dd4f8-57fa-77b1-ace2-c9fabb000104';

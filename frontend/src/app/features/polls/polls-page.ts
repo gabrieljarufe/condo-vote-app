@@ -14,9 +14,9 @@ import {
 } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
-import { Paginator } from '../../shared/ui/paginator';
 import { Spinner } from '../../shared/ui/spinner';
-import { PollStatusBadge } from './poll-status-badge';
+import { PendingPollsList } from './pending-polls-list';
+import { PollsTable } from './polls-table';
 
 type PageState = 'loading' | 'error' | 'ready';
 type Tab = 'pendentes' | 'em-andamento' | 'encerradas' | 'todas';
@@ -35,21 +35,9 @@ const TAB_CONFIGS: ReadonlyArray<TabConfig> = [
   { value: 'todas', label: 'Todas', statuses: [] },
 ];
 
-const CONVOCATION_LABELS: Record<string, string> = {
-  FIRST: '1ª Convocação',
-  SECOND: '2ª Convocação',
-};
-
-const QUORUM_LABELS: Record<string, string> = {
-  SIMPLE_MAJORITY: 'Maioria Simples',
-  ABSOLUTE_MAJORITY: 'Maioria Absoluta',
-  QUALIFIED_2_3: 'Qualificado 2/3',
-  QUALIFIED_3_4: 'Qualificado 3/4',
-};
-
 @Component({
   selector: 'app-polls-page',
-  imports: [AppHeader, Spinner, Paginator, RouterLink, PollStatusBadge],
+  imports: [AppHeader, Spinner, RouterLink, PendingPollsList, PollsTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -101,102 +89,23 @@ const QUORUM_LABELS: Record<string, string> = {
         </div>
       } @else if (pageState() === 'error') {
         <p class="text-sm text-error py-4" role="alert">{{ errorMessage() }}</p>
+      } @else if (activeTab() === 'pendentes') {
+        <app-pending-polls-list
+          [polls]="pendingPolls()"
+          [condoId]="condoId"
+          (seeInProgress)="onTabChange('em-andamento')"
+        />
       } @else {
-        @if (activeTab() === 'pendentes') {
-          @if (pendingPolls().length === 0) {
-            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
-              <p class="text-sm text-on-surface-variant py-4 text-center">
-                Você não tem votações pendentes.
-                <a
-                  (click)="onTabChange('em-andamento')"
-                  class="text-primary underline cursor-pointer ml-1"
-                  >Ver em andamento</a
-                >
-              </p>
-            </section>
-          } @else {
-            <section class="flex flex-col gap-3">
-              @for (p of pendingPolls(); track p.pollId) {
-                <article
-                  class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 flex items-center justify-between gap-4"
-                >
-                  <div class="flex-1 min-w-0">
-                    <h3 class="font-medium text-on-surface truncate">{{ p.title }}</h3>
-                    <p class="text-xs text-on-surface-variant mt-1">
-                      {{ p.pendingBallotsCount }} de {{ p.totalBallotsCount }} cédula(s) pendente(s)
-                      · encerra {{ formatDate(p.scheduledEnd) }}
-                    </p>
-                  </div>
-                  <a
-                    [routerLink]="['/app/condominiums', condoId, 'polls', p.pollId, 'vote']"
-                    class="shrink-0 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold"
-                  >
-                    Votar →
-                  </a>
-                </article>
-              }
-            </section>
-          }
-        } @else {
-          <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
-            @if (totalElements() === 0) {
-              <p class="text-sm text-on-surface-variant py-4 text-center">
-                {{ emptyMessage() }}
-              </p>
-            } @else {
-              <table class="w-full text-sm table-fixed">
-                <thead>
-                  <tr class="border-b border-outline-variant text-left text-on-surface-variant">
-                    <th class="py-2 pr-4 font-medium w-2/5">Título</th>
-                    <th class="py-2 pr-4 font-medium w-1/8">Status</th>
-                    <th class="py-2 pr-4 font-medium w-1/6">Convocação</th>
-                    <th class="py-2 pr-4 font-medium w-1/6">Quórum</th>
-                    <th class="py-2 pr-2 font-medium w-1/8">Início</th>
-                    <th class="py-2 font-medium w-1/8">Fim</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (poll of polls(); track poll.id) {
-                    <tr class="border-b border-outline-variant/50 hover:bg-surface-container-low">
-                      <td class="py-3 pr-4 truncate">
-                        <a
-                          [routerLink]="['./', poll.id]"
-                          class="font-medium text-on-surface hover:text-secondary hover:underline"
-                        >
-                          {{ poll.title }}
-                        </a>
-                      </td>
-                      <td class="py-3 pr-4">
-                        <app-poll-status-badge [status]="poll.status" />
-                      </td>
-                      <td class="py-3 pr-4 text-on-surface-variant truncate">
-                        {{ convocationLabel(poll) }}
-                      </td>
-                      <td class="py-3 pr-4 text-on-surface-variant truncate">
-                        {{ quorumLabel(poll) }}
-                      </td>
-                      <td class="py-3 pr-2 text-on-surface-variant text-xs">
-                        {{ formatDate(poll.scheduledStart) }}
-                      </td>
-                      <td class="py-3 text-on-surface-variant text-xs">
-                        {{ formatDate(poll.scheduledEnd) }}
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-
-              <app-paginator
-                [page]="page()"
-                [size]="size()"
-                [totalElements]="totalElements()"
-                [totalPages]="totalPages()"
-                (pageChange)="onPageChange($event)"
-                (sizeChange)="onSizeChange($event)"
-              />
-            }
-          </section>
-        }
+        <app-polls-table
+          [polls]="polls()"
+          [page]="page()"
+          [size]="size()"
+          [totalElements]="totalElements()"
+          [totalPages]="totalPages()"
+          [emptyMessage]="emptyMessage()"
+          (pageChange)="onPageChange($event)"
+          (sizeChange)="onSizeChange($event)"
+        />
       }
     </main>
   `,
@@ -216,7 +125,10 @@ export default class PollsPage implements OnInit {
   protected readonly totalElements = signal(0);
   protected readonly totalPages = signal(0);
   protected readonly activeTab = signal<Tab>('em-andamento');
-  protected readonly pendingCount = computed(() => this.pendingPolls().length);
+  // Conta cédulas, não polls — mesma semântica do dashboard.
+  protected readonly pendingCount = computed(() =>
+    this.pendingPolls().reduce((acc, p) => acc + p.pendingBallotsCount, 0),
+  );
   protected readonly isAdmin = computed(() => this.tenant.isAdmin());
   protected readonly isResident = computed(() => this.tenant.isResident());
 
@@ -239,14 +151,19 @@ export default class PollsPage implements OnInit {
     const tabParam = this.route.snapshot.queryParamMap.get('tab') as Tab | null;
     const initial = tabParam ?? this.defaultTab();
     this.activeTab.set(initial);
-    // Sempre carrega contagem de pendentes (para o badge visível em qualquer tab).
-    if (this.isResident()) {
-      this.pollsApi.getMyPendingPolls(this.condoId).subscribe({
-        next: (list) => this.pendingPolls.set(list),
-        error: () => this.pendingPolls.set([]),
-      });
+    // Quando a tab inicial não é "pendentes", priming do badge com a contagem atual.
+    // (Se for "pendentes", o loadForTab abaixo já busca.)
+    if (this.isResident() && initial !== 'pendentes') {
+      this.refreshPendingPolls();
     }
     this.loadForTab(initial);
+  }
+
+  private refreshPendingPolls(): void {
+    this.pollsApi.getMyPendingPolls(this.condoId).subscribe({
+      next: (list) => this.pendingPolls.set(list),
+      error: () => this.pendingPolls.set([]),
+    });
   }
 
   private defaultTab(): Tab {
@@ -268,8 +185,18 @@ export default class PollsPage implements OnInit {
   private loadForTab(tab: Tab): void {
     this.pageState.set('loading');
     if (tab === 'pendentes') {
-      // pendingPolls já carregado em ngOnInit; só reaproveita.
-      this.pageState.set('ready');
+      // Re-busca sempre que a tab é ativada — evita lista stale após votar
+      // em outra aba ou voltar da página de voto.
+      this.pollsApi.getMyPendingPolls(this.condoId).subscribe({
+        next: (list) => {
+          this.pendingPolls.set(list);
+          this.pageState.set('ready');
+        },
+        error: (e: unknown) => {
+          this.errorMessage.set(e instanceof Error ? e.message : 'Erro ao carregar pendências.');
+          this.pageState.set('error');
+        },
+      });
       return;
     }
     const cfg = TAB_CONFIGS.find((t) => t.value === tab);
@@ -308,22 +235,5 @@ export default class PollsPage implements OnInit {
     this.size.set(newSize);
     this.page.set(0);
     this.loadForTab(this.activeTab());
-  }
-
-  protected convocationLabel(poll: PollResponse): string {
-    return CONVOCATION_LABELS[poll.convocation] ?? poll.convocation;
-  }
-
-  protected quorumLabel(poll: PollResponse): string {
-    return QUORUM_LABELS[poll.quorumMode] ?? poll.quorumMode;
-  }
-
-  protected formatDate(iso: string | null): string {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-    });
   }
 }

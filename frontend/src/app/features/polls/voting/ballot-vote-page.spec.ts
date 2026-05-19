@@ -166,7 +166,7 @@ describe('BallotVotePage', () => {
     const { component } = await setup();
     expect(component.state().kind).toBe('ready');
     expect(component.pendingBallots()).toHaveLength(1);
-    expect(component.firstBallot().apartmentLabel).toBe('101');
+    expect(component.pendingBallots()[0].apartmentLabel).toBe('101');
   });
 
   it('renderiza texto explicativo com count quando há ≥2 ballots pendentes', async () => {
@@ -189,7 +189,7 @@ describe('BallotVotePage', () => {
     expect(button?.disabled).toBe(true);
   });
 
-  it('clicar confirmar com 1 ballot dispara submitVote e navega para /my-polls', async () => {
+  it('clicar confirmar com 1 ballot dispara submitVote e navega para /polls?tab=pendentes', async () => {
     const { fixture, component, api } = await setup();
     component.selectedOptionId.set('opt-sim');
     fixture.detectChanges();
@@ -198,7 +198,10 @@ describe('BallotVotePage', () => {
     fixture.detectChanges();
 
     expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/app/condominiums', 'condo-1', 'my-polls']);
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      ['/app/condominiums', 'condo-1', 'polls'],
+      { queryParams: { tab: 'pendentes' } },
+    );
   });
 
   it('clicar confirmar com 2+ ballots dispara submitVote e abre modal de bulk', async () => {
@@ -282,7 +285,9 @@ describe('BallotVotePage', () => {
       ),
     });
     fixture.detectChanges();
-    expect(component.excludedApartments()).toHaveLength(1);
+    const s = component.state();
+    expect(s.kind).toBe('ready');
+    expect(s.myBallots.excludedApartments).toHaveLength(1);
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Apartamentos fora desta votação');
     expect(el.textContent).toContain('Apto 202');

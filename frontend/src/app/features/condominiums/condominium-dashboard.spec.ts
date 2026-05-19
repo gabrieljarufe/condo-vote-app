@@ -109,7 +109,8 @@ describe('CondominiumDashboard', () => {
   it('morador vê card único "Votações" com subtítulo de pendências', async () => {
     const { fixture, component } = await setup(['OWNER'], 2);
     expect(component.isResident()).toBe(true);
-    expect(component.pollsSubtitle()).toBe('2 pendentes');
+    // 2 polls × 1 cédula = 2 cédulas pendentes.
+    expect(component.pollsSubtitle()).toBe('2 cédulas pendentes');
     const el: HTMLElement = fixture.nativeElement;
     // Apenas 1 card "Votações" (não dois como antes)
     const votacoesCards = Array.from(el.querySelectorAll('a')).filter((a) =>
@@ -137,9 +138,9 @@ describe('CondominiumDashboard', () => {
     expect(el.textContent).toContain('Acompanhe e participe');
   });
 
-  it('subtítulo singular "1 pendente" para 1 pendência', async () => {
+  it('subtítulo singular "1 cédula pendente" para 1 cédula', async () => {
     const { component } = await setup(['OWNER'], 1);
-    expect(component.pollsSubtitle()).toBe('1 pendente');
+    expect(component.pollsSubtitle()).toBe('1 cédula pendente');
   });
 
   it('isAdmin é true apenas quando tem role ADMIN', async () => {

@@ -14,6 +14,7 @@ import { AppHeader } from '../../../shared/layout/app-header';
 import { Dialog } from '../../../shared/ui/dialog';
 import { Dropdown, DropdownOption } from '../../../shared/ui/dropdown';
 import { Spinner } from '../../../shared/ui/spinner';
+import { SuccessPopup } from '../../../shared/ui/success-popup';
 import { BallotCard } from './ballot-card';
 
 type LoadState =
@@ -23,7 +24,7 @@ type LoadState =
 
 @Component({
   selector: 'app-ballot-vote-page',
-  imports: [CommonModule, AppHeader, Spinner, BallotCard, RouterLink, Dialog, Dropdown],
+  imports: [CommonModule, AppHeader, Spinner, BallotCard, RouterLink, Dialog, Dropdown, SuccessPopup],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -192,6 +193,11 @@ type LoadState =
               </button>
             </div>
           </app-dialog>
+          <app-success-popup
+            [open]="showSuccessPopup()"
+            [voteCount]="1"
+            (closed)="onSuccessClosed()"
+          />
         }
       }
     </main>
@@ -219,6 +225,7 @@ export default class BallotVotePage {
     { initialValue: { kind: 'loading' } as LoadState },
   );
 
+  protected readonly showSuccessPopup = signal(false);
   protected readonly selectedOptionId = signal<string | null>(null);
   protected readonly selectedApartmentId = signal<string | null>(null);
   protected readonly submitting = signal(false);
@@ -331,12 +338,17 @@ export default class BallotVotePage {
 
   private afterVote(): void {
     if (this.pendingBallots().length === 0) {
-      this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
-        queryParams: { tab: 'pendentes' },
-      });
+      this.showSuccessPopup.set(true);
       return;
     }
     this.selectedOptionId.set(null);
+  }
+
+  protected onSuccessClosed(): void {
+    this.showSuccessPopup.set(false);
+    this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
+      queryParams: { tab: 'pendentes' },
+    });
   }
 
   protected closeBulkPrompt(): void {

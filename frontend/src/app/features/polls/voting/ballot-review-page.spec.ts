@@ -10,6 +10,7 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../../core/auth/supabase.client';
+import { SuccessPopup } from '../../../shared/ui/success-popup';
 import BallotReviewPage from './ballot-review-page';
 
 // ─── Stubs ────────────────────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ async function setup(options: {
     ],
   })
     .overrideComponent(BallotReviewPage, {
-      set: { imports: [AppHeaderStub, RouterLink] },
+      set: { imports: [AppHeaderStub, RouterLink, SuccessPopup] },
     })
     .compileComponents();
 
@@ -237,19 +238,15 @@ describe('BallotReviewPage', () => {
       expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-303', 'opt-sim', true);
     });
 
-    it('sucesso total — mostra resultados todos verdes', async () => {
+    it('sucesso total — abre success popup com voteCount=N e o popup mostra o número correto', async () => {
       const { component, fixture } = await setup();
 
       component.onConfirmAll();
       fixture.detectChanges();
 
-      expect(component.hasResults()).toBe(true);
+      expect(component.showSuccessPopup()).toBe(true);
       expect(component.successCount()).toBe(3);
       expect(component.failureCount()).toBe(0);
-
-      const el: HTMLElement = fixture.nativeElement;
-      expect(el.textContent).toContain('✓ Registrado');
-      expect(el.textContent).not.toContain('Falha ao registrar');
     });
 
     it('falha parcial — mostra mistura de sucesso e erro + botão de retry', async () => {
@@ -268,6 +265,7 @@ describe('BallotReviewPage', () => {
 
       expect(component.successCount()).toBe(2);
       expect(component.failureCount()).toBe(1);
+      expect(component.showSuccessPopup()).toBe(false);
 
       const el: HTMLElement = fixture.nativeElement;
       expect(el.textContent).toContain('✓ Registrado');
@@ -335,6 +333,23 @@ describe('BallotReviewPage', () => {
 
       component.backToList();
 
+      expect(mockRouter.navigate).toHaveBeenCalledWith([
+        '/app/condominiums',
+        'condo-1',
+        'my-polls',
+      ]);
+    });
+  });
+
+  describe('onSuccessClosed', () => {
+    it('fecha popup e navega para /my-polls', async () => {
+      const { component, mockRouter } = await setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (component as any).showSuccessPopup.set(true);
+
+      component.onSuccessClosed();
+
+      expect(component.showSuccessPopup()).toBe(false);
       expect(mockRouter.navigate).toHaveBeenCalledWith([
         '/app/condominiums',
         'condo-1',

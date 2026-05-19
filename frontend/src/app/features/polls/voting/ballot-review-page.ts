@@ -8,6 +8,7 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { AppHeader } from '../../../shared/layout/app-header';
+import { SuccessPopup } from '../../../shared/ui/success-popup';
 
 interface ReviewState {
   appliedOptionId: string;
@@ -30,7 +31,7 @@ interface SubmitResultRow {
 
 @Component({
   selector: 'app-ballot-review-page',
-  imports: [CommonModule, AppHeader, RouterLink],
+  imports: [CommonModule, AppHeader, RouterLink, SuccessPopup],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -101,6 +102,12 @@ interface SubmitResultRow {
           </div>
         }
       }
+
+      <app-success-popup
+        [open]="showSuccessPopup()"
+        [voteCount]="successCount()"
+        (closed)="onSuccessClosed()"
+      />
     </main>
   `,
 })
@@ -113,6 +120,7 @@ export default class BallotReviewPage {
   protected readonly pollId = this.route.snapshot.paramMap.get('pollId') ?? '';
 
   protected readonly stateData = signal<ReviewState | null>(null);
+  protected readonly showSuccessPopup = signal(false);
   protected readonly rows = signal<ReadonlyArray<BallotRow>>([]);
   protected readonly submitting = signal(false);
   protected readonly submitResults = signal<ReadonlyArray<SubmitResultRow>>([]);
@@ -172,6 +180,9 @@ export default class BallotReviewPage {
         complete: () => {
           this.submitting.set(false);
           this.submitResults.set(results);
+          if (results.every((r) => r.success)) {
+            this.showSuccessPopup.set(true);
+          }
         },
       });
   }
@@ -184,6 +195,11 @@ export default class BallotReviewPage {
     this.rows.set(remainingRows);
     this.submitResults.set([]);
     this.onConfirmAll();
+  }
+
+  protected onSuccessClosed(): void {
+    this.showSuccessPopup.set(false);
+    this.backToList();
   }
 
   protected backToList(): void {

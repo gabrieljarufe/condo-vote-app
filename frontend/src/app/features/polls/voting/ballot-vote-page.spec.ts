@@ -13,6 +13,7 @@ import {
 import { SUPABASE_CLIENT } from '../../../core/auth/supabase.client';
 import { Dialog } from '../../../shared/ui/dialog';
 import { Dropdown } from '../../../shared/ui/dropdown';
+import { SuccessPopup } from '../../../shared/ui/success-popup';
 import BallotVotePage from './ballot-vote-page';
 
 // ─── Stubs ────────────────────────────────────────────────────────────────────
@@ -148,7 +149,7 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
     ],
   })
     .overrideComponent(BallotVotePage, {
-      set: { imports: [AppHeaderStub, SpinnerStub, BallotCardStub, RouterLink, Dialog, Dropdown] },
+      set: { imports: [AppHeaderStub, SpinnerStub, BallotCardStub, RouterLink, Dialog, Dropdown, SuccessPopup] },
     })
     .compileComponents();
 
@@ -211,7 +212,7 @@ describe('BallotVotePage', () => {
     expect(button?.disabled).toBe(true);
   });
 
-  it('clicar confirmar com 1 ballot dispara submitVote e navega para /polls?tab=pendentes', async () => {
+  it('clicar confirmar com 1 ballot dispara submitVote, abre popup, depois navega', async () => {
     const { fixture, component, api } = await setup();
     component.selectedOptionId.set('opt-sim');
     fixture.detectChanges();
@@ -220,6 +221,12 @@ describe('BallotVotePage', () => {
     fixture.detectChanges();
 
     expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
+    // Popup abriu, navegação ainda NÃO aconteceu
+    expect(component.showSuccessPopup()).toBe(true);
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+
+    // Simula popup fechando
+    component.onSuccessClosed();
     expect(mockRouter.navigate).toHaveBeenCalledWith(
       ['/app/condominiums', 'condo-1', 'polls'],
       { queryParams: { tab: 'pendentes' } },

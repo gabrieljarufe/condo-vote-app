@@ -1,5 +1,16 @@
 # H8 — Morador registra voto (smoke E2E)
 
+## Atualização UX vNext (2026-05-19)
+
+O fluxo bulk foi reformulado:
+
+- **Dropdown de apartamentos pendentes:** quando o morador tem ≥2 cédulas, um `<app-dropdown>` permite escolher qual apartamento votar primeiro (antes era sempre o primeiro elegível).
+- **Dialog reaparecível:** após cada voto, abre `<app-dialog>` perguntando "Aplicar a mesma opção aos outros apartamentos?" — com checkbox "Não perguntar novamente nesta votação" (escopo: sessão da poll atual, in-memory).
+- **"Votar um a um":** caminho explícito que **permanece** na `ballot-vote-page` em vez de jogar o morador para fora — o dropdown reduz, opção reseta, próximo voto começa imediatamente.
+- **`BallotReviewPage` simplificada:** virou tela de **confirmação** (lista somente leitura `Apto X · Sim`) — override individual foi **removido**; quem quer voto diferente usa o caminho "Votar um a um".
+- **Breadcrumb em ambas as telas:** `← Minhas votações` na vote-page; `← Voltar à votação` na review-page.
+- **Bloco 3 do roteiro abaixo (override individual)** está **substituído** pelo fluxo um-a-um.
+
 ## Problema da jornada (antes)
 
 O morador não tinha como participar das votações criadas pelo síndico. O produto existia apenas do ponto de vista do síndico — criar, agendar e abrir votações — sem que o lado do eleitor fosse funcional. Sem voto, o caso de uso central não se fecha.
@@ -142,7 +153,9 @@ WHERE s.poll_id = ':pollId';
 
 ---
 
-### Bloco 3 — Override individual antes do bulk
+### Bloco 3 — Override individual antes do bulk **(SUBSTITUÍDO em 2026-05-19)**
+
+> Esse bloco descreve o fluxo antigo de override dentro de `BallotReviewPage`. Foi substituído pelo fluxo "Votar um a um" direto na `BallotVotePage`: cada voto registra individualmente; o dropdown de apartamentos permite escolher qual votar; o dialog reaparece após cada voto. A `BallotReviewPage` continua existindo apenas no caminho "Aplicar a todos" (sem override).
 
 **Pré-condição:** Morador com 3 apartamentos elegíveis; poll OPEN com `eligible_count = 3`; nenhum voto registrado.
 

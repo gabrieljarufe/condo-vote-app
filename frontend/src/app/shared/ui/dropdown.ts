@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
   ElementRef,
   EventEmitter,
   HostListener,
@@ -76,10 +77,15 @@ let nextId = 0;
 
       @if (isOpen) {
         <ul
+          #panel
           [id]="listboxId"
           role="listbox"
           [attr.aria-labelledby]="buttonId"
-          class="absolute z-30 mt-1 w-full max-h-60 overflow-auto rounded-lg border border-outline-variant bg-surface-container-lowest shadow-lg py-1"
+          [style.position]="'fixed'"
+          [style.top.px]="panelTop"
+          [style.left.px]="panelLeft"
+          [style.width.px]="panelWidth"
+          class="z-50 max-h-60 overflow-auto rounded-lg border border-outline-variant bg-surface-container-lowest shadow-lg py-1"
         >
           @for (opt of options; track opt.value; let i = $index) {
             <li
@@ -120,9 +126,11 @@ export class Dropdown<T = unknown> implements ControlValueAccessor {
   @Output() readonly valueChange = new EventEmitter<T>();
 
   @ViewChild('root', { static: true }) private root!: ElementRef<HTMLElement>;
+  @ViewChild('panel') private panel?: ElementRef<HTMLElement>;
 
   private readonly elementRef = inject(ElementRef);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly id = nextId++;
   protected readonly buttonId = `app-dd-btn-${this.id}`;
   protected readonly listboxId = `app-dd-list-${this.id}`;
@@ -130,8 +138,18 @@ export class Dropdown<T = unknown> implements ControlValueAccessor {
   protected isOpen = false;
   protected activeIndex = -1;
   protected internalValue: T | null = null;
+  protected panelTop = 0;
+  protected panelLeft = 0;
+  protected panelWidth = 0;
   private disabledInput = false;
   private disabledByForm = false;
+  private readonly reposition = (): void => {
+    if (this.isOpen) this.positionPanel();
+  };
+
+  constructor() {
+    this.destroyRef.onDestroy(() => this.removeRepositionListeners());
+  }
 
   private onChange: (v: T | null) => void = () => undefined;
   private onTouched: () => void = () => undefined;
@@ -162,65 +180,96 @@ export class Dropdown<T = unknown> implements ControlValueAccessor {
 
   protected toggle(): void {
     if (this.isDisabled) return;
-    this.isOpen = !this.isOpen;
     if (this.isOpen) {
-      this.activeIndex = this.options.findIndex((o) => o.value === this.internalValue);
+      this.close();
+      return;
     }
+    this.positionPanel();
+    this.isOpen = true;
+    this.activeIndex = this.options.findIndex((o) => o.value === this.internalValue);
+    this.addRepositionListeners();
+  }
+
+  private close(): void {
+    this.isOpen = false;
+    this.removeRepositionListeners();
   }
 
   protected selectOption(opt: DropdownOption<T>): void {
     if (opt.disabled) return;
     this.internalValue = opt.value;
-    this.isOpen = false;
+    this.close();
     this.onChange(opt.value);
     this.onTouched();
     this.valueChange.emit(opt.value);
   }
 
+  private positionPanel(): void {
+    const btn = this.root.nativeElement.querySelector(
+      'button[role="combobox"]',
+    ) as HTMLButtonElement | null;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const maxPanelHeight = 240; // max-h-60
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUpward = spaceBelow < maxPanelHeight && spaceAbove > spaceBelow;
+    this.panelWidth = rect.width;
+    this.panelLeft = rect.left;
+    this.panelTop = openUpward
+      ? Math.max(8, rect.top - 4 - Math.min(maxPanelHeight, spaceAbove - 8))
+      : rect.bottom + 4;
+    this.cdr.markForCheck();
+  }
+
+  private addRepositionListeners(): void {
+    // capture: true para pegar scroll de qualquer ancestral (tabela, modal, etc.).
+    window.addEventListener('scroll', this.reposition, true);
+    window.addEventListener('resize', this.reposition);
+  }
+
+  private removeRepositionListeners(): void {
+    window.removeEventListener('scroll', this.reposition, true);
+    window.removeEventListener('resize', this.reposition);
+  }
+
   protected onButtonKeydown(event: KeyboardEvent): void {
     if (this.isDisabled) return;
-    switch (event.key) {
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        if (!this.isOpen) {
-          this.toggle();
-        } else if (this.activeIndex >= 0) {
-          this.selectOption(this.options[this.activeIndex]);
-        }
-        break;
-      case 'ArrowDown':
-        event.preventDefault();
-        if (!this.isOpen) this.toggle();
-        this.moveActive(1);
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        if (!this.isOpen) this.toggle();
-        this.moveActive(-1);
-        break;
-      case 'Home':
-        if (this.isOpen) {
-          event.preventDefault();
-          this.activeIndex = this.firstEnabledIndex();
-        }
-        break;
-      case 'End':
-        if (this.isOpen) {
-          event.preventDefault();
-          this.activeIndex = this.lastEnabledIndex();
-        }
-        break;
-      case 'Escape':
-        if (this.isOpen) {
-          event.preventDefault();
-          this.isOpen = false;
-        }
-        break;
-      case 'Tab':
-        this.isOpen = false;
-        break;
+    const handlers: Record<string, () => void> = {
+      Enter: () => this.confirmActiveOption(),
+      ' ': () => this.confirmActiveOption(),
+      ArrowDown: () => this.openAndMove(1),
+      ArrowUp: () => this.openAndMove(-1),
+      Home: () => {
+        if (this.isOpen) this.activeIndex = this.firstEnabledIndex();
+      },
+      End: () => {
+        if (this.isOpen) this.activeIndex = this.lastEnabledIndex();
+      },
+      Escape: () => {
+        if (this.isOpen) this.close();
+      },
+      Tab: () => {
+        if (this.isOpen) this.close();
+      },
+    };
+    const handler = handlers[event.key];
+    if (!handler) return;
+    if (event.key !== 'Tab') event.preventDefault();
+    handler();
+  }
+
+  private confirmActiveOption(): void {
+    if (!this.isOpen) {
+      this.toggle();
+    } else if (this.activeIndex >= 0) {
+      this.selectOption(this.options[this.activeIndex]);
     }
+  }
+
+  private openAndMove(delta: number): void {
+    if (!this.isOpen) this.toggle();
+    this.moveActive(delta);
   }
 
   private moveActive(delta: number): void {
@@ -250,7 +299,7 @@ export class Dropdown<T = unknown> implements ControlValueAccessor {
   protected onDocumentClick(event: MouseEvent): void {
     if (!this.isOpen) return;
     if (!this.elementRef.nativeElement.contains(event.target as Node)) {
-      this.isOpen = false;
+      this.close();
       this.onTouched();
     }
   }

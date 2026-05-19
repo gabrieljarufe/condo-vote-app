@@ -87,6 +87,16 @@ describe('Dropdown', () => {
     expect(isOpen(fixture)).toBe(true);
   });
 
+  it('painel aberto usa position: fixed (escapa overflow do ancestral)', async () => {
+    const { fixture } = await setup();
+    getButton(fixture).click();
+    fixture.detectChanges();
+    const panel = fixture.nativeElement.querySelector('[role="listbox"]') as HTMLElement;
+    expect(panel.style.position).toBe('fixed');
+    expect(panel.style.top).not.toBe('');
+    expect(panel.style.left).not.toBe('');
+  });
+
   it('ESC fecha o painel', async () => {
     const { fixture } = await setup();
     getButton(fixture).click();

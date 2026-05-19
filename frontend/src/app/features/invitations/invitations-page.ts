@@ -19,6 +19,7 @@ import {
 } from '../../core/api/invitations-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
+import { Dropdown, DropdownOption } from '../../shared/ui/dropdown';
 import { Spinner } from '../../shared/ui/spinner';
 import { InvitationIndividualForm } from './invitation-individual-form';
 import { InvitationList } from './invitation-list';
@@ -34,6 +35,7 @@ type PageState = 'loading' | 'error' | 'ready';
     InvitationIndividualForm,
     RouterLink,
     FormsModule,
+    Dropdown,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -62,33 +64,19 @@ type PageState = 'loading' | 'error' | 'ready';
             <div class="flex flex-wrap gap-4 items-end">
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-on-surface-variant">Status</label>
-                <select
+                <app-dropdown
+                  [options]="statusOptions"
                   [(ngModel)]="filterStatus"
-                  (ngModelChange)="onFilterChange()"
-                  class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface text-sm focus:border-secondary"
-                >
-                  <option value="">Todos</option>
-                  <option value="PENDING">Pendente</option>
-                  <option value="ACCEPTED">Aceito</option>
-                  <option value="REVOKED">Revogado</option>
-                  <option value="EXPIRED">Expirado</option>
-                  <option value="BOUNCED">Rebounced</option>
-                </select>
+                  (valueChange)="onFilterChange()"
+                />
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-on-surface-variant">Apartamento</label>
-                <select
+                <app-dropdown
+                  [options]="apartmentOptions()"
                   [(ngModel)]="filterApartmentId"
-                  (ngModelChange)="onFilterChange()"
-                  class="px-3 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface text-sm focus:border-secondary"
-                >
-                  <option value="">Todos</option>
-                  @for (apt of apartments(); track apt.id) {
-                    <option [value]="apt.id">
-                      {{ apt.block ? 'Bloco ' + apt.block + ' · ' + apt.unitNumber : apt.unitNumber }}
-                    </option>
-                  }
-                </select>
+                  (valueChange)="onFilterChange()"
+                />
               </div>
             </div>
           </section>
@@ -156,6 +144,23 @@ export default class InvitationsPage implements OnInit {
 
   protected filterStatus = '';
   protected filterApartmentId = '';
+
+  protected readonly statusOptions: ReadonlyArray<DropdownOption<string>> = [
+    { value: '', label: 'Todos' },
+    { value: 'PENDING', label: 'Pendente' },
+    { value: 'ACCEPTED', label: 'Aceito' },
+    { value: 'REVOKED', label: 'Revogado' },
+    { value: 'EXPIRED', label: 'Expirado' },
+    { value: 'BOUNCED', label: 'Rebounced' },
+  ];
+
+  protected readonly apartmentOptions = computed<ReadonlyArray<DropdownOption<string>>>(() => [
+    { value: '', label: 'Todos' },
+    ...this.apartments().map((apt) => ({
+      value: apt.id,
+      label: apt.block ? `Bloco ${apt.block} · ${apt.unitNumber}` : apt.unitNumber,
+    })),
+  ]);
 
   protected readonly dashboardLink = computed(() => {
     const id = this.tenant.activeCondominiumId();

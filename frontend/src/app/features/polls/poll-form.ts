@@ -20,6 +20,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { CreatePollRequest } from '../../core/api/polls-api.service';
+import { Dropdown } from '../../shared/ui/dropdown';
 import { FormField } from '../../shared/ui/form-field';
 
 type Convocation = 'FIRST' | 'SECOND';
@@ -73,7 +74,7 @@ function optionsValidator(): ValidatorFn {
 
 @Component({
   selector: 'app-poll-form',
-  imports: [ReactiveFormsModule, FormField],
+  imports: [ReactiveFormsModule, FormField, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form (ngSubmit)="submit()" [formGroup]="form" class="flex flex-col gap-5">
@@ -118,15 +119,7 @@ function optionsValidator(): ValidatorFn {
           [control]="convocation"
           [errors]="{ required: 'Obrigatório' }"
         >
-          <select
-            [id]="convoField.fieldId"
-            formControlName="convocation"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-          >
-            @for (opt of convocationOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
-            }
-          </select>
+          <app-dropdown [options]="convocationOptions" formControlName="convocation" />
         </app-form-field>
 
         <!-- Quórum -->
@@ -136,15 +129,7 @@ function optionsValidator(): ValidatorFn {
           [control]="quorumMode"
           [errors]="{ required: 'Obrigatório' }"
         >
-          <select
-            [id]="quorumField.fieldId"
-            formControlName="quorumMode"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-          >
-            @for (opt of quorumOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
-            }
-          </select>
+          <app-dropdown [options]="quorumOptions" formControlName="quorumMode" />
         </app-form-field>
       </div>
 

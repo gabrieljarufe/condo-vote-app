@@ -3,6 +3,7 @@ import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { Dropdown } from '../../shared/ui/dropdown';
 import { PollForm, PollFormValue } from './poll-form';
 
 let stubNextId = 0;
@@ -36,7 +37,7 @@ async function setup() {
     imports: [PollForm],
     providers: [provideRouter([])],
   })
-    .overrideComponent(PollForm, { set: { imports: [FormFieldStub, ReactiveFormsModule] } })
+    .overrideComponent(PollForm, { set: { imports: [FormFieldStub, ReactiveFormsModule, Dropdown] } })
     .compileComponents();
   const fixture = TestBed.createComponent(PollForm);
   fixture.detectChanges();

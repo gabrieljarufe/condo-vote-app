@@ -10,6 +10,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { Apartment } from '../../../core/api/apartments-api.service';
 import { BulkInvitationEntry, InvitationRole } from '../../../core/api/invitations-api.service';
+import { Dropdown, DropdownOption } from '../../../shared/ui/dropdown';
 import { ParsedRow } from './invitation-bulk-upload-form';
 
 // Simplified email check: contains exactly one '@', something before and after, and a '.' after '@'
@@ -55,7 +56,7 @@ function validateRow(row: ParsedRow, apartments: readonly Apartment[]): string[]
 
 @Component({
   selector: 'app-invitation-bulk-preview-grid',
-  imports: [FormsModule],
+  imports: [FormsModule, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
@@ -157,15 +158,12 @@ function validateRow(row: ParsedRow, apartments: readonly Apartment[]): string[]
 
                   <!-- Papel -->
                   <td class="px-2 py-1">
-                    <select
+                    <app-dropdown
+                      [options]="roleOptions"
                       [(ngModel)]="mutableRows()[i].role"
-                      (ngModelChange)="revalidateRow(i)"
-                      class="px-2 py-1 rounded border border-outline-variant bg-surface-container-lowest text-on-surface text-sm focus:outline-none focus:border-secondary"
-                    >
-                      <option value="">— selecione —</option>
-                      <option value="OWNER">OWNER</option>
-                      <option value="TENANT">TENANT</option>
-                    </select>
+                      (valueChange)="revalidateRow(i)"
+                      placeholder="— selecione —"
+                    />
                   </td>
 
                   <!-- Status -->
@@ -250,6 +248,11 @@ export class InvitationBulkPreviewGrid {
   readonly back = output<void>();
   readonly cancel = output<void>();
   readonly submitBatch = output<BulkInvitationEntry[]>();
+
+  protected readonly roleOptions: ReadonlyArray<DropdownOption<string>> = [
+    { value: 'OWNER', label: 'OWNER' },
+    { value: 'TENANT', label: 'TENANT' },
+  ];
 
   protected readonly mutableRows = signal<ParsedRow[]>([]);
 

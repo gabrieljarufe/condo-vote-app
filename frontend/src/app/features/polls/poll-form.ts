@@ -48,6 +48,22 @@ const QUORUM_OPTIONS = [
   { value: 'QUALIFIED_3_4', label: '3/4 qualificada' },
 ] as const;
 
+/**
+ * Formata data/hora local para o formato exigido por <input type="datetime-local">.
+ * Aceita offset em minutos a partir de agora.
+ */
+function defaultDateTimeLocal(offsetMinutes: number): string {
+  const d = new Date(Date.now() + offsetMinutes * 60_000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    d.getFullYear() +
+    '-' + pad(d.getMonth() + 1) +
+    '-' + pad(d.getDate()) +
+    'T' + pad(d.getHours()) +
+    ':' + pad(d.getMinutes())
+  );
+}
+
 function endAfterStartValidator(): ValidatorFn {
   return (group: AbstractControl): ValidationErrors | null => {
     const start = (group.get('scheduledStart') as FormControl)?.value as string;
@@ -272,12 +288,12 @@ export class PollForm implements OnInit {
     validators: [Validators.required],
   });
 
-  readonly scheduledStart = new FormControl('', {
+  readonly scheduledStart = new FormControl(defaultDateTimeLocal(0), {
     nonNullable: true,
     validators: [Validators.required],
   });
 
-  readonly scheduledEnd = new FormControl('', {
+  readonly scheduledEnd = new FormControl(defaultDateTimeLocal(30), {
     nonNullable: true,
     validators: [Validators.required],
   });

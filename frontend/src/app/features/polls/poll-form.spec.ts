@@ -54,6 +54,17 @@ describe('PollForm', () => {
     expect(component.form.invalid).toBe(true);
   });
 
+  it('scheduledStart e scheduledEnd vêm pré-preenchidos (agora e +30min)', async () => {
+    const { component } = await setup();
+    expect(component.scheduledStart.value).toBeTruthy();
+    expect(component.scheduledEnd.value).toBeTruthy();
+    const start = new Date(component.scheduledStart.value).getTime();
+    const end = new Date(component.scheduledEnd.value).getTime();
+    // ~30 min de diferença (com tolerância de 1 min para o relógio do teste)
+    expect(end - start).toBeGreaterThanOrEqual(29 * 60_000);
+    expect(end - start).toBeLessThanOrEqual(31 * 60_000);
+  });
+
   it('inicia com 2 opções no FormArray', async () => {
     const { component } = await setup();
     expect(component.options.length).toBe(2);

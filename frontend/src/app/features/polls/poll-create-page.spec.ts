@@ -47,6 +47,7 @@ class PollFormStub {
   @Output() readonly submit = new EventEmitter<CreatePollRequest>();
   @Output() readonly cancel = new EventEmitter<void>();
   setError = vi.fn();
+  clearSubmitting = vi.fn();
 }
 
 @Component({ selector: 'app-app-header', template: '', standalone: true })
@@ -160,5 +161,28 @@ describe('PollCreatePage', () => {
     const { component } = await setup();
     component.onCancel();
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/app/condominiums/condo-1/polls']);
+  });
+
+  it('finalize chama clearSubmitting no form após sucesso', async () => {
+    const { fixture, component } = await setup();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pollFormRef = (component as any).pollForm as PollFormStub | undefined;
+    void pollFormRef; // ViewChild resolve happens after detectChanges — accessed below
+    component.onSubmit(mockRequest);
+    fixture.detectChanges();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const form = (component as any).pollForm as PollFormStub;
+    expect(form.clearSubmitting).toHaveBeenCalled();
+  });
+
+  it('finalize chama clearSubmitting no form após erro', async () => {
+    const err = new HttpErrorResponse({ error: { message: 'Falha' }, status: 500 });
+    const api = makeApi({ create: vi.fn(() => throwError(() => err)) });
+    const { fixture, component } = await setup(api);
+    component.onSubmit(mockRequest);
+    fixture.detectChanges();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const form = (component as any).pollForm as PollFormStub;
+    expect(form.clearSubmitting).toHaveBeenCalled();
   });
 });

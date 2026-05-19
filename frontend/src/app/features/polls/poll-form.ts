@@ -246,10 +246,10 @@ function optionsValidator(): ValidatorFn {
         </button>
         <button
           type="submit"
-          [disabled]="form.invalid"
+          [disabled]="form.invalid || submitting()"
           class="px-5 py-2 text-sm rounded-lg bg-secondary text-white disabled:opacity-50"
         >
-          {{ submitLabel() }}
+          {{ submitting() ? 'Enviando…' : submitLabel() }}
         </button>
       </div>
     </form>
@@ -262,6 +262,7 @@ export class PollForm implements OnInit {
   readonly cancel = output<void>();
 
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly submitting = signal(false);
 
   protected readonly convocationOptions = CONVOCATION_OPTIONS;
   protected readonly quorumOptions = QUORUM_OPTIONS;
@@ -348,6 +349,11 @@ export class PollForm implements OnInit {
 
   setError(message: string): void {
     this.errorMessage.set(message);
+    this.submitting.set(false);
+  }
+
+  clearSubmitting(): void {
+    this.submitting.set(false);
   }
 
   protected addOption(): void {
@@ -361,7 +367,9 @@ export class PollForm implements OnInit {
   }
 
   protected submit(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.submitting()) return;
+    this.submitting.set(true);
+    this.errorMessage.set(null);
     const raw = this.form.getRawValue();
     const request: CreatePollRequest = {
       title: raw.title,

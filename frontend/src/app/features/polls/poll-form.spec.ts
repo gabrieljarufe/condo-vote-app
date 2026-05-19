@@ -259,6 +259,53 @@ describe('PollForm', () => {
     expect(component.options.length).toBe(3);
   });
 
+  // --- Bloqueio de duplo submit ---
+
+  it('botão de submit fica disabled enquanto submitting é true', async () => {
+    const { fixture, component } = await setup();
+    component.title.setValue('Votação teste');
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.options.at(0).setValue('Sim');
+    component.options.at(1).setValue('Não');
+    fixture.detectChanges();
+
+    // Simula submit em andamento
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submitting.set(true);
+    fixture.detectChanges();
+
+    const btn = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+  });
+
+  it('submit() chamado 2x emite apenas 1 evento', async () => {
+    const { component } = await setup();
+    component.title.setValue('Votação teste');
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.options.at(0).setValue('Sim');
+    component.options.at(1).setValue('Não');
+
+    let emits = 0;
+    component.submit$.subscribe(() => emits++);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submit();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submit();
+    expect(emits).toBe(1);
+  });
+
+  it('setError reseta submitting para permitir nova tentativa', async () => {
+    const { component } = await setup();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submitting.set(true);
+    component.setError('Falha');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((component as any).submitting()).toBe(false);
+  });
+
   // --- description opcional ---
 
   it('description vazia não é incluída no request como campo obrigatório', async () => {

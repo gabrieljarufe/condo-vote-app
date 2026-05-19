@@ -11,6 +11,8 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../../core/auth/supabase.client';
+import { Dialog } from '../../../shared/ui/dialog';
+import { Dropdown } from '../../../shared/ui/dropdown';
 import BallotVotePage from './ballot-vote-page';
 
 // ─── Stubs ────────────────────────────────────────────────────────────────────
@@ -146,7 +148,7 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
     ],
   })
     .overrideComponent(BallotVotePage, {
-      set: { imports: [AppHeaderStub, SpinnerStub, BallotCardStub, RouterLink] },
+      set: { imports: [AppHeaderStub, SpinnerStub, BallotCardStub, RouterLink, Dialog, Dropdown] },
     })
     .compileComponents();
 
@@ -176,7 +178,7 @@ describe('BallotVotePage', () => {
     expect(component.pendingBallots()[0].apartmentLabel).toBe('101');
   });
 
-  it('renderiza texto explicativo com count quando há ≥2 ballots pendentes', async () => {
+  it('mostra dropdown de apartamentos quando há ≥2 ballots pendentes', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component } = await setup({
@@ -185,7 +187,20 @@ describe('BallotVotePage', () => {
     fixture.detectChanges();
     expect(component.pendingBallots()).toHaveLength(2);
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('2 apartamentos elegíveis');
+    expect(el.textContent).toContain('2 pendentes');
+  });
+
+  it('trocar apartamento no dropdown reseta selectedOptionId', async () => {
+    const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
+    const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
+    const { fixture, component } = await setup({
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
+    });
+    fixture.detectChanges();
+    component.selectedOptionId.set('opt-sim');
+    component.onApartmentChange('apt-202');
+    expect(component.selectedOptionId()).toBeNull();
+    expect(component.selectedApartmentId()).toBe('apt-202');
   });
 
   it('botão "Confirmar voto" disabled quando selectedOptionId é null', async () => {
@@ -227,10 +242,10 @@ describe('BallotVotePage', () => {
     expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
     expect(component.showBulkPrompt()).toBe(true);
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Aplicar aos demais apartamentos?');
+    expect(el.textContent).toContain('Aplicar a mesma opção aos outros apartamentos?');
   });
 
-  it('modal "Revisar e aplicar" navega para .../vote/review', async () => {
+  it('"Aplicar a todos" após voto navega para review com remainingBallots', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component } = await setup({
@@ -238,9 +253,9 @@ describe('BallotVotePage', () => {
     });
     fixture.detectChanges();
     component.selectedOptionId.set('opt-sim');
-    // Simulate modal shown after submit
-    component.showBulkPrompt.set(true);
+    component.onConfirm();
     fixture.detectChanges();
+    expect(component.showBulkPrompt()).toBe(true);
 
     component.onApplyBulk();
 
@@ -254,6 +269,50 @@ describe('BallotVotePage', () => {
         }),
       }),
     );
+  });
+
+  it('"Votar um a um" fecha dialog e permanece na page', async () => {
+    const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
+    const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
+    const { fixture, component } = await setup({
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
+    });
+    fixture.detectChanges();
+    component.selectedOptionId.set('opt-sim');
+    component.onConfirm();
+    fixture.detectChanges();
+
+    component.onVoteOneByOne();
+
+    expect(component.showBulkPrompt()).toBe(false);
+    expect(component.selectedOptionId()).toBeNull();
+    expect(component.pendingBallots()).toHaveLength(1);
+    expect(component.pendingBallots()[0].apartmentId).toBe('apt-202');
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('checkbox "não perguntar novamente" suprime dialog em votos subsequentes', async () => {
+    const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
+    const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
+    const ballot3 = makeBallot({ apartmentId: 'apt-303', apartmentLabel: '303' });
+    const { fixture, component } = await setup({
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2, ballot3]))),
+    });
+    fixture.detectChanges();
+    component.selectedOptionId.set('opt-sim');
+    component.onConfirm();
+    fixture.detectChanges();
+    component.suppressFutureChecked.set(true);
+    component.onVoteOneByOne();
+
+    expect(component.suppressBulkPromptForPoll()).toBe(true);
+
+    component.selectedOptionId.set('opt-nao');
+    component.onConfirm();
+    fixture.detectChanges();
+
+    expect(component.showBulkPrompt()).toBe(false);
+    expect(component.pendingBallots()).toHaveLength(1);
   });
 
   it('erro 409 mostra mensagem "votação encerrada"', async () => {

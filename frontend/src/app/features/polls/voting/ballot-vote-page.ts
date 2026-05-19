@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -11,6 +11,8 @@ import {
 } from '../../../core/api/polls-api.service';
 import { extractErrorMessage } from '../../../shared/http/error-message';
 import { AppHeader } from '../../../shared/layout/app-header';
+import { Dialog } from '../../../shared/ui/dialog';
+import { Dropdown, DropdownOption } from '../../../shared/ui/dropdown';
 import { Spinner } from '../../../shared/ui/spinner';
 import { BallotCard } from './ballot-card';
 
@@ -21,7 +23,7 @@ type LoadState =
 
 @Component({
   selector: 'app-ballot-vote-page',
-  imports: [CommonModule, AppHeader, Spinner, BallotCard, RouterLink],
+  imports: [CommonModule, AppHeader, Spinner, BallotCard, RouterLink, Dialog, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -96,7 +98,7 @@ type LoadState =
           }
 
           @let pending = pendingBallots();
-          @let first = pending[0];
+          @let current = currentBallot();
           @switch (voteEligibility()) {
             @case ('not-eligible') {
               <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8">
@@ -118,16 +120,22 @@ type LoadState =
               </div>
             }
             @case ('can-vote') {
-              @if (first) {
+              @if (current) {
                 @if (pending.length > 1) {
-                  <p class="text-xs text-on-surface-variant mb-4">
-                    Você tem {{ pending.length }} apartamentos elegíveis nesta votação.
-                    Votaremos primeiro no apto {{ first.apartmentLabel }}.
-                  </p>
+                  <div class="mb-4">
+                    <label class="text-xs font-medium text-on-surface-variant block mb-1">
+                      Apartamento ({{ pending.length }} pendentes)
+                    </label>
+                    <app-dropdown
+                      [options]="apartmentDropdownOptions()"
+                      [value]="selectedApartmentId()"
+                      (valueChange)="onApartmentChange($event)"
+                    />
+                  </div>
                 }
 
                 <app-ballot-card
-                  [apartmentLabel]="first.apartmentLabel"
+                  [apartmentLabel]="current.apartmentLabel"
                   [options]="s.pollDetail.options"
                   [selectedOptionId]="selectedOptionId()"
                   (optionChange)="onOptionChange($event)"
@@ -148,33 +156,42 @@ type LoadState =
             }
           }
 
-          @if (showBulkPrompt()) {
-            <div class="fixed inset-0 bg-scrim/50 flex items-center justify-center z-50">
-              <div class="bg-surface-container rounded-2xl p-6 max-w-md mx-4 w-full">
-                <h2 class="font-semibold text-on-surface mb-2">
-                  Aplicar aos demais apartamentos?
-                </h2>
-                <p class="text-sm text-on-surface-variant mb-4">
-                  Você tem {{ pendingBallots().length - 1 }}
-                  cédula(s) ainda pendente(s). Deseja revisar e aplicar a mesma opção?
-                </p>
-                <div class="flex gap-2 justify-end">
-                  <button
-                    (click)="onSkipBulk()"
-                    class="px-4 py-2 rounded-xl text-sm text-on-surface border border-outline-variant"
-                  >
-                    Não, só esta
-                  </button>
-                  <button
-                    (click)="onApplyBulk()"
-                    class="px-4 py-2 rounded-xl bg-primary text-on-primary text-sm"
-                  >
-                    Revisar e aplicar
-                  </button>
-                </div>
-              </div>
+          <app-dialog
+            [open]="showBulkPrompt()"
+            ariaLabelledBy="bulk-prompt-title"
+            (closed)="closeBulkPrompt()"
+          >
+            <h2 id="bulk-prompt-title" dialog-title class="font-semibold text-on-surface mb-2">
+              Aplicar a mesma opção aos outros apartamentos?
+            </h2>
+            <p dialog-body class="text-sm text-on-surface-variant mb-4">
+              Você tem {{ pendingBallots().length }} apartamento(s) pendente(s).
+              Quer votar a mesma opção em todos ou um a um?
+            </p>
+            <label dialog-body class="flex items-center gap-2 text-sm text-on-surface mb-4 cursor-pointer">
+              <input
+                type="checkbox"
+                class="accent-secondary"
+                [checked]="suppressFutureChecked()"
+                (change)="onSuppressChange($event)"
+              />
+              <span>Não perguntar novamente nesta votação</span>
+            </label>
+            <div dialog-actions class="flex gap-2 justify-end">
+              <button
+                (click)="onVoteOneByOne()"
+                class="px-4 py-2 rounded-xl text-sm text-on-surface border border-outline-variant"
+              >
+                Votar um a um
+              </button>
+              <button
+                (click)="onApplyBulk()"
+                class="px-4 py-2 rounded-xl bg-primary text-on-primary text-sm"
+              >
+                Aplicar a todos
+              </button>
             </div>
-          }
+          </app-dialog>
         }
       }
     </main>
@@ -203,30 +220,77 @@ export default class BallotVotePage {
   );
 
   protected readonly selectedOptionId = signal<string | null>(null);
+  protected readonly selectedApartmentId = signal<string | null>(null);
   protected readonly submitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
   protected readonly showBulkPrompt = signal(false);
+  protected readonly suppressFutureChecked = signal(false);
+  protected readonly suppressBulkPromptForPoll = signal(false);
+  private readonly locallyVotedApartments = signal<ReadonlySet<string>>(new Set());
 
   protected readonly pendingBallots = computed<ReadonlyArray<MyBallotResponse>>(() => {
     const s = this.state();
-    return s.kind === 'ready' ? s.myBallots.ballots.filter((b) => !b.alreadyVoted) : [];
+    if (s.kind !== 'ready') return [];
+    const locallyVoted = this.locallyVotedApartments();
+    return s.myBallots.ballots.filter(
+      (b) => !b.alreadyVoted && !locallyVoted.has(b.apartmentId),
+    );
   });
+
+  protected readonly currentBallot = computed<MyBallotResponse | null>(() => {
+    const pending = this.pendingBallots();
+    const selectedId = this.selectedApartmentId();
+    return pending.find((b) => b.apartmentId === selectedId) ?? pending[0] ?? null;
+  });
+
+  protected readonly apartmentDropdownOptions = computed<ReadonlyArray<DropdownOption<string>>>(
+    () =>
+      this.pendingBallots().map((b) => ({
+        value: b.apartmentId,
+        label: `Apto ${b.apartmentLabel}`,
+      })),
+  );
 
   protected readonly voteEligibility = computed<'not-eligible' | 'all-voted' | 'can-vote'>(() => {
     const s = this.state();
     if (s.kind !== 'ready') return 'can-vote';
     const ballots = s.myBallots.ballots;
     if (ballots.length === 0) return 'not-eligible';
-    if (ballots.every((b) => b.alreadyVoted)) return 'all-voted';
+    const locallyVoted = this.locallyVotedApartments();
+    const allVotedNow = ballots.every(
+      (b) => b.alreadyVoted || locallyVoted.has(b.apartmentId),
+    );
+    if (allVotedNow && ballots.every((b) => b.alreadyVoted)) return 'all-voted';
     return 'can-vote';
   });
+
+  constructor() {
+    // Sincroniza selectedApartmentId com o primeiro pendente quando muda a lista.
+    effect(() => {
+      const pending = this.pendingBallots();
+      const selected = this.selectedApartmentId();
+      if (pending.length === 0) return;
+      if (!selected || !pending.some((b) => b.apartmentId === selected)) {
+        this.selectedApartmentId.set(pending[0].apartmentId);
+      }
+    });
+  }
 
   protected onOptionChange(optionId: string): void {
     this.selectedOptionId.set(optionId);
   }
 
+  protected onApartmentChange(apartmentId: string): void {
+    this.selectedApartmentId.set(apartmentId);
+    this.selectedOptionId.set(null);
+  }
+
+  protected onSuppressChange(event: Event): void {
+    this.suppressFutureChecked.set((event.target as HTMLInputElement).checked);
+  }
+
   protected onConfirm(): void {
-    const ballot = this.pendingBallots()[0];
+    const ballot = this.currentBallot();
     const optId = this.selectedOptionId();
     if (!ballot || !optId) return;
     this.submitting.set(true);
@@ -234,13 +298,12 @@ export default class BallotVotePage {
     this.api.submitVote(this.pollId, ballot.apartmentId, optId, false).subscribe({
       next: () => {
         this.submitting.set(false);
-        if (this.pendingBallots().length > 1) {
-          this.showBulkPrompt.set(true);
-        } else {
-          this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
-            queryParams: { tab: 'pendentes' },
-          });
-        }
+        this.locallyVotedApartments.update((set) => {
+          const next = new Set(set);
+          next.add(ballot.apartmentId);
+          return next;
+        });
+        this.afterVote();
       },
       error: (err: unknown) => {
         this.submitting.set(false);
@@ -255,21 +318,47 @@ export default class BallotVotePage {
     });
   }
 
-  protected onSkipBulk(): void {
-    this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
-      queryParams: { tab: 'pendentes' },
-    });
+  private afterVote(): void {
+    const remaining = this.pendingBallots().length;
+    if (remaining === 0) {
+      this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
+        queryParams: { tab: 'pendentes' },
+      });
+      return;
+    }
+    if (this.suppressBulkPromptForPoll()) {
+      // Vai direto para o próximo apartamento, sem dialog.
+      this.selectedOptionId.set(null);
+      return;
+    }
+    this.showBulkPrompt.set(true);
+  }
+
+  protected closeBulkPrompt(): void {
+    // ESC ou backdrop equivale a "votar um a um" sem persistir a escolha.
+    this.showBulkPrompt.set(false);
+    this.selectedOptionId.set(null);
+  }
+
+  protected onVoteOneByOne(): void {
+    if (this.suppressFutureChecked()) {
+      this.suppressBulkPromptForPoll.set(true);
+    }
+    this.suppressFutureChecked.set(false);
+    this.showBulkPrompt.set(false);
+    this.selectedOptionId.set(null);
   }
 
   protected onApplyBulk(): void {
     const s = this.state();
     if (s.kind !== 'ready') return;
+    this.showBulkPrompt.set(false);
     this.router.navigate(
       ['/app/condominiums', this.condoId, 'polls', this.pollId, 'vote', 'review'],
       {
         state: {
           appliedOptionId: this.selectedOptionId(),
-          remainingBallots: this.pendingBallots().slice(1),
+          remainingBallots: this.pendingBallots(),
           pollOptions: s.pollDetail.options,
           pollTitle: s.pollDetail.poll.title,
         },

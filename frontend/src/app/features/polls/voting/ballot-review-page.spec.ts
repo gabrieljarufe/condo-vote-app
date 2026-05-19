@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { provideLocationMocks } from '@angular/common/testing';
@@ -24,16 +24,6 @@ const mockSupabase = {
 
 @Component({ selector: 'app-app-header', template: '', standalone: true })
 class AppHeaderStub {}
-
-@Component({ selector: 'app-ballot-card', template: '', standalone: true })
-class BallotCardStub {
-  @Input() apartmentLabel = '';
-  @Input() options: ReadonlyArray<PollOptionResponse> = [];
-  @Input() selectedOptionId: string | null = null;
-  @Input() disabled = false;
-  @Input() radioGroupName = 'ballot-options';
-  @Output() readonly optionChange = new EventEmitter<string>();
-}
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
@@ -128,7 +118,7 @@ async function setup(options: {
     ],
   })
     .overrideComponent(BallotReviewPage, {
-      set: { imports: [AppHeaderStub, BallotCardStub, RouterLink] },
+      set: { imports: [AppHeaderStub, RouterLink] },
     })
     .compileComponents();
 
@@ -217,20 +207,21 @@ describe('BallotReviewPage', () => {
     });
   });
 
-  describe('onOverride', () => {
-    it('troca optionId apenas do card alvo e mantém os demais', async () => {
-      const { component } = await setup();
+  describe('lista somente leitura', () => {
+    it('renderiza apto + label da opção em cada linha', async () => {
+      const { fixture } = await setup();
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.textContent).toContain('Apto 101');
+      expect(el.textContent).toContain('Apto 202');
+      expect(el.textContent).toContain('Apto 303');
+      // label 'Sim' aparece 3x (uma por linha)
+      const matches = (el.textContent ?? '').match(/Sim/g) ?? [];
+      expect(matches.length).toBeGreaterThanOrEqual(3);
+    });
 
-      component.onOverride('apt-202', 'opt-nao');
-
-      const rows = component.rows() as Array<{ ballot: MyBallotResponse; optionId: string }>;
-      const apt101 = rows.find((r) => r.ballot.apartmentId === 'apt-101')!;
-      const apt202 = rows.find((r) => r.ballot.apartmentId === 'apt-202')!;
-      const apt303 = rows.find((r) => r.ballot.apartmentId === 'apt-303')!;
-
-      expect(apt101.optionId).toBe('opt-sim');
-      expect(apt202.optionId).toBe('opt-nao');
-      expect(apt303.optionId).toBe('opt-sim');
+    it('texto explicativo cita N apartamentos', async () => {
+      const { fixture } = await setup();
+      expect(fixture.nativeElement.textContent).toContain('3 apartamentos abaixo');
     });
   });
 

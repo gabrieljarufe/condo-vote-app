@@ -8,7 +8,6 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { AppHeader } from '../../../shared/layout/app-header';
-import { BallotCard } from './ballot-card';
 
 interface ReviewState {
   appliedOptionId: string;
@@ -31,7 +30,7 @@ interface SubmitResultRow {
 
 @Component({
   selector: 'app-ballot-review-page',
-  imports: [CommonModule, AppHeader, BallotCard, RouterLink],
+  imports: [CommonModule, AppHeader, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -50,28 +49,25 @@ interface SubmitResultRow {
       } @else {
         <h1 class="text-2xl font-semibold text-on-surface mb-2">{{ stateData()!.pollTitle }}</h1>
         <p class="text-sm text-on-surface-variant mb-6">
-          Revise as cédulas restantes. Toque numa cédula para alterar a opção.
+          Confirme o envio do mesmo voto para os {{ rows().length }} apartamentos abaixo.
         </p>
 
         @if (!hasResults()) {
-          <div class="space-y-3 mb-6">
+          <ul class="space-y-2 mb-6">
             @for (row of rows(); track row.ballot.apartmentId) {
-              <app-ballot-card
-                [apartmentLabel]="row.ballot.apartmentLabel"
-                [options]="stateData()!.pollOptions"
-                [selectedOptionId]="row.optionId"
-                [radioGroupName]="'review-' + row.ballot.apartmentId"
-                (optionChange)="onOverride(row.ballot.apartmentId, $event)"
-              />
+              <li class="flex justify-between items-center bg-surface-container-low rounded-xl p-4 border border-outline-variant">
+                <span class="text-sm text-on-surface">Apto {{ row.ballot.apartmentLabel }}</span>
+                <span class="text-sm font-medium text-on-surface">{{ optionLabel(row.optionId) }}</span>
+              </li>
             }
-          </div>
+          </ul>
 
           <button
             class="w-full bg-primary text-on-primary rounded-2xl py-3 font-semibold disabled:opacity-50"
             [disabled]="submitting()"
             (click)="onConfirmAll()"
           >
-            {{ submitting() ? 'Enviando…' : 'Confirmar ' + rows().length + ' votos' }}
+            {{ submitting() ? 'Enviando…' : 'Confirmar e enviar ' + rows().length + ' votos' }}
           </button>
         } @else {
           <!-- Resultado pós-submit -->
@@ -136,12 +132,8 @@ export default class BallotReviewPage {
     this.rows.set(state.remainingBallots.map((b) => ({ ballot: b, optionId: state.appliedOptionId })));
   }
 
-  protected onOverride(apartmentId: string, newOptionId: string): void {
-    this.rows.set(
-      this.rows().map((r) =>
-        r.ballot.apartmentId === apartmentId ? { ...r, optionId: newOptionId } : r,
-      ),
-    );
+  protected optionLabel(optionId: string): string {
+    return this.stateData()?.pollOptions.find((o) => o.id === optionId)?.label ?? '';
   }
 
   protected onConfirmAll(): void {

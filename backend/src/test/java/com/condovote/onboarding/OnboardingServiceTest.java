@@ -31,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 
 @ExtendWith(MockitoExtension.class)
 class OnboardingServiceTest {
@@ -370,6 +371,172 @@ class OnboardingServiceTest {
                 token, "11144477735", "senha-forte-1!", "TENANT", true));
 
     // Nenhuma chamada de audit para APARTMENT_ELIGIBLE_VOTER_SET deve ter ocorrido
+    verify(auditEventPublisher, never())
+        .publish(
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            anyString(),
+            any(UUID.class),
+            any(Map.class),
+            any(UUID.class),
+            any(UUID.class));
+  }
+
+  // =====================================================================
+  // acceptAsExistingUser — branches do bloco APARTMENT_ELIGIBLE_VOTER_SET.
+  // Espelha os UTs de complete() acima para o fluxo de "usuário já existente".
+  // =====================================================================
+
+  /**
+   * Stub base do fluxo acceptAsExistingUser: token Redis válido + app_user existe + sem residente
+   * prévio.
+   */
+  @SuppressWarnings("unchecked")
+  private Invitation stubAcceptAsExistingFlow(
+      UUID invitationId, UUID condoId, UUID aptId, String email, String role, String token) {
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    // app_user existe
+    when(jdbcTemplate.queryForObject(
+            contains("FROM app_user WHERE id"), eq(Long.class), any(UUID.class)))
+        .thenReturn(1L);
+    // SELECT id FROM apartment_resident … → Optional.empty() (não idempotente)
+    when(jdbcTemplate.query(
+            contains("FROM apartment_resident"),
+            any(ResultSetExtractor.class),
+            any(UUID.class),
+            any(UUID.class)))
+        .thenReturn(Optional.empty());
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            email,
+            new byte[] {1, 2, 3},
+            role,
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+    return inv;
+  }
+
+  /** OWNER aceitando como existing user → APARTMENT_ELIGIBLE_VOTER_SET publicado. */
+  @Test
+  @SuppressWarnings("unchecked")
+  void acceptAsExistingUser_owner_setaEligibleVoterUserIdEPublicaAudit() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID jwtUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+
+    stubAcceptAsExistingFlow(invitationId, condoId, aptId, "owner@example.com", "OWNER", token);
+    // Todos os UPDATEs (INSERT resident, UPDATE invitation, UPDATE apartment) retornam 1
+    lenient().when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+    lenient()
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(1);
+    lenient()
+        .when(
+            jdbcTemplate.update(
+                anyString(),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any()))
+        .thenReturn(1);
+
+    newService().acceptAsExistingUser(token, "owner@example.com", jwtUserId);
+
+    verify(auditEventPublisher)
+        .publish(
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            eq("apartment"),
+            eq(aptId),
+            any(Map.class),
+            eq(condoId),
+            eq(jwtUserId));
+  }
+
+  /**
+   * TENANT aceitando como existing user → APARTMENT_ELIGIBLE_VOTER_SET NÃO publicado (H6 cuida).
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void acceptAsExistingUser_tenant_naoPublicaApartmentEligibleVoterSet() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID jwtUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+
+    stubAcceptAsExistingFlow(invitationId, condoId, aptId, "tenant@example.com", "TENANT", token);
+    lenient().when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+    lenient()
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(1);
+
+    newService().acceptAsExistingUser(token, "tenant@example.com", jwtUserId);
+
+    verify(auditEventPublisher, never())
+        .publish(
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            anyString(),
+            any(UUID.class),
+            any(Map.class),
+            any(UUID.class),
+            any(UUID.class));
+  }
+
+  /**
+   * OWNER existente aceita, mas eligible_voter_user_id já estava setado → guard IS NULL faz
+   * rowsUpdated = 0 e audit não é emitido. Trava o invariante de "não sobrescreve delegação".
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void acceptAsExistingUser_ownerJaSetado_naoEmiteAudit() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID jwtUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+
+    stubAcceptAsExistingFlow(invitationId, condoId, aptId, "owner@example.com", "OWNER", token);
+    // INSERT apartment_resident, UPDATE invitation → 1
+    lenient()
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+    lenient()
+        .when(
+            jdbcTemplate.update(
+                anyString(),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any()))
+        .thenReturn(1);
+    // UPDATE apartment SET eligible_voter_user_id … WHERE … IS NULL → 0 (já estava setado)
+    when(jdbcTemplate.update(
+            contains("UPDATE apartment"), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(0);
+
+    newService().acceptAsExistingUser(token, "owner@example.com", jwtUserId);
+
     verify(auditEventPublisher, never())
         .publish(
             eq("APARTMENT_ELIGIBLE_VOTER_SET"),

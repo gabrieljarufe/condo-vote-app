@@ -27,6 +27,15 @@ type LoadState =
     <app-app-header />
 
     <main class="max-w-2xl mx-auto px-6 py-12">
+      <div class="flex items-center gap-3 mb-8">
+        <a
+          [routerLink]="['/app/condominiums', condoId, 'polls']"
+          [queryParams]="{ tab: 'pendentes' }"
+          class="text-sm text-on-surface-variant hover:text-on-surface"
+          >← Minhas votações</a
+        >
+      </div>
+
       @let s = state();
       @switch (s.kind) {
         @case ('loading') {
@@ -36,13 +45,7 @@ type LoadState =
         }
         @case ('error') {
           <div class="bg-error-container text-on-error-container rounded-2xl p-6">
-            <p class="text-sm mb-3">{{ s.message }}</p>
-            <a
-              [routerLink]="['/app/condominiums', condoId, 'polls']"
-              [queryParams]="{ tab: 'pendentes' }"
-              class="text-sm underline"
-              >Voltar para minhas votações</a
-            >
+            <p class="text-sm">{{ s.message }}</p>
           </div>
         }
         @case ('ready') {
@@ -109,15 +112,9 @@ type LoadState =
             }
             @case ('all-voted') {
               <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center">
-                <p class="text-sm text-on-surface-variant mb-4">
+                <p class="text-sm text-on-surface-variant">
                   Você já votou em todas as suas cédulas para esta votação.
                 </p>
-                <a
-                  [routerLink]="['/app/condominiums', condoId, 'polls']"
-                  [queryParams]="{ tab: 'pendentes' }"
-                  class="text-primary text-sm underline"
-                  >Voltar para minhas votações</a
-                >
               </div>
             }
             @case ('can-vote') {

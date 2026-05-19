@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { from, mergeMap, of, catchError, map } from 'rxjs';
 import {
   MyBallotResponse,
@@ -31,12 +31,20 @@ interface SubmitResultRow {
 
 @Component({
   selector: 'app-ballot-review-page',
-  imports: [CommonModule, AppHeader, BallotCard],
+  imports: [CommonModule, AppHeader, BallotCard, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
 
     <main class="max-w-2xl mx-auto px-6 py-12">
+      <div class="flex items-center gap-3 mb-8">
+        <a
+          [routerLink]="['/app/condominiums', condoId, 'polls', pollId, 'vote']"
+          class="text-sm text-on-surface-variant hover:text-on-surface"
+          >← Voltar à votação</a
+        >
+      </div>
+
       @if (!stateData()) {
         <p class="text-sm text-on-surface-variant">Redirecionando…</p>
       } @else {

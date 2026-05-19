@@ -162,6 +162,13 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
 describe('BallotVotePage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('renderiza breadcrumb "Minhas votações" no topo apontando para a lista de votações', async () => {
+    const { fixture } = await setup();
+    const link = fixture.nativeElement.querySelector('main a') as HTMLAnchorElement;
+    expect(link).toBeTruthy();
+    expect(link.textContent).toContain('Minhas votações');
+  });
+
   it('renderiza 1 cédula quando há 1 ballot pendente', async () => {
     const { component } = await setup();
     expect(component.state().kind).toBe('ready');

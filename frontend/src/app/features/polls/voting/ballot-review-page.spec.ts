@@ -191,6 +191,13 @@ describe('BallotReviewPage', () => {
   });
 
   describe('renderização com state válido', () => {
+    it('renderiza breadcrumb "Voltar à votação" no topo apontando para a vote-page', async () => {
+      const { fixture } = await setup();
+      const link = fixture.nativeElement.querySelector('main a') as HTMLAnchorElement;
+      expect(link).toBeTruthy();
+      expect(link.textContent).toContain('Voltar à votação');
+    });
+
     it('renderiza N cards quando state válido — 3 remainingBallots → 3 cards', async () => {
       const { component } = await setup();
       expect(component.rows()).toHaveLength(3);

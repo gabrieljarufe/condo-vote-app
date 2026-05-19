@@ -162,11 +162,11 @@ type LoadState =
             (closed)="closeBulkPrompt()"
           >
             <h2 id="bulk-prompt-title" dialog-title class="font-semibold text-on-surface mb-2">
-              Aplicar a mesma opção aos outros apartamentos?
+              Aplicar a mesma opção aos {{ pendingBallots().length }} apartamentos?
             </h2>
             <p dialog-body class="text-sm text-on-surface-variant mb-4">
-              Você tem {{ pendingBallots().length }} apartamento(s) pendente(s).
-              Quer votar a mesma opção em todos ou um a um?
+              Você tem {{ pendingBallots().length }} apartamentos pendentes nesta votação.
+              Quer aplicar a mesma opção em todos ou votar um a um?
             </p>
             <label dialog-body class="flex items-center gap-2 text-sm text-on-surface mb-4 cursor-pointer">
               <input
@@ -293,6 +293,17 @@ export default class BallotVotePage {
     const ballot = this.currentBallot();
     const optId = this.selectedOptionId();
     if (!ballot || !optId) return;
+    const pendingCount = this.pendingBallots().length;
+    // Múltiplos pendentes e prompt não suprimido: pergunta antes de submeter.
+    // Assim "Aplicar a todos" envia os N votos via bulk; "Votar um a um" envia só o atual.
+    if (pendingCount > 1 && !this.suppressBulkPromptForPoll()) {
+      this.showBulkPrompt.set(true);
+      return;
+    }
+    this.submitCurrentVote(ballot, optId);
+  }
+
+  private submitCurrentVote(ballot: MyBallotResponse, optId: string): void {
     this.submitting.set(true);
     this.submitError.set(null);
     this.api.submitVote(this.pollId, ballot.apartmentId, optId, false).subscribe({
@@ -319,25 +330,18 @@ export default class BallotVotePage {
   }
 
   private afterVote(): void {
-    const remaining = this.pendingBallots().length;
-    if (remaining === 0) {
+    if (this.pendingBallots().length === 0) {
       this.router.navigate(['/app/condominiums', this.condoId, 'polls'], {
         queryParams: { tab: 'pendentes' },
       });
       return;
     }
-    if (this.suppressBulkPromptForPoll()) {
-      // Vai direto para o próximo apartamento, sem dialog.
-      this.selectedOptionId.set(null);
-      return;
-    }
-    this.showBulkPrompt.set(true);
+    this.selectedOptionId.set(null);
   }
 
   protected closeBulkPrompt(): void {
-    // ESC ou backdrop equivale a "votar um a um" sem persistir a escolha.
+    // ESC ou backdrop: equivale a cancelar (não submete).
     this.showBulkPrompt.set(false);
-    this.selectedOptionId.set(null);
   }
 
   protected onVoteOneByOne(): void {
@@ -346,7 +350,12 @@ export default class BallotVotePage {
     }
     this.suppressFutureChecked.set(false);
     this.showBulkPrompt.set(false);
-    this.selectedOptionId.set(null);
+    // Submete apenas o voto atual (não-bulk).
+    const ballot = this.currentBallot();
+    const optId = this.selectedOptionId();
+    if (ballot && optId) {
+      this.submitCurrentVote(ballot, optId);
+    }
   }
 
   protected onApplyBulk(): void {

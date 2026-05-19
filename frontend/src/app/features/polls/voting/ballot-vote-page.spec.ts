@@ -226,7 +226,7 @@ describe('BallotVotePage', () => {
     );
   });
 
-  it('clicar confirmar com 2+ ballots dispara submitVote e abre modal de bulk', async () => {
+  it('clicar confirmar com 2+ ballots NÃO submete ainda — abre dialog primeiro', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component, api } = await setup({
@@ -239,22 +239,23 @@ describe('BallotVotePage', () => {
     component.onConfirm();
     fixture.detectChanges();
 
-    expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
+    expect(api.submitVote).not.toHaveBeenCalled();
     expect(component.showBulkPrompt()).toBe(true);
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Aplicar a mesma opção aos outros apartamentos?');
+    expect(el.textContent).toContain('Aplicar a mesma opção aos 2 apartamentos?');
   });
 
-  it('"Aplicar a todos" após voto navega para review com remainingBallots', async () => {
+  it('"Aplicar a todos" navega para review com TODOS os pending (incluindo o atual)', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
-    const { fixture, component } = await setup({
+    const { fixture, component, api } = await setup({
       getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
     component.selectedOptionId.set('opt-sim');
     component.onConfirm();
     fixture.detectChanges();
+    expect(api.submitVote).not.toHaveBeenCalled();
     expect(component.showBulkPrompt()).toBe(true);
 
     component.onApplyBulk();
@@ -264,17 +265,17 @@ describe('BallotVotePage', () => {
       expect.objectContaining({
         state: expect.objectContaining({
           appliedOptionId: 'opt-sim',
-          remainingBallots: [ballot2],
+          remainingBallots: [ballot1, ballot2],
           pollTitle: 'Votação anual',
         }),
       }),
     );
   });
 
-  it('"Votar um a um" fecha dialog e permanece na page', async () => {
+  it('"Votar um a um" submete o voto atual e permanece na page', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
-    const { fixture, component } = await setup({
+    const { fixture, component, api } = await setup({
       getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
@@ -283,7 +284,9 @@ describe('BallotVotePage', () => {
     fixture.detectChanges();
 
     component.onVoteOneByOne();
+    fixture.detectChanges();
 
+    expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
     expect(component.showBulkPrompt()).toBe(false);
     expect(component.selectedOptionId()).toBeNull();
     expect(component.pendingBallots()).toHaveLength(1);
@@ -295,7 +298,7 @@ describe('BallotVotePage', () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const ballot3 = makeBallot({ apartmentId: 'apt-303', apartmentLabel: '303' });
-    const { fixture, component } = await setup({
+    const { fixture, component, api } = await setup({
       getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2, ballot3]))),
     });
     fixture.detectChanges();
@@ -304,14 +307,18 @@ describe('BallotVotePage', () => {
     fixture.detectChanges();
     component.suppressFutureChecked.set(true);
     component.onVoteOneByOne();
+    fixture.detectChanges();
 
     expect(component.suppressBulkPromptForPoll()).toBe(true);
+    expect(api.submitVote).toHaveBeenCalledTimes(1);
 
     component.selectedOptionId.set('opt-nao');
     component.onConfirm();
     fixture.detectChanges();
 
+    // Voto direto, sem dialog.
     expect(component.showBulkPrompt()).toBe(false);
+    expect(api.submitVote).toHaveBeenCalledTimes(2);
     expect(component.pendingBallots()).toHaveLength(1);
   });
 

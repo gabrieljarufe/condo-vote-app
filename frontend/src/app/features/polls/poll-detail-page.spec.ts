@@ -268,8 +268,8 @@ describe('PollDetailPage', () => {
       getById: vi.fn(() => throwError(() => new Error('Falha na rede'))),
     });
     expect(component.pageState()).toBe('error');
-    // extractErrorMessage prioriza a mensagem do Error sobre o fallback genérico.
-    expect(component.errorMessage()).toContain('Falha na rede');
+    // Error puro cai no fallback curado (evita vazar mensagens técnicas ao usuário).
+    expect(component.errorMessage()).toContain('Erro ao carregar votação');
   });
 
   it('renderiza breakdown quando status=CLOSED', async () => {

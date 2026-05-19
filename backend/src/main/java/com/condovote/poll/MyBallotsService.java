@@ -17,9 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MyBallotsService {
 
-  // Ordenamos por block (string) + unit_number numérico (NULLs-last) para evitar "A 10" antes
-  // de "A 9". unit_number ainda é textual no schema, então convertemos por regex para o trecho
-  // numérico inicial; em caso de unit não-numérico, cai no fallback lexicográfico de unit_number.
+  // Ordem: block (string) → prefixo numérico de unit_number (asc, NULLS LAST) → unit_number
+  // textual como tie-break. unit_number é textual no schema; extraímos o prefixo numérico via
+  // regex (^[0-9]+) para que "A 9" venha antes de "A 10". Unidades sem prefixo numérico (ex:
+  // "PH", "Loja 1A") caem em NULL e são empurradas para o fim pelo NULLS LAST; entre si são
+  // ordenadas lexicograficamente pela coluna textual (tie-break).
   private static final String LIST_MY_BALLOTS =
       """
       SELECT s.apartment_id,

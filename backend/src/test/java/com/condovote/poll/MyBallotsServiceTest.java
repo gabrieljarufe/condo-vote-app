@@ -2,6 +2,7 @@ package com.condovote.poll;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,6 +27,13 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 
+/**
+ * UT do MyBallotsService — foca em comportamento (branches de sigilo, propagação de params,
+ * mapeamento de retorno). NÃO valida o SQL textual: isso é responsabilidade do
+ * MyBallotsControllerIT (Testcontainers contra Postgres real). Aqui usamos contains(...) para
+ * discriminar entre as 3 queries do service via fragmentos estáveis, o que torna o teste resiliente
+ * a reformat/whitespace.
+ */
 @ExtendWith(MockitoExtension.class)
 class MyBallotsServiceTest {
 
@@ -46,8 +54,7 @@ class MyBallotsServiceTest {
   }
 
   // =====================================================================
-  // getMyBallots — cobertura das branches de STATUSES_THAT_REVEAL_TOTAL
-  // e do listagem de excluded apartments.
+  // getMyBallots — branches de STATUSES_THAT_REVEAL_TOTAL + excluded.
   // =====================================================================
 
   @Test
@@ -66,10 +73,7 @@ class MyBallotsServiceTest {
     assertThat(out.excludedApartments()).isEmpty();
     // Nunca conta votos em poll OPEN — sigilo (condo-vote-principles.md §5).
     verify(jdbc, never())
-        .queryForObject(
-            eq("SELECT COUNT(*) FROM vote WHERE poll_id = :pollId"),
-            any(MapSqlParameterSource.class),
-            eq(Long.class));
+        .queryForObject(contains("FROM vote"), any(MapSqlParameterSource.class), eq(Long.class));
   }
 
   @Test
@@ -125,7 +129,7 @@ class MyBallotsServiceTest {
   }
 
   @Test
-  void getMyBallots_excludedApartments_propaganados() {
+  void getMyBallots_excludedApartments_propagados() {
     ExcludedApartmentResponse excluded =
         new ExcludedApartmentResponse(UuidV7.generate(), "202", "EXCLUDED");
     stubBallots(List.of(new MyBallotResponse(aptId, "101", false, null)));
@@ -149,14 +153,18 @@ class MyBallotsServiceTest {
 
     ArgumentCaptor<MapSqlParameterSource> paramsCap =
         ArgumentCaptor.forClass(MapSqlParameterSource.class);
-    verify(jdbc).query(eq(querySql("LIST_MY_BALLOTS")), paramsCap.capture(), any(RowMapper.class));
+    verify(jdbc)
+        .query(
+            contains("JOIN apartment a ON a.id = s.apartment_id"),
+            paramsCap.capture(),
+            any(RowMapper.class));
     MapSqlParameterSource captured = paramsCap.getValue();
     assertThat(captured.getValue("pollId")).isEqualTo(pollId);
     assertThat(captured.getValue("userId")).isEqualTo(userId);
   }
 
   // =====================================================================
-  // getMyPendingPolls — propagação de params + retorno.
+  // getMyPendingPolls — propagação de params + mapeamento.
   // =====================================================================
 
   @Test
@@ -165,7 +173,7 @@ class MyBallotsServiceTest {
         new MyPendingPollResponse(
             pollId, "Assembleia", OffsetDateTime.parse("2026-06-01T12:00:00Z"), 2L, 5L);
     when(jdbc.query(
-            eq(querySql("LIST_MY_PENDING")),
+            contains("status::text = 'OPEN'"),
             any(MapSqlParameterSource.class),
             any(RowMapper.class)))
         .thenReturn(List.of(expected));
@@ -175,31 +183,50 @@ class MyBallotsServiceTest {
     assertThat(out).containsExactly(expected);
   }
 
+  @Test
+  void getMyPendingPolls_propagaCondoIdEUserId() {
+    when(jdbc.query(
+            contains("status::text = 'OPEN'"),
+            any(MapSqlParameterSource.class),
+            any(RowMapper.class)))
+        .thenReturn(List.of());
+
+    service.getMyPendingPolls(condoId);
+
+    ArgumentCaptor<MapSqlParameterSource> paramsCap =
+        ArgumentCaptor.forClass(MapSqlParameterSource.class);
+    verify(jdbc)
+        .query(contains("status::text = 'OPEN'"), paramsCap.capture(), any(RowMapper.class));
+    MapSqlParameterSource captured = paramsCap.getValue();
+    assertThat(captured.getValue("condoId")).isEqualTo(condoId);
+    assertThat(captured.getValue("userId")).isEqualTo(userId);
+  }
+
   // =====================================================================
-  // Stub helpers — separamos por SQL para isolar branches.
+  // Stub helpers — discriminam queries por fragmento estável (não SQL completo).
   // =====================================================================
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked", "rawtypes"})
   private void stubBallots(List<MyBallotResponse> ballots) {
+    // "JOIN apartment a ON a.id = s.apartment_id" só aparece em LIST_MY_BALLOTS
+    // (LIST_EXCLUDED_APARTMENTS também referencia poll_eligible_snapshot, mas via NOT EXISTS).
     when(jdbc.query(
-            eq(querySql("LIST_MY_BALLOTS")),
+            contains("JOIN apartment a ON a.id = s.apartment_id"),
             any(MapSqlParameterSource.class),
             any(RowMapper.class)))
         .thenReturn((List) ballots);
   }
 
-  @SuppressWarnings("unchecked")
+  @SuppressWarnings({"unchecked", "rawtypes"})
   private void stubExcluded(List<ExcludedApartmentResponse> excluded) {
     when(jdbc.query(
-            eq(querySql("LIST_EXCLUDED_APARTMENTS")),
-            any(MapSqlParameterSource.class),
-            any(RowMapper.class)))
+            contains("FROM apartment a"), any(MapSqlParameterSource.class), any(RowMapper.class)))
         .thenReturn((List) excluded);
   }
 
   private void stubEligibleCount(long count) {
     when(jdbc.queryForObject(
-            eq("SELECT COUNT(*) FROM poll_eligible_snapshot WHERE poll_id = :pollId"),
+            contains("FROM poll_eligible_snapshot"),
             any(MapSqlParameterSource.class),
             eq(Long.class)))
         .thenReturn(count);
@@ -207,73 +234,13 @@ class MyBallotsServiceTest {
 
   private void stubStatus(String status) {
     when(jdbc.queryForObject(
-            eq("SELECT status::text FROM poll WHERE id = :pollId"),
-            any(MapSqlParameterSource.class),
-            eq(String.class)))
+            contains("status::text"), any(MapSqlParameterSource.class), eq(String.class)))
         .thenReturn(status);
   }
 
   private void stubVoteCount(long count) {
     when(jdbc.queryForObject(
-            eq("SELECT COUNT(*) FROM vote WHERE poll_id = :pollId"),
-            any(MapSqlParameterSource.class),
-            eq(Long.class)))
+            contains("FROM vote"), any(MapSqlParameterSource.class), eq(Long.class)))
         .thenReturn(count);
-  }
-
-  // Replica os literais textuais do service para casar o stub com a chamada.
-  // Mantemos como helper para falhar de forma óbvia se o SQL mudar.
-  private String querySql(String name) {
-    return switch (name) {
-      case "LIST_MY_BALLOTS" ->
-          """
-          SELECT s.apartment_id,
-                 TRIM(COALESCE(NULLIF(a.block, ''), '') || ' ' || a.unit_number) AS label,
-                 (v.id IS NOT NULL) AS already_voted,
-                 v.poll_option_id AS voted_option_id
-            FROM poll_eligible_snapshot s
-            JOIN apartment a ON a.id = s.apartment_id
-       LEFT JOIN vote v ON v.poll_id = s.poll_id AND v.apartment_id = s.apartment_id
-           WHERE s.poll_id = :pollId
-             AND s.eligible_voter_user_id = :userId
-           ORDER BY COALESCE(a.block, ''),
-                    NULLIF(SUBSTRING(a.unit_number FROM '^[0-9]+'), '')::int NULLS LAST,
-                    a.unit_number
-          """;
-      case "LIST_EXCLUDED_APARTMENTS" ->
-          """
-          SELECT a.id AS apartment_id,
-                 TRIM(COALESCE(NULLIF(a.block, ''), '') || ' ' || a.unit_number) AS label
-            FROM apartment a
-            JOIN poll p ON p.id = :pollId
-           WHERE a.condominium_id = p.condominium_id
-             AND a.eligible_voter_user_id = :userId
-             AND NOT EXISTS (
-                 SELECT 1 FROM poll_eligible_snapshot s
-                  WHERE s.poll_id = :pollId AND s.apartment_id = a.id
-             )
-           ORDER BY COALESCE(a.block, ''),
-                    NULLIF(SUBSTRING(a.unit_number FROM '^[0-9]+'), '')::int NULLS LAST,
-                    a.unit_number
-          """;
-      case "LIST_MY_PENDING" ->
-          """
-          SELECT p.id AS poll_id,
-                 p.title,
-                 p.scheduled_end,
-                 COUNT(*) FILTER (WHERE v.id IS NULL) AS pending,
-                 COUNT(*) AS total
-            FROM poll p
-            JOIN poll_eligible_snapshot s ON s.poll_id = p.id
-       LEFT JOIN vote v ON v.poll_id = s.poll_id AND v.apartment_id = s.apartment_id
-           WHERE p.condominium_id = :condoId
-             AND p.status::text = 'OPEN'
-             AND s.eligible_voter_user_id = :userId
-        GROUP BY p.id, p.title, p.scheduled_end
-          HAVING COUNT(*) FILTER (WHERE v.id IS NULL) > 0
-        ORDER BY p.scheduled_end
-          """;
-      default -> throw new IllegalArgumentException("Unknown query name: " + name);
-    };
   }
 }

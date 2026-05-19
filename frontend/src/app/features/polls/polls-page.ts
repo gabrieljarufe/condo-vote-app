@@ -66,7 +66,7 @@ const TAB_CONFIGS: ReadonlyArray<TabConfig> = [
               (click)="onTabChange(tab.value)"
             >
               {{ tab.label }}
-              @if (tab.value === 'pendentes' && pendingCount() > 0) {
+              @if (tab.value === 'pendentes' && pageState() !== 'error' && pendingCount() > 0) {
                 <span class="ml-1 text-xs">({{ pendingCount() }})</span>
               }
             </button>

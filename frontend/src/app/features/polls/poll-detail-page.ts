@@ -519,9 +519,9 @@ export default class PollDetailPage implements OnInit {
       rawCounts = JSON.parse(d.result.optionsBreakdown) as Record<string, number>;
     } catch (e) {
       // optionsBreakdown vem como JSON serializado do backend (jsonb). Falha aqui
-      // indica corrupção de dado ou contrato quebrado — registrar para investigação.
-      // Não chamamos actionError aqui porque breakdownRows roda no template (side-effects
-      // dentro de change detection geram ExpressionChangedAfterItHasBeenChecked).
+      // indica corrupção de dado ou contrato quebrado — logamos para investigação.
+      // Não mutamos signal aqui porque breakdownRows é lido pelo template; mutar
+      // durante a leitura dispararia NG0100 (ExpressionChangedAfterItHasBeenCheckedError).
       console.error('Falha ao parsear optionsBreakdown', e, d.result.optionsBreakdown);
       return [];
     }

@@ -78,6 +78,37 @@ docker compose up --build backend
 > `docker compose up --build backend` sobe o Redis automaticamente (dependência declarada).
 > Nunca use `./mvnw spring-boot:run` para desenvolvimento — o compose garante paridade com prod.
 
+### Restart completo do stack (quando algo trava ou o Flyway diverge)
+
+Quando o backend não sobe por divergência de `flyway_schema_history` (ex: migration renomeada localmente), ou quando você quer um estado limpo do zero:
+
+```bash
+# 1. parar tudo que está usando portas (frontend pode ter ficado dangling)
+lsof -ti :4200 -sTCP:LISTEN 2>/dev/null | xargs -I{} kill {} 2>/dev/null
+
+# 2. derrubar docker compose (backend + redis) — rode em CADA worktree que tenha subido
+docker compose down
+
+# 3. resetar o banco (perde dados locais; re-aplica migrations + seed.sql + bootstrap-local)
+cd infra/supabase && supabase db reset && cd -
+
+# 4. rebuild + subir backend (sobe redis junto)
+docker compose up --build -d backend
+
+# 5. subir frontend
+cd frontend && npm ci && npm start
+```
+
+Health checks rápidos:
+```bash
+curl -s http://localhost:8080/actuator/health/liveness   # backend
+curl -sI http://localhost:4200 | head -1                 # frontend
+```
+
+> **Quando NÃO precisa `supabase db reset`:** se trocou só de branch sem renomear migration, `supabase stop && supabase start` preserva dados e basta. Reset só quando o erro for `Validate failed: Migrations have failed validation`.
+
+> **Conflito de container entre worktrees:** se duas worktrees subirem o compose, a segunda falha com `container name already in use`. Solução: `docker rm condo-vote-backend condo-vote-redis` antes de subir.
+
 ### Outros comandos úteis
 ```bash
 cd backend && ./mvnw verify                   # roda unit + integration tests (Testcontainers)

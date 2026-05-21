@@ -105,7 +105,7 @@ interface ComingSoonItem {
           <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             @for (f of features; track f.title) {
               <article class="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant hover:shadow-md transition-shadow">
-                <div class="w-12 h-12 bg-secondary-fixed text-secondary flex items-center justify-center rounded-xl mb-5">
+                <div class="w-12 h-12 bg-secondary-fixed text-on-secondary-fixed-variant flex items-center justify-center rounded-xl mb-5">
                   <span class="material-symbols-outlined text-2xl" aria-hidden="true">{{ f.icon }}</span>
                 </div>
                 <h3 class="text-lg font-semibold text-on-surface mb-2">{{ f.title }}</h3>

@@ -60,7 +60,7 @@ type LoadResult =
                       class="w-full flex items-center justify-between gap-4 p-5 rounded-xl border border-outline-variant bg-surface-container-lowest hover:border-secondary transition-all text-left"
                     >
                       <span class="flex items-center gap-3">
-                        <span class="w-10 h-10 rounded-lg bg-secondary-fixed text-secondary grid place-items-center" aria-hidden="true">
+                        <span class="w-10 h-10 rounded-lg bg-secondary-fixed text-on-secondary-fixed-variant grid place-items-center" aria-hidden="true">
                           <span class="material-symbols-outlined">apartment</span>
                         </span>
                         <span>

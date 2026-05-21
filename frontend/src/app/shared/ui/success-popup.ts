@@ -1,16 +1,17 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   DestroyRef,
-  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   Output,
   SimpleChanges,
-  ViewChild,
   inject,
 } from '@angular/core';
+
+const EXIT_ANIMATION_MS = 280;
 
 @Component({
   selector: 'app-success-popup',
@@ -19,15 +20,16 @@ import {
   template: `
     @if (open) {
       <div
-        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center animate-[fade-in_120ms_ease-out]"
+        class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center popup-backdrop"
+        [class.closing]="closing"
         data-popup-backdrop
       >
         <div
-          #container
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="success-popup-msg"
-          class="bg-surface-container rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl animate-[dialog-in_140ms_ease-out]"
+          class="bg-surface-container rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl popup-container"
+          [class.closing]="closing"
         >
           <div class="flex flex-col items-center text-center py-4 success-pop">
             <svg class="success-check" viewBox="0 0 52 52" width="80" height="80" aria-hidden="true">
@@ -49,21 +51,24 @@ import {
             >
               {{ message }}
             </p>
-            <button
-              #okBtn
-              type="button"
-              (click)="close()"
-              (keydown.enter)="close()"
-              class="mt-6 min-h-[44px] min-w-[88px] px-6 py-2 rounded-xl bg-primary text-on-primary text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2"
-            >
-              OK
-            </button>
           </div>
         </div>
       </div>
     }
   `,
   styles: `
+    .popup-backdrop {
+      animation: fade-in 160ms ease-out;
+    }
+    .popup-backdrop.closing {
+      animation: fade-out 280ms ease-in forwards;
+    }
+    .popup-container {
+      animation: dialog-in 180ms cubic-bezier(0.2, 0, 0, 1);
+    }
+    .popup-container.closing {
+      animation: dialog-out 260ms cubic-bezier(0.3, 0, 0.8, 0.15) forwards;
+    }
     .success-pop { animation: pop-in 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
     @keyframes pop-in {
       0% { transform: scale(0); opacity: 0; }
@@ -71,9 +76,14 @@ import {
       100% { transform: scale(1); }
     }
     @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
     @keyframes dialog-in {
       from { opacity: 0; transform: scale(0.95); }
       to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes dialog-out {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0; transform: scale(0.97) translateY(4px); }
     }
     .check-circle {
       stroke: var(--color-success);
@@ -95,6 +105,10 @@ import {
       animation: fade-in 300ms 1000ms ease-out forwards;
     }
     @media (prefers-reduced-motion: reduce) {
+      .popup-backdrop,
+      .popup-backdrop.closing,
+      .popup-container,
+      .popup-container.closing,
       .success-pop,
       .check-circle,
       .check-mark,
@@ -110,19 +124,21 @@ import {
 export class SuccessPopup implements OnChanges {
   @Input() open = false;
   @Input() voteCount = 1;
-  @Input() durationMs = 1800;
+  @Input() durationMs = 2500;
   @Output() readonly closed = new EventEmitter<void>();
 
-  @ViewChild('okBtn') private okBtn?: ElementRef<HTMLButtonElement>;
-
+  protected closing = false;
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
+  private exitTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private previouslyFocused: HTMLElement | null = null;
   private readonly keydownHandler = (e: KeyboardEvent) => this.onKeydown(e);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   constructor() {
     const destroyRef = inject(DestroyRef);
     destroyRef.onDestroy(() => {
       this.clearTimer();
+      this.clearExitTimer();
       document.removeEventListener('keydown', this.keydownHandler);
     });
   }
@@ -130,21 +146,14 @@ export class SuccessPopup implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['open']) return;
     if (this.open) {
+      this.closing = false;
       this.previouslyFocused = document.activeElement as HTMLElement | null;
       document.addEventListener('keydown', this.keydownHandler);
-      // Focus OK button after Angular renders the @if block
-      queueMicrotask(() => this.okBtn?.nativeElement?.focus());
       this.clearTimer();
-      this.timeoutId = setTimeout(() => this.close(), this.durationMs);
+      this.timeoutId = setTimeout(() => this.beginClose(), this.durationMs);
     } else {
       this.teardown();
     }
-  }
-
-  protected close(): void {
-    this.clearTimer();
-    this.teardown();
-    this.closed.emit();
   }
 
   protected get message(): string {
@@ -153,23 +162,43 @@ export class SuccessPopup implements OnChanges {
       : `${this.voteCount} votos computados com sucesso!`;
   }
 
+  private beginClose(): void {
+    if (this.closing) return;
+    this.clearTimer();
+    this.closing = true;
+    this.cdr.markForCheck();
+    this.exitTimeoutId = setTimeout(() => {
+      this.teardown();
+      this.closed.emit();
+    }, EXIT_ANIMATION_MS);
+  }
+
   private onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.close();
+      this.beginClose();
     }
   }
 
   private teardown(): void {
+    this.closing = false;
     document.removeEventListener('keydown', this.keydownHandler);
     this.previouslyFocused?.focus?.();
     this.previouslyFocused = null;
+    this.cdr.markForCheck();
   }
 
   private clearTimer(): void {
     if (this.timeoutId !== null) {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
+    }
+  }
+
+  private clearExitTimer(): void {
+    if (this.exitTimeoutId !== null) {
+      clearTimeout(this.exitTimeoutId);
+      this.exitTimeoutId = null;
     }
   }
 }

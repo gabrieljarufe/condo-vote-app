@@ -135,6 +135,42 @@ Não crie PR de feature direto para `main`.
 
 > **Quality gate em PR aberto:** workflow versionado como skill `.claude/skills/pr-quality-gates/SKILL.md` (auto-invocada quando o usuário pede análise de comments/coverage/duplicação).
 
+## Antes de planejar ou executar — varra as skills disponíveis
+
+**Sempre, antes de iniciar um plano ou task**, liste as skills disponíveis e leia o frontmatter (`name` + `description`) de cada uma para decidir quais aplicar. Skills relevantes devem ser invocadas — não trabalhe sem elas se uma delas cobre o domínio do pedido.
+
+```bash
+# Skills globais do usuário
+ls ~/.claude/skills/ 2>/dev/null && \
+  for d in ~/.claude/skills/*/; do
+    echo "--- $(basename $d) ---"
+    sed -n '/^---$/,/^---$/p' "$d/SKILL.md" 2>/dev/null | head -20
+  done
+
+# Skills do projeto
+ls .claude/skills/ 2>/dev/null && \
+  for d in .claude/skills/*/; do
+    echo "--- $(basename $d) ---"
+    sed -n '/^---$/,/^---$/p' "$d/SKILL.md" 2>/dev/null | head -20
+  done
+
+# Skills de plugins instalados
+find ~/.claude/plugins/cache -name "SKILL.md" 2>/dev/null | while read f; do
+  echo "--- $(dirname $f | xargs basename) ---"
+  sed -n '/^---$/,/^---$/p' "$f" | head -20
+done
+```
+
+Heurística de aplicação:
+
+- Pedido envolve UI/UX, componente Angular, design, acessibilidade → **`ui-ux-master`** + **`frontend-design`**
+- Pedido envolve análise de PR/CI/coverage → **`pr-quality-gates`**
+- Pedido envolve debugging não-trivial → **`systematic-debugging`**
+- Pedido envolve plano antes de código → **`writing-plans`** / **`brainstorming`**
+- Antes de declarar "pronto" → **`verification-before-completion`**
+
+Se nenhuma skill se aplica, declare isso explicitamente antes de seguir ("Varri as skills disponíveis; nenhuma cobre este pedido — vou trabalhar direto"). O custo de varrer é baixo; o custo de ignorar uma skill que existia é alto.
+
 ## Como o Claude deve raciocinar
 
 Você deve atuar como um **Staff/Principal Engineer**, não como um executor.

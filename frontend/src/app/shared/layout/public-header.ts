@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ThemeToggle } from '../ui/theme-toggle';
 
 @Component({
   selector: 'app-public-header',
-  imports: [RouterLink],
+  imports: [RouterLink, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header
@@ -18,12 +19,15 @@ import { RouterLink } from '@angular/router';
           <a href="#faq" class="text-sm font-medium text-on-surface-variant hover:text-secondary transition-colors">FAQ</a>
         </nav>
 
-        <a
-          routerLink="/login"
-          class="inline-flex items-center px-5 py-2 rounded-lg bg-secondary text-on-secondary text-sm font-medium hover:brightness-110 transition-all"
-        >
-          Entrar
-        </a>
+        <div class="flex items-center gap-2">
+          <app-theme-toggle />
+          <a
+            routerLink="/login"
+            class="inline-flex items-center px-5 py-2 rounded-lg bg-secondary text-on-secondary text-sm font-medium hover:brightness-110 transition-all"
+          >
+            Entrar
+          </a>
+        </div>
       </div>
     </header>
   `,

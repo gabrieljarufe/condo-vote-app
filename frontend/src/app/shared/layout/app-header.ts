@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { TenantService } from '../../core/tenant/tenant.service';
+import { ThemeToggle } from '../ui/theme-toggle';
 
 /**
  * Header da área autenticada (/app).
@@ -9,7 +10,7 @@ import { TenantService } from '../../core/tenant/tenant.service';
  */
 @Component({
   selector: 'app-app-header',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="h-16 bg-surface-container-lowest border-b border-outline-variant">
@@ -48,6 +49,7 @@ import { TenantService } from '../../core/tenant/tenant.service';
               Trocar
             </button>
           }
+          <app-theme-toggle />
           <button
             type="button"
             (click)="signOut()"

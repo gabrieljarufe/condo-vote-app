@@ -137,87 +137,104 @@
   --spacing: 4px;
 }
 
-/* ── Dark mode (prefers-color-scheme) ──────────────────────────────
+/* ── Dark mode (toggle explícito + fallback prefers-color-scheme) ──
  *
- * Sem toggle, sem persistência: segue preferência do SO. Justificativa em
- * docs/ux/visual-identity-decision.md §4. Paleta derivada por M3 tone-based
- * a partir dos `inverse-*` tokens do DESIGN.md.
+ * Estratégia híbrida:
+ *  - `:root[data-theme="dark"]` aplica dark quando o usuário escolheu.
+ *  - `@media (prefers-color-scheme: dark)` aplica dark quando o usuário
+ *    NÃO escolheu explicitamente light (`:not([data-theme="light"])`).
  *
- * Redefinir tokens em :root dentro de @media é a forma idiomática em
- * Tailwind v4 — @theme não pode ser aninhado em @media.
+ * Resultado:
+ *  - Primeira visita: segue SO (data-theme ausente).
+ *  - Toggle escreve data-theme em <html> e persiste em localStorage
+ *    (ver ThemeService + inline script anti-FOUC em index.html).
+ *  - Paleta derivada por M3 tone-based dos `inverse-*` tokens do DESIGN.md.
+ *
+ * `@theme` não pode ser aninhado em @media — redeclaramos as CSS vars
+ * em :root, o que é idiomático em Tailwind v4.
  */
+@mixin dark-tokens {
+  --color-primary: #85d89c;
+  --color-on-primary: #003919;
+  --color-primary-container: #00522a;
+  --color-on-primary-container: #a0f5b7;
+  --color-primary-fixed: #a0f5b7;
+  --color-primary-fixed-dim: #85d89c;
+  --color-on-primary-fixed: #00210d;
+  --color-on-primary-fixed-variant: #00522a;
+  --color-inverse-primary: #005129;
+
+  --color-secondary: #ffb5a1;
+  --color-on-secondary: #5e1700;
+  --color-secondary-container: #7f2a12;
+  --color-on-secondary-container: #ffdbd1;
+  --color-secondary-fixed: #ffdbd1;
+  --color-secondary-fixed-dim: #ffb5a1;
+  --color-on-secondary-fixed: #3b0800;
+  --color-on-secondary-fixed-variant: #7f2a12;
+
+  --color-tertiary: #c9c6c2;
+  --color-on-tertiary: #2f2f2c;
+  --color-tertiary-container: #474743;
+  --color-on-tertiary-container: #e5e2dd;
+  --color-tertiary-fixed: #e5e2dd;
+  --color-tertiary-fixed-dim: #c9c6c2;
+  --color-on-tertiary-fixed: #1c1c19;
+  --color-on-tertiary-fixed-variant: #474743;
+
+  --color-success: #85d89c;
+  --color-on-success: #003919;
+  --color-success-container: #00522a;
+  --color-on-success-container: #a0f5b7;
+
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+
+  --color-warning: #ffb68a;
+  --color-on-warning: #522300;
+  --color-warning-container: #7a4400;
+  --color-on-warning-container: #ffe0c3;
+
+  --color-info: #a9cbf5;
+  --color-on-info: #003258;
+  --color-info-container: #0e3c66;
+  --color-on-info-container: #d6e8f7;
+
+  --color-surface: #14110b;
+  --color-surface-dim: #14110b;
+  --color-surface-bright: #3b352f;
+  --color-surface-container-lowest: #0e0c08;
+  --color-surface-container-low: #1c1814;
+  --color-surface-container: #211d18;
+  --color-surface-container-high: #2b2722;
+  --color-surface-container-highest: #36322c;
+  --color-surface-variant: #494842;
+  --color-surface-tint: #85d89c;
+
+  --color-on-surface: #ece5dd;
+  --color-on-surface-variant: #c9c5b9;
+
+  --color-background: #14110b;
+  --color-on-background: #ece5dd;
+
+  --color-outline: #939185;
+  --color-outline-variant: #494842;
+
+  --color-inverse-surface: #ece5dd;
+  --color-inverse-on-surface: #34302c;
+}
+
+/* Escolha explícita do usuário (toggle): vence o SO. */
+:root[data-theme="dark"] {
+  @include dark-tokens;
+}
+
+/* Default — primeira visita / sem escolha: segue SO. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --color-primary: #85d89c;
-    --color-on-primary: #003919;
-    --color-primary-container: #00522a;
-    --color-on-primary-container: #a0f5b7;
-    --color-primary-fixed: #a0f5b7;
-    --color-primary-fixed-dim: #85d89c;
-    --color-on-primary-fixed: #00210d;
-    --color-on-primary-fixed-variant: #00522a;
-    --color-inverse-primary: #005129;
-
-    --color-secondary: #ffb5a1;
-    --color-on-secondary: #5e1700;
-    --color-secondary-container: #7f2a12;
-    --color-on-secondary-container: #ffdbd1;
-    --color-secondary-fixed: #ffdbd1;
-    --color-secondary-fixed-dim: #ffb5a1;
-    --color-on-secondary-fixed: #3b0800;
-    --color-on-secondary-fixed-variant: #7f2a12;
-
-    --color-tertiary: #c9c6c2;
-    --color-on-tertiary: #2f2f2c;
-    --color-tertiary-container: #474743;
-    --color-on-tertiary-container: #e5e2dd;
-    --color-tertiary-fixed: #e5e2dd;
-    --color-tertiary-fixed-dim: #c9c6c2;
-    --color-on-tertiary-fixed: #1c1c19;
-    --color-on-tertiary-fixed-variant: #474743;
-
-    --color-success: #85d89c;
-    --color-on-success: #003919;
-    --color-success-container: #00522a;
-    --color-on-success-container: #a0f5b7;
-
-    --color-error: #ffb4ab;
-    --color-on-error: #690005;
-    --color-error-container: #93000a;
-    --color-on-error-container: #ffdad6;
-
-    --color-warning: #ffb68a;
-    --color-on-warning: #522300;
-    --color-warning-container: #7a4400;
-    --color-on-warning-container: #ffe0c3;
-
-    --color-info: #a9cbf5;
-    --color-on-info: #003258;
-    --color-info-container: #0e3c66;
-    --color-on-info-container: #d6e8f7;
-
-    --color-surface: #14110b;
-    --color-surface-dim: #14110b;
-    --color-surface-bright: #3b352f;
-    --color-surface-container-lowest: #0e0c08;
-    --color-surface-container-low: #1c1814;
-    --color-surface-container: #211d18;
-    --color-surface-container-high: #2b2722;
-    --color-surface-container-highest: #36322c;
-    --color-surface-variant: #494842;
-    --color-surface-tint: #85d89c;
-
-    --color-on-surface: #ece5dd;
-    --color-on-surface-variant: #c9c5b9;
-
-    --color-background: #14110b;
-    --color-on-background: #ece5dd;
-
-    --color-outline: #939185;
-    --color-outline-variant: #494842;
-
-    --color-inverse-surface: #ece5dd;
-    --color-inverse-on-surface: #34302c;
+  :root:not([data-theme="light"]) {
+    @include dark-tokens;
   }
 }
 

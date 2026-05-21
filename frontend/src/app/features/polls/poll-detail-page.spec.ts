@@ -392,6 +392,63 @@ describe('PollDetailPage', () => {
     expect(component.breakdownRows(draftDetail)).toHaveLength(0);
   });
 
+  // ── breakdown() com JSON inválido ─────────────────────────────────────────
+
+  it('breakdown() retorna null quando optionsBreakdown é JSON inválido', async () => {
+    const badDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'CLOSED' }),
+      options: mockOptions,
+      result: {
+        totalVotes: 5,
+        winningOptionId: null,
+        quorumReached: true,
+        closeTrigger: 'MANUAL',
+        invalidationReason: null,
+        determinedAt: '2026-06-01T18:00:00Z',
+        optionsBreakdown: '{invalid',
+      },
+    };
+
+    const { fixture, component } = await setup({
+      getById: vi.fn(() => of(badDetail)),
+    });
+    fixture.detectChanges();
+
+    expect(component.breakdown()).toBeNull();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Não foi possível exibir o detalhamento desta votação');
+  });
+
+  it('breakdown() retorna array e não exibe banner quando optionsBreakdown é JSON válido', async () => {
+    const goodDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'CLOSED' }),
+      options: [
+        { id: 'opt-1', label: 'Sim', displayOrder: 1 },
+        { id: 'opt-2', label: 'Não', displayOrder: 2 },
+      ],
+      result: {
+        totalVotes: 6,
+        winningOptionId: 'opt-1',
+        quorumReached: true,
+        closeTrigger: 'MANUAL',
+        invalidationReason: null,
+        determinedAt: '2026-06-01T18:00:00Z',
+        optionsBreakdown: '{"opt-1":4,"opt-2":2}',
+      },
+    };
+
+    const { fixture, component } = await setup({
+      getById: vi.fn(() => of(goodDetail)),
+    });
+    fixture.detectChanges();
+
+    expect(component.breakdown()).not.toBeNull();
+    expect(component.breakdown()!.length).toBe(2);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).not.toContain('Não foi possível exibir o detalhamento desta votação');
+    expect(el.textContent).toContain('Sim');
+  });
+
   // ── Painel "Sua participação" (morador) ────────────────────────────────────
 
   it('morador vê painel "Sua participação" com aptos votados e pendentes', async () => {

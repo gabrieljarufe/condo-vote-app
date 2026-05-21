@@ -177,7 +177,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
                       } @else if (d.poll.status === 'OPEN') {
                         <a
                           [routerLink]="voteHref()"
-                          class="text-primary text-xs underline font-medium"
+                          class="shrink-0 px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold no-underline"
                           >Votar →</a
                         >
                       } @else {

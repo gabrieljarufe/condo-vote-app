@@ -23,8 +23,10 @@ import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 import { PollStatusBadge } from './poll-status-badge';
 import { PollCancelDialog } from './poll-cancel-dialog';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
 type PageState = 'loading' | 'error' | 'ready';
+type ConfirmAction = 'publish' | 'open' | 'close' | null;
 
 interface BreakdownRow {
   optionId: string;
@@ -66,7 +68,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
 
 @Component({
   selector: 'app-poll-detail-page',
-  imports: [AppHeader, RouterLink, Spinner, PollStatusBadge, PollCancelDialog],
+  imports: [AppHeader, RouterLink, Spinner, PollStatusBadge, PollCancelDialog, ConfirmDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -175,7 +177,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
                       } @else if (d.poll.status === 'OPEN') {
                         <a
                           [routerLink]="voteHref()"
-                          class="text-primary text-xs underline font-medium"
+                          class="shrink-0 px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold no-underline"
                           >Votar →</a
                         >
                       } @else {
@@ -220,33 +222,41 @@ function formatDatePtBR(iso: string | null | undefined): string {
                   <dd class="text-on-surface">{{ d.result.totalVotes }}</dd>
                 </div>
                 @if (d.poll.status === 'CLOSED' || d.poll.status === 'INVALIDATED') {
+                  @let breakdownRows = breakdown();
                   <div class="mt-4">
                     <h3 class="text-sm font-medium text-on-surface mb-3">Resultado por opção</h3>
-                    <ul class="flex flex-col gap-3">
-                      @for (row of breakdownRows(d); track row.optionId) {
-                        <li class="flex flex-col gap-1">
-                          <div class="flex justify-between items-baseline">
-                            <span class="text-sm text-on-surface flex items-center gap-2">
-                              {{ row.label }}
-                              @if (row.isWinner) {
-                                <span class="text-xs bg-primary text-on-primary rounded-full px-2 py-0.5">Vencedora</span>
-                              }
-                            </span>
-                            <span class="text-xs text-on-surface-variant tabular-nums">
-                              {{ row.votes }} votos · {{ row.percentage }}%
-                            </span>
-                          </div>
-                          <div class="h-2 rounded-full bg-surface-container-high overflow-hidden">
-                            <div
-                              class="h-full rounded-full transition-all"
-                              [class.bg-primary]="row.isWinner"
-                              [class.bg-secondary]="!row.isWinner"
-                              [style.width.%]="row.percentage"
-                            ></div>
-                          </div>
-                        </li>
-                      }
-                    </ul>
+                    @if (breakdownRows === null) {
+                      <div class="bg-error-container text-on-error-container p-4 rounded-md flex items-start gap-2" role="alert">
+                        <span class="material-icons text-base leading-5 shrink-0">report</span>
+                        <span class="text-sm">Não foi possível exibir o detalhamento desta votação. Tente recarregar a página.</span>
+                      </div>
+                    } @else if (breakdownRows.length > 0) {
+                      <ul class="flex flex-col gap-3">
+                        @for (row of breakdownRows; track row.optionId) {
+                          <li class="flex flex-col gap-1">
+                            <div class="flex justify-between items-baseline">
+                              <span class="text-sm text-on-surface flex items-center gap-2">
+                                {{ row.label }}
+                                @if (row.isWinner) {
+                                  <span class="text-xs bg-primary text-on-primary rounded-full px-2 py-0.5">Vencedora</span>
+                                }
+                              </span>
+                              <span class="text-xs text-on-surface-variant tabular-nums">
+                                {{ row.votes }} votos · {{ row.percentage }}%
+                              </span>
+                            </div>
+                            <div class="h-2 rounded-full bg-surface-container-high overflow-hidden">
+                              <div
+                                class="h-full rounded-full transition-all"
+                                [class.bg-primary]="row.isWinner"
+                                [class.bg-secondary]="!row.isWinner"
+                                [style.width.%]="row.percentage"
+                              ></div>
+                            </div>
+                          </li>
+                        }
+                      </ul>
+                    }
                   </div>
                 }
               </dl>
@@ -332,6 +342,17 @@ function formatDatePtBR(iso: string | null | undefined): string {
       (close)="onCancelClose()"
     >
     </app-poll-cancel-dialog>
+
+    <!-- Confirm dialog (Publicar / Abrir agora / Encerrar) -->
+    <app-confirm-dialog
+      [open]="confirmDialogOpen()"
+      [title]="confirmDialogConfig().title"
+      [body]="confirmDialogConfig().body"
+      [confirmLabel]="confirmDialogConfig().confirmLabel"
+      [variant]="confirmDialogConfig().variant"
+      (confirmed)="onConfirmDialogConfirmed()"
+      (cancelled)="onConfirmDialogCancelled()"
+    />
   `,
 })
 export default class PollDetailPage implements OnInit {
@@ -349,6 +370,35 @@ export default class PollDetailPage implements OnInit {
   protected readonly actionPending = signal(false);
   protected readonly actionError = signal('');
   protected readonly showCancelDialog = signal(false);
+  protected readonly confirmAction = signal<ConfirmAction>(null);
+  protected readonly confirmDialogOpen = computed(() => this.confirmAction() !== null);
+  protected readonly confirmDialogConfig = computed(() => {
+    switch (this.confirmAction()) {
+      case 'publish':
+        return {
+          title: 'Publicar votação?',
+          body: 'A votação ficará visível para os moradores. Ela ainda não será aberta para votos.',
+          confirmLabel: 'Publicar',
+          variant: 'default' as const,
+        };
+      case 'open':
+        return {
+          title: 'Abrir votação agora?',
+          body: 'Os moradores elegíveis poderão votar imediatamente. Não é possível desfazer esta ação.',
+          confirmLabel: 'Abrir agora',
+          variant: 'default' as const,
+        };
+      case 'close':
+        return {
+          title: 'Encerrar votação?',
+          body: 'Após encerrar, nenhum novo voto será aceito. O resultado será calculado e publicado imediatamente.',
+          confirmLabel: 'Encerrar',
+          variant: 'danger' as const,
+        };
+      default:
+        return { title: '', body: '', confirmLabel: 'Confirmar', variant: 'default' as const };
+    }
+  });
   protected readonly pollsLink = signal('');
 
   private condoId = '';
@@ -438,7 +488,34 @@ export default class PollDetailPage implements OnInit {
   }
 
   protected onPublish(): void {
-    if (!window.confirm('Publicar votação?')) return;
+    this.confirmAction.set('publish');
+  }
+
+  protected onOpen(): void {
+    this.confirmAction.set('open');
+  }
+
+  protected onClose(): void {
+    this.confirmAction.set('close');
+  }
+
+  protected onConfirmDialogConfirmed(): void {
+    const action = this.confirmAction();
+    this.confirmAction.set(null);
+    if (action === 'publish') {
+      this.executePublish();
+    } else if (action === 'open') {
+      this.executeOpen();
+    } else if (action === 'close') {
+      this.executeClose();
+    }
+  }
+
+  protected onConfirmDialogCancelled(): void {
+    this.confirmAction.set(null);
+  }
+
+  private executePublish(): void {
     this.actionPending.set(true);
     this.actionError.set('');
     this.pollsApi.publish(this.pollId).subscribe({
@@ -453,8 +530,7 @@ export default class PollDetailPage implements OnInit {
     });
   }
 
-  protected onOpen(): void {
-    if (!window.confirm('Abrir votação agora?')) return;
+  private executeOpen(): void {
     this.actionPending.set(true);
     this.actionError.set('');
     this.pollsApi.open(this.pollId).subscribe({
@@ -472,8 +548,7 @@ export default class PollDetailPage implements OnInit {
     });
   }
 
-  protected onClose(): void {
-    if (!window.confirm('Encerrar votação?')) return;
+  private executeClose(): void {
     this.actionPending.set(true);
     this.actionError.set('');
     this.pollsApi.close(this.pollId).subscribe({
@@ -512,32 +587,39 @@ export default class PollDetailPage implements OnInit {
     this.showCancelDialog.set(false);
   }
 
-  protected breakdownRows(d: PollDetailResponse): BreakdownRow[] {
-    if (!d.result) return [];
-    let rawCounts: Record<string, number> = {};
+  private _parseBreakdown(d: PollResultResponse, options: ReadonlyArray<PollOptionResponse>): BreakdownRow[] | null {
+    let rawCounts: Record<string, number>;
     try {
-      rawCounts = JSON.parse(d.result.optionsBreakdown) as Record<string, number>;
+      rawCounts = JSON.parse(d.optionsBreakdown) as Record<string, number>;
     } catch (e) {
-      // optionsBreakdown vem como JSON serializado do backend (jsonb). Falha aqui
-      // indica corrupção de dado ou contrato quebrado — logamos para investigação.
-      // Não mutamos signal aqui porque breakdownRows é lido pelo template; mutar
-      // durante a leitura dispararia NG0100 (ExpressionChangedAfterItHasBeenCheckedError).
-      console.error('Falha ao parsear optionsBreakdown', e, d.result.optionsBreakdown);
-      return [];
+      console.error('Falha ao parsear breakdown da votação', { pollId: this.pollId, raw: d.optionsBreakdown }, e);
+      return null;
     }
-    const total = d.result.totalVotes || 1; // evita div/0
-    const rows: BreakdownRow[] = d.options.map((opt) => {
+    const total = d.totalVotes || 1; // evita div/0
+    const rows: BreakdownRow[] = options.map((opt) => {
       const votes = rawCounts[opt.id] ?? 0;
       return {
         optionId: opt.id,
         label: opt.label,
         votes,
         percentage: total > 0 ? Math.round((votes / total) * 1000) / 10 : 0,
-        isWinner: d.result?.winningOptionId === opt.id,
+        isWinner: d.winningOptionId === opt.id,
       };
     });
     rows.sort((a, b) => b.votes - a.votes);
     return rows;
+  }
+
+  protected readonly breakdown = computed<BreakdownRow[] | null>(() => {
+    const d = this.detail();
+    if (!d?.result) return [];
+    return this._parseBreakdown(d.result, d.options);
+  });
+
+  protected breakdownRows(d: PollDetailResponse): BreakdownRow[] {
+    if (!d.result) return [];
+    const rows = this._parseBreakdown(d.result, d.options);
+    return rows ?? [];
   }
 
   // Expose for tests

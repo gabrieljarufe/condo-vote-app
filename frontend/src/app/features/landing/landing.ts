@@ -12,8 +12,14 @@ interface Feature {
 
 interface Step {
   readonly number: string;
+  readonly icon: string;
   readonly title: string;
   readonly description: string;
+}
+
+interface ComingSoonItem {
+  readonly icon: string;
+  readonly label: string;
 }
 
 @Component({
@@ -34,12 +40,12 @@ interface Step {
             </span>
 
             <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-on-surface leading-tight mb-6">
-              Assembleias virtuais com
-              <span class="text-secondary">segurança jurídica</span>.
+              Assembleias de condomínio,
+              <span class="text-secondary">sem papel e sem dúvida.</span>
             </h1>
 
             <p class="text-lg text-on-surface-variant max-w-lg mb-10 leading-relaxed">
-              Votações online auditáveis, transparentes e fáceis de usar &mdash; do síndico ao morador.
+              Convoque, conduza e registre votações com transparência &mdash; em minutos, do celular.
             </p>
 
             <div class="flex flex-col sm:flex-row gap-3">
@@ -90,9 +96,9 @@ interface Step {
       <section id="funcionalidades" class="py-24 bg-surface">
         <div class="max-w-7xl mx-auto px-6">
           <div class="text-center mb-16 max-w-2xl mx-auto">
-            <h2 class="text-3xl md:text-4xl font-semibold text-on-surface mb-4">Soluções para uma gestão moderna</h2>
+            <h2 class="text-3xl md:text-4xl font-semibold text-on-surface mb-4">O que já funciona hoje</h2>
             <p class="text-on-surface-variant">
-              Cada voto legítimo, transparente e incontestável perante a lei brasileira.
+              Cada voto registrado com transparência, rastreabilidade e respeito à lei brasileira.
             </p>
           </div>
 
@@ -120,9 +126,10 @@ interface Step {
           <ol class="grid md:grid-cols-3 gap-10">
             @for (step of steps; track step.number) {
               <li class="text-center">
-                <div class="w-14 h-14 bg-primary text-on-primary rounded-full flex items-center justify-center text-xl font-semibold mx-auto mb-5">
-                  {{ step.number }}
+                <div class="w-14 h-14 bg-primary text-on-primary rounded-full flex items-center justify-center mx-auto mb-5" aria-hidden="true">
+                  <span class="material-symbols-outlined text-2xl">{{ step.icon }}</span>
                 </div>
+                <span class="sr-only">Passo {{ step.number }}:</span>
                 <h3 class="text-lg font-semibold text-on-surface mb-3">{{ step.title }}</h3>
                 <p class="text-sm text-on-surface-variant leading-relaxed max-w-xs mx-auto">{{ step.description }}</p>
               </li>
@@ -143,16 +150,50 @@ interface Step {
             </app-faq-item>
 
             <app-faq-item question="Como é feita a identificação do morador?">
-              Autenticação via Supabase com e-mail verificado, vinculada à unidade pelo síndico.
-              Cada voto é registrado com testemunha (usuário) e atribuído ao apartamento &mdash;
-              alinhado ao Código Civil brasileiro.
+              O síndico cadastra os apartamentos e envia um convite por e-mail para cada morador.
+              Cada voto é atribuído ao apartamento &mdash; alinhado ao Código Civil brasileiro, onde o
+              voto pertence à unidade, não ao usuário.
             </app-faq-item>
 
-            <app-faq-item question="O sistema gera a ata automaticamente?">
-              Ao final da votação a plataforma consolida resultados e gera ata em PDF nos padrões
-              exigidos por cartórios de registro civil, pronta para assinatura digital.
+            <app-faq-item question="Como funciona o sigilo do voto?">
+              Enquanto a votação está aberta, ninguém vê quantos apartamentos já votaram nem em qual
+              opção. O detalhamento por opção só é exibido após o encerramento da votação.
+            </app-faq-item>
+
+            <app-faq-item question="Posso votar fora de casa?">
+              Sim. Basta acessar pelo celular ou computador com seu login. Não é preciso instalar
+              nenhum aplicativo.
+            </app-faq-item>
+
+            <app-faq-item question="E se eu tiver mais de um apartamento?">
+              Você vota uma vez por apartamento. Se for responsável por mais de uma unidade, o sistema
+              apresenta cada cédula separadamente.
+            </app-faq-item>
+
+            <app-faq-item question="Em quais navegadores funciona?">
+              Chrome, Edge, Firefox e Safari em versões atualizadas. Funciona no celular e no
+              computador sem necessidade de instalar nada.
             </app-faq-item>
           </div>
+        </div>
+      </section>
+
+      <!-- Em breve -->
+      <section class="py-16 bg-surface border-t border-outline-variant">
+        <div class="max-w-3xl mx-auto px-6 text-center">
+          <p class="text-xs font-semibold tracking-widest uppercase text-on-surface-variant mb-4">Em breve</p>
+          <h2 class="text-xl font-semibold text-on-surface mb-3">Já estamos trabalhando no que vem depois</h2>
+          <p class="text-sm text-on-surface-variant mb-8 max-w-md mx-auto">
+            Estas funcionalidades ainda não estão disponíveis na versão atual, mas fazem parte do nosso roadmap.
+          </p>
+          <ul class="flex flex-wrap justify-center gap-3" aria-label="Funcionalidades em desenvolvimento">
+            @for (item of comingSoon; track item.label) {
+              <li class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container text-on-surface-variant text-sm border border-outline-variant">
+                <span class="material-symbols-outlined text-base" aria-hidden="true">{{ item.icon }}</span>
+                {{ item.label }}
+              </li>
+            }
+          </ul>
         </div>
       </section>
     </main>
@@ -165,40 +206,49 @@ export default class Landing {
     {
       icon: 'groups',
       title: 'Quórum facilitado',
-      description: 'Aumente a participação dos moradores com votos a partir de qualquer dispositivo.',
+      description: 'Moradores votam de qualquer dispositivo, aumentando a participação nas assembleias.',
     },
     {
-      icon: 'visibility',
-      title: 'Transparência',
-      description: 'Auditoria em tempo real para síndicos e conselho fiscal acompanharem o processo.',
+      icon: 'ballot',
+      title: 'Voto por apartamento',
+      description: 'Cada unidade vota uma vez. O sigilo é mantido durante a votação e o resultado aparece só após o encerramento.',
     },
     {
-      icon: 'bolt',
-      title: 'Facilidade',
-      description: 'Interface intuitiva para todas as idades, reduzindo drasticamente o suporte técnico.',
+      icon: 'mark_email_read',
+      title: 'Convite por e-mail',
+      description: 'O síndico cadastra as unidades e envia convites. O morador acessa com um link e cria sua conta.',
     },
     {
-      icon: 'gavel',
-      title: 'Conformidade',
-      description: 'Geração automática de atas e listas de presença válidas para registro em cartório.',
+      icon: 'fact_check',
+      title: 'Resultado transparente',
+      description: 'Ao encerrar a votação, o detalhamento por opção fica disponível para todos os moradores consultarem.',
     },
   ];
 
   protected readonly steps: readonly Step[] = [
     {
       number: '1',
-      title: 'Configuração',
-      description: 'Importe a lista de moradores e defina a pauta da assembleia.',
+      icon: 'mail',
+      title: 'Convide os moradores.',
+      description: 'O síndico cadastra os apartamentos e envia um convite por e-mail para cada morador.',
     },
     {
       number: '2',
-      title: 'Votação',
-      description: 'Os moradores votam de forma segura via link individual.',
+      icon: 'ballot',
+      title: 'Crie a votação.',
+      description: 'Defina a pergunta, as opções e o quórum. Cada apartamento vota uma vez.',
     },
     {
       number: '3',
-      title: 'Ata gerada',
-      description: 'Resultado consolidado e ata em PDF prontos para assinatura digital.',
+      icon: 'fact_check',
+      title: 'Veja o resultado.',
+      description: 'Após o encerramento, o detalhamento por opção fica disponível para consulta.',
     },
+  ];
+
+  protected readonly comingSoon: readonly ComingSoonItem[] = [
+    { icon: 'picture_as_pdf', label: 'Ata em PDF' },
+    { icon: 'draw', label: 'Assinatura digital' },
+    { icon: 'chat', label: 'Mensageria com moradores' },
   ];
 }

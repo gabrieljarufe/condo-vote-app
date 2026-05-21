@@ -158,6 +158,83 @@ describe('PollForm', () => {
     expect(component.form.errors).toBeNull();
   });
 
+  // --- Cross-field validator propaga erro para os controls individuais ---
+
+  it('start > end com só start alterado → erro endBeforeStart em scheduledStart', async () => {
+    const { component } = await setup();
+    component.ngOnInit(); // garante subscription ativa
+    // Define end válido primeiro
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    // Move start para depois do end — só start tocado
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    component.form.updateValueAndValidity();
+    // Dispara manualmente o valueChanges (TestBed não executa efeitos assíncronos automaticamente)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(true);
+    expect(component.scheduledStart.touched).toBe(true);
+  });
+
+  it('start > end com só end alterado → erro endBeforeStart em scheduledEnd', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    // Move end para antes do start — só end tocado
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledEnd.hasError('endBeforeStart')).toBe(true);
+    expect(component.scheduledEnd.touched).toBe(true);
+  });
+
+  it('start > end com ambos alterados → erro endBeforeStart em ambos os controls', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(true);
+    expect(component.scheduledEnd.hasError('endBeforeStart')).toBe(true);
+  });
+
+  it('start < end → erro endBeforeStart removido de ambos os controls', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    // Primeiro cria situação de erro
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(true);
+    // Corrige as datas
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(false);
+    expect(component.scheduledEnd.hasError('endBeforeStart')).toBe(false);
+  });
+
+  it('erro required em scheduledStart não é apagado pelo cross-validator quando datas são válidas', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    // Força required manualmente (simula limpeza do valor)
+    component.scheduledStart.setErrors({ required: true });
+    // Datas válidas — cross-validator não deve mexer em required
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    // endBeforeStart não deve estar presente
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(false);
+  });
+
   // --- Submit emite request com ISO 8601 ---
 
   it('submit emite CreatePollRequest com datas em ISO 8601 UTC', async () => {

@@ -222,16 +222,17 @@ function formatDatePtBR(iso: string | null | undefined): string {
                   <dd class="text-on-surface">{{ d.result.totalVotes }}</dd>
                 </div>
                 @if (d.poll.status === 'CLOSED' || d.poll.status === 'INVALIDATED') {
+                  @let breakdownRows = breakdown();
                   <div class="mt-4">
                     <h3 class="text-sm font-medium text-on-surface mb-3">Resultado por opção</h3>
-                    @if (breakdown() === null) {
+                    @if (breakdownRows === null) {
                       <div class="bg-error-container text-on-error-container p-4 rounded-md flex items-start gap-2" role="alert">
                         <span class="material-icons text-base leading-5 shrink-0">report</span>
                         <span class="text-sm">Não foi possível exibir o detalhamento desta votação. Tente recarregar a página.</span>
                       </div>
-                    } @else if (breakdown().length > 0) {
+                    } @else if (breakdownRows.length > 0) {
                       <ul class="flex flex-col gap-3">
-                        @for (row of breakdown(); track row.optionId) {
+                        @for (row of breakdownRows; track row.optionId) {
                           <li class="flex flex-col gap-1">
                             <div class="flex justify-between items-baseline">
                               <span class="text-sm text-on-surface flex items-center gap-2">

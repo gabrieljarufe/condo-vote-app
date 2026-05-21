@@ -23,8 +23,10 @@ import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 import { PollStatusBadge } from './poll-status-badge';
 import { PollCancelDialog } from './poll-cancel-dialog';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 
 type PageState = 'loading' | 'error' | 'ready';
+type ConfirmAction = 'publish' | 'open' | 'close' | null;
 
 interface BreakdownRow {
   optionId: string;
@@ -66,7 +68,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
 
 @Component({
   selector: 'app-poll-detail-page',
-  imports: [AppHeader, RouterLink, Spinner, PollStatusBadge, PollCancelDialog],
+  imports: [AppHeader, RouterLink, Spinner, PollStatusBadge, PollCancelDialog, ConfirmDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -332,6 +334,17 @@ function formatDatePtBR(iso: string | null | undefined): string {
       (close)="onCancelClose()"
     >
     </app-poll-cancel-dialog>
+
+    <!-- Confirm dialog (Publicar / Abrir agora / Encerrar) -->
+    <app-confirm-dialog
+      [open]="confirmDialogOpen()"
+      [title]="confirmDialogConfig().title"
+      [body]="confirmDialogConfig().body"
+      [confirmLabel]="confirmDialogConfig().confirmLabel"
+      [variant]="confirmDialogConfig().variant"
+      (confirmed)="onConfirmDialogConfirmed()"
+      (cancelled)="onConfirmDialogCancelled()"
+    />
   `,
 })
 export default class PollDetailPage implements OnInit {
@@ -349,6 +362,35 @@ export default class PollDetailPage implements OnInit {
   protected readonly actionPending = signal(false);
   protected readonly actionError = signal('');
   protected readonly showCancelDialog = signal(false);
+  protected readonly confirmAction = signal<ConfirmAction>(null);
+  protected readonly confirmDialogOpen = computed(() => this.confirmAction() !== null);
+  protected readonly confirmDialogConfig = computed(() => {
+    switch (this.confirmAction()) {
+      case 'publish':
+        return {
+          title: 'Publicar votação?',
+          body: 'A votação ficará visível para os moradores. Ela ainda não será aberta para votos.',
+          confirmLabel: 'Publicar',
+          variant: 'default' as const,
+        };
+      case 'open':
+        return {
+          title: 'Abrir votação agora?',
+          body: 'Os moradores elegíveis poderão votar imediatamente. Não é possível desfazer esta ação.',
+          confirmLabel: 'Abrir agora',
+          variant: 'default' as const,
+        };
+      case 'close':
+        return {
+          title: 'Encerrar votação?',
+          body: 'Após encerrar, nenhum novo voto será aceito. O resultado será calculado e publicado imediatamente.',
+          confirmLabel: 'Encerrar',
+          variant: 'danger' as const,
+        };
+      default:
+        return { title: '', body: '', confirmLabel: 'Confirmar', variant: 'default' as const };
+    }
+  });
   protected readonly pollsLink = signal('');
 
   private condoId = '';
@@ -438,7 +480,34 @@ export default class PollDetailPage implements OnInit {
   }
 
   protected onPublish(): void {
-    if (!window.confirm('Publicar votação?')) return;
+    this.confirmAction.set('publish');
+  }
+
+  protected onOpen(): void {
+    this.confirmAction.set('open');
+  }
+
+  protected onClose(): void {
+    this.confirmAction.set('close');
+  }
+
+  protected onConfirmDialogConfirmed(): void {
+    const action = this.confirmAction();
+    this.confirmAction.set(null);
+    if (action === 'publish') {
+      this.executePublish();
+    } else if (action === 'open') {
+      this.executeOpen();
+    } else if (action === 'close') {
+      this.executeClose();
+    }
+  }
+
+  protected onConfirmDialogCancelled(): void {
+    this.confirmAction.set(null);
+  }
+
+  private executePublish(): void {
     this.actionPending.set(true);
     this.actionError.set('');
     this.pollsApi.publish(this.pollId).subscribe({
@@ -453,8 +522,7 @@ export default class PollDetailPage implements OnInit {
     });
   }
 
-  protected onOpen(): void {
-    if (!window.confirm('Abrir votação agora?')) return;
+  private executeOpen(): void {
     this.actionPending.set(true);
     this.actionError.set('');
     this.pollsApi.open(this.pollId).subscribe({
@@ -472,8 +540,7 @@ export default class PollDetailPage implements OnInit {
     });
   }
 
-  protected onClose(): void {
-    if (!window.confirm('Encerrar votação?')) return;
+  private executeClose(): void {
     this.actionPending.set(true);
     this.actionError.set('');
     this.pollsApi.close(this.pollId).subscribe({

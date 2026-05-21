@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
@@ -75,6 +75,17 @@ class PollCancelDialogStub {
   @Output() readonly close = new EventEmitter<void>();
 }
 
+@Component({ selector: 'app-confirm-dialog', template: '', standalone: true })
+class ConfirmDialogStub {
+  @Input() open = false;
+  @Input() title = '';
+  @Input() body = '';
+  @Input() confirmLabel = '';
+  @Input() variant: 'default' | 'danger' = 'default';
+  @Output() readonly confirmed = new EventEmitter<void>();
+  @Output() readonly cancelled = new EventEmitter<void>();
+}
+
 function makeApi(overrides: Partial<{
   getById: unknown;
   publish: unknown;
@@ -129,7 +140,7 @@ async function setup(
     ],
   })
     .overrideComponent(PollDetailPage, {
-      set: { imports: [AppHeaderStub, PollStatusBadgeStub, PollCancelDialogStub, RouterLink] },
+      set: { imports: [AppHeaderStub, PollStatusBadgeStub, PollCancelDialogStub, ConfirmDialogStub, RouterLink] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(PollDetailPage);
@@ -140,10 +151,6 @@ async function setup(
 }
 
 describe('PollDetailPage', () => {
-  beforeEach(() => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-  });
-
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
@@ -196,17 +203,39 @@ describe('PollDetailPage', () => {
     expect(component.hasActions('CANCELLED')).toBe(false);
   });
 
-  it('click em Publicar dispara pollsApi.publish', async () => {
+  it('click em Publicar abre o confirm dialog (não chama API diretamente)', async () => {
     const publishMock = vi.fn(() => of(makePoll({ status: 'SCHEDULED' })));
-    const getByIdMock = vi.fn(() => of(makeDetail({ status: 'DRAFT' })));
-    const { component } = await setup({
-      publish: publishMock,
-      getById: getByIdMock,
-    });
+    const { component } = await setup({ publish: publishMock });
 
     component.onPublish();
 
+    // Agora o dialog é aberto primeiro; API só é chamada após confirmação
+    expect(component.confirmAction()).toBe('publish');
+    expect(component.confirmDialogOpen()).toBe(true);
+    expect(publishMock).not.toHaveBeenCalled();
+  });
+
+  it('confirmar no confirm dialog chama pollsApi.publish', async () => {
+    const publishMock = vi.fn(() => of(makePoll({ status: 'SCHEDULED' })));
+    const { component } = await setup({ publish: publishMock });
+
+    component.onPublish();
+    component.onConfirmDialogConfirmed();
+
     expect(publishMock).toHaveBeenCalledWith('poll-1');
+    expect(component.confirmAction()).toBeNull();
+  });
+
+  it('cancelar no confirm dialog fecha o dialog sem chamar API', async () => {
+    const publishMock = vi.fn(() => of(makePoll({ status: 'SCHEDULED' })));
+    const { component } = await setup({ publish: publishMock });
+
+    component.onPublish();
+    component.onConfirmDialogCancelled();
+
+    expect(component.confirmAction()).toBeNull();
+    expect(component.confirmDialogOpen()).toBe(false);
+    expect(publishMock).not.toHaveBeenCalled();
   });
 
   it('click em Cancelar abre o dialog', async () => {
@@ -236,6 +265,7 @@ describe('PollDetailPage', () => {
     });
 
     component.onPublish();
+    component.onConfirmDialogConfirmed();
 
     expect(component.actionError()).toBe('Erro de validação');
   });
@@ -247,6 +277,7 @@ describe('PollDetailPage', () => {
     });
 
     component.onOpen();
+    component.onConfirmDialogConfirmed();
 
     expect(component.actionError()).toContain('elegíveis');
   });

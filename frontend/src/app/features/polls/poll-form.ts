@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   OnInit,
   effect,
   inject,
@@ -19,7 +20,9 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { CreatePollRequest } from '../../core/api/polls-api.service';
+import { Dropdown } from '../../shared/ui/dropdown';
 import { FormField } from '../../shared/ui/form-field';
 
 type Convocation = 'FIRST' | 'SECOND';
@@ -47,6 +50,22 @@ const QUORUM_OPTIONS = [
   { value: 'QUALIFIED_3_4', label: '3/4 qualificada' },
 ] as const;
 
+/**
+ * Formata data/hora local para o formato exigido por <input type="datetime-local">.
+ * Aceita offset em minutos a partir de agora.
+ */
+function defaultDateTimeLocal(offsetMinutes: number): string {
+  const d = new Date(Date.now() + offsetMinutes * 60_000);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return (
+    d.getFullYear() +
+    '-' + pad(d.getMonth() + 1) +
+    '-' + pad(d.getDate()) +
+    'T' + pad(d.getHours()) +
+    ':' + pad(d.getMinutes())
+  );
+}
+
 function endAfterStartValidator(): ValidatorFn {
   return (group: AbstractControl): ValidationErrors | null => {
     const start = (group.get('scheduledStart') as FormControl)?.value as string;
@@ -73,7 +92,7 @@ function optionsValidator(): ValidatorFn {
 
 @Component({
   selector: 'app-poll-form',
-  imports: [ReactiveFormsModule, FormField],
+  imports: [ReactiveFormsModule, FormField, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form (ngSubmit)="submit()" [formGroup]="form" class="flex flex-col gap-5">
@@ -118,15 +137,7 @@ function optionsValidator(): ValidatorFn {
           [control]="convocation"
           [errors]="{ required: 'Obrigatório' }"
         >
-          <select
-            [id]="convoField.fieldId"
-            formControlName="convocation"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-          >
-            @for (opt of convocationOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
-            }
-          </select>
+          <app-dropdown [options]="convocationOptions" formControlName="convocation" />
         </app-form-field>
 
         <!-- Quórum -->
@@ -136,15 +147,7 @@ function optionsValidator(): ValidatorFn {
           [control]="quorumMode"
           [errors]="{ required: 'Obrigatório' }"
         >
-          <select
-            [id]="quorumField.fieldId"
-            formControlName="quorumMode"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-          >
-            @for (opt of quorumOptions; track opt.value) {
-              <option [value]="opt.value">{{ opt.label }}</option>
-            }
-          </select>
+          <app-dropdown [options]="quorumOptions" formControlName="quorumMode" />
         </app-form-field>
       </div>
 
@@ -154,7 +157,7 @@ function optionsValidator(): ValidatorFn {
           #startField
           label="Início previsto"
           [control]="scheduledStart"
-          [errors]="{ required: 'Obrigatório' }"
+          [errors]="{ required: 'Obrigatório', endBeforeStart: 'A data de fim deve ser posterior à data de início.' }"
         >
           <input
             [id]="startField.fieldId"
@@ -169,7 +172,7 @@ function optionsValidator(): ValidatorFn {
           #endField
           label="Fim previsto"
           [control]="scheduledEnd"
-          [errors]="{ required: 'Obrigatório' }"
+          [errors]="{ required: 'Obrigatório', endBeforeStart: 'A data de fim deve ser posterior à data de início.' }"
         >
           <input
             [id]="endField.fieldId"
@@ -179,10 +182,6 @@ function optionsValidator(): ValidatorFn {
           />
         </app-form-field>
       </div>
-
-      @if (form.hasError('endBeforeStart') && (scheduledEnd.dirty || scheduledEnd.touched)) {
-        <p class="text-xs text-error" role="alert">A data de fim deve ser posterior ao início.</p>
-      }
 
       <!-- Opções de votação -->
       <div class="flex flex-col gap-3">
@@ -245,22 +244,25 @@ function optionsValidator(): ValidatorFn {
         </button>
         <button
           type="submit"
-          [disabled]="form.invalid"
+          [disabled]="form.invalid || submitting()"
           class="px-5 py-2 text-sm rounded-lg bg-secondary text-white disabled:opacity-50"
         >
-          {{ submitLabel() }}
+          {{ submitting() ? 'Enviando…' : submitLabel() }}
         </button>
       </div>
     </form>
   `,
 })
-export class PollForm implements OnInit {
+export class PollForm implements OnInit, OnDestroy {
   readonly initialValue = input<PollFormValue | null>(null);
   readonly submitLabel = input<string>('Criar rascunho');
   readonly submit$ = output<CreatePollRequest>({ alias: 'submit' });
   readonly cancel = output<void>();
 
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly submitting = signal(false);
+
+  private readonly dateRangeSub = new Subscription();
 
   protected readonly convocationOptions = CONVOCATION_OPTIONS;
   protected readonly quorumOptions = QUORUM_OPTIONS;
@@ -287,12 +289,12 @@ export class PollForm implements OnInit {
     validators: [Validators.required],
   });
 
-  readonly scheduledStart = new FormControl('', {
+  readonly scheduledStart = new FormControl(defaultDateTimeLocal(0), {
     nonNullable: true,
     validators: [Validators.required],
   });
 
-  readonly scheduledEnd = new FormControl('', {
+  readonly scheduledEnd = new FormControl(defaultDateTimeLocal(30), {
     nonNullable: true,
     validators: [Validators.required],
   });
@@ -343,10 +345,55 @@ export class PollForm implements OnInit {
 
   ngOnInit(): void {
     this.errorMessage.set(null);
+    this.dateRangeSub.add(
+      this.form.valueChanges.subscribe(() => this.syncDateRangeErrors()),
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.dateRangeSub.unsubscribe();
+  }
+
+  /**
+   * Propaga o erro `endBeforeStart` do group para ambos os controls
+   * individualmente, para que o `app-form-field` de cada campo possa
+   * exibir a mensagem inline sem depender de qual campo foi tocado por último.
+   *
+   * Preserva outros erros existentes (ex: `required`) via spread.
+   */
+  private syncDateRangeErrors(): void {
+    const hasError = this.form.hasError('endBeforeStart');
+
+    if (hasError) {
+      const startErrors = { ...(this.scheduledStart.errors ?? {}), endBeforeStart: true };
+      const endErrors = { ...(this.scheduledEnd.errors ?? {}), endBeforeStart: true };
+      this.scheduledStart.setErrors(startErrors);
+      this.scheduledEnd.setErrors(endErrors);
+      // Marcar como touched para que showError() no FormField seja ativado
+      this.scheduledStart.markAsTouched({ onlySelf: true });
+      this.scheduledEnd.markAsTouched({ onlySelf: true });
+    } else {
+      // Remove apenas o erro endBeforeStart; preserva os demais
+      if (this.scheduledStart.hasError('endBeforeStart')) {
+        const restStart = { ...(this.scheduledStart.errors ?? {}) };
+        delete restStart['endBeforeStart'];
+        this.scheduledStart.setErrors(Object.keys(restStart).length ? restStart : null);
+      }
+      if (this.scheduledEnd.hasError('endBeforeStart')) {
+        const restEnd = { ...(this.scheduledEnd.errors ?? {}) };
+        delete restEnd['endBeforeStart'];
+        this.scheduledEnd.setErrors(Object.keys(restEnd).length ? restEnd : null);
+      }
+    }
   }
 
   setError(message: string): void {
     this.errorMessage.set(message);
+    this.submitting.set(false);
+  }
+
+  clearSubmitting(): void {
+    this.submitting.set(false);
   }
 
   protected addOption(): void {
@@ -360,7 +407,9 @@ export class PollForm implements OnInit {
   }
 
   protected submit(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.submitting()) return;
+    this.submitting.set(true);
+    this.errorMessage.set(null);
     const raw = this.form.getRawValue();
     const request: CreatePollRequest = {
       title: raw.title,

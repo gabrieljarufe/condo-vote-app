@@ -222,20 +222,27 @@ describe('PollsApiService', () => {
     expect(options.headers['X-Bulk-Operation']).toBe('true');
   });
 
-  it('getMyBallots_callsCorrectEndpoint: faz GET no endpoint correto e retorna lista de ballots', () => {
+  it('getMyBallots_callsCorrectEndpoint: faz GET no endpoint correto e retorna MyBallotsResponse', () => {
     const mockBallots: MyBallotResponse[] = [
       { apartmentId: 'apt-1', apartmentLabel: '101', alreadyVoted: true, votedOptionId: 'opt-1' },
       { apartmentId: 'apt-2', apartmentLabel: '102', alreadyVoted: false, votedOptionId: null },
     ];
-    httpMock.get.mockReturnValue(of(mockBallots));
-    let result: ReadonlyArray<MyBallotResponse> | null = null;
-    service.getMyBallots('poll-1').subscribe((r) => (result = r));
+    const mockResponse = {
+      ballots: mockBallots,
+      excludedApartments: [],
+      totalVotesSoFar: null,
+      eligibleCount: 2,
+    };
+    httpMock.get.mockReturnValue(of(mockResponse));
+    let result: typeof mockResponse | null = null;
+    service.getMyBallots('poll-1').subscribe((r) => (result = r as typeof mockResponse));
     expect(httpMock.get).toHaveBeenCalledWith(
       expect.stringContaining('/polls/poll-1/my-ballots'),
     );
-    expect((result as unknown as ReadonlyArray<MyBallotResponse>)).toHaveLength(2);
-    expect((result as unknown as ReadonlyArray<MyBallotResponse>)[0].alreadyVoted).toBe(true);
-    expect((result as unknown as ReadonlyArray<MyBallotResponse>)[1].votedOptionId).toBeNull();
+    expect(result!.ballots).toHaveLength(2);
+    expect(result!.ballots[0].alreadyVoted).toBe(true);
+    expect(result!.eligibleCount).toBe(2);
+    expect(result!.totalVotesSoFar).toBeNull();
   });
 
   it('getMyPendingPolls_callsCorrectEndpoint: faz GET no endpoint correto e retorna polls pendentes', () => {

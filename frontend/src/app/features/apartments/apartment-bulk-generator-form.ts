@@ -14,6 +14,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { Dropdown } from '../../shared/ui/dropdown';
 import { FormField } from '../../shared/ui/form-field';
 import {
   GeneratedApartment,
@@ -126,7 +127,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
 
 @Component({
   selector: 'app-apartment-bulk-generator-form',
-  imports: [ReactiveFormsModule, FormField],
+  imports: [ReactiveFormsModule, FormField, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="flex flex-col gap-6">
@@ -202,15 +203,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
         [errors]="patternErrors"
         #patternField
       >
-        <select
-          [id]="patternField.fieldId"
-          formControlName="pattern"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-        >
-          @for (preset of presets; track preset.value) {
-            <option [value]="preset.value">{{ preset.label }}</option>
-          }
-        </select>
+        <app-dropdown [options]="presets" formControlName="pattern" />
       </app-form-field>
 
       @if (isCustomPattern()) {

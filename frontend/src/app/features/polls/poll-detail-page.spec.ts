@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
-import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
@@ -11,6 +11,7 @@ import {
   PollsApiService,
 } from '../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
+import { TenantService } from '../../core/tenant/tenant.service';
 import PollDetailPage from './poll-detail-page';
 
 const mockSupabase = {
@@ -74,12 +75,24 @@ class PollCancelDialogStub {
   @Output() readonly close = new EventEmitter<void>();
 }
 
+@Component({ selector: 'app-confirm-dialog', template: '', standalone: true })
+class ConfirmDialogStub {
+  @Input() open = false;
+  @Input() title = '';
+  @Input() body = '';
+  @Input() confirmLabel = '';
+  @Input() variant: 'default' | 'danger' = 'default';
+  @Output() readonly confirmed = new EventEmitter<void>();
+  @Output() readonly cancelled = new EventEmitter<void>();
+}
+
 function makeApi(overrides: Partial<{
   getById: unknown;
   publish: unknown;
   open: unknown;
   close: unknown;
   cancel: unknown;
+  getMyBallots: unknown;
 }> = {}) {
   return {
     list: vi.fn(),
@@ -90,13 +103,31 @@ function makeApi(overrides: Partial<{
     close: vi.fn(() => of(makePoll({ status: 'CLOSED' }))),
     cancel: vi.fn(() => of(makePoll({ status: 'CANCELLED' }))),
     getById: vi.fn(() => of(makeDetail())),
+    getMyBallots: vi.fn(() =>
+      of({ ballots: [], excludedApartments: [], totalVotesSoFar: null, eligibleCount: 0 }),
+    ),
     ...overrides,
   };
 }
 
 const mockRouter = { navigate: vi.fn() };
 
-async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
+function makeTenant(opts: { isAdmin?: boolean; isResident?: boolean } = {}) {
+  return {
+    activeCondominiumId: () => 'condo-1',
+    activeRoles: () => new Set(['ADMIN']),
+    isAdmin: () => opts.isAdmin ?? true,
+    isResident: () => opts.isResident ?? false,
+    hasActiveTenant: () => true,
+    setActive: vi.fn(),
+    clear: vi.fn(),
+  };
+}
+
+async function setup(
+  apiOverrides: Parameters<typeof makeApi>[0] = {},
+  tenantOpts: { isAdmin?: boolean; isResident?: boolean } = {},
+) {
   const api = makeApi(apiOverrides);
   await TestBed.configureTestingModule({
     imports: [PollDetailPage],
@@ -105,10 +136,11 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
       { provide: ActivatedRoute, useValue: mockActivatedRoute },
       { provide: Router, useValue: mockRouter },
       { provide: SUPABASE_CLIENT, useValue: mockSupabase },
+      { provide: TenantService, useValue: makeTenant(tenantOpts) },
     ],
   })
     .overrideComponent(PollDetailPage, {
-      set: { imports: [AppHeaderStub, PollStatusBadgeStub, PollCancelDialogStub] },
+      set: { imports: [AppHeaderStub, PollStatusBadgeStub, PollCancelDialogStub, ConfirmDialogStub, RouterLink] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(PollDetailPage);
@@ -119,10 +151,6 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
 }
 
 describe('PollDetailPage', () => {
-  beforeEach(() => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-  });
-
   afterEach(() => {
     TestBed.resetTestingModule();
     vi.restoreAllMocks();
@@ -175,17 +203,39 @@ describe('PollDetailPage', () => {
     expect(component.hasActions('CANCELLED')).toBe(false);
   });
 
-  it('click em Publicar dispara pollsApi.publish', async () => {
+  it('click em Publicar abre o confirm dialog (não chama API diretamente)', async () => {
     const publishMock = vi.fn(() => of(makePoll({ status: 'SCHEDULED' })));
-    const getByIdMock = vi.fn(() => of(makeDetail({ status: 'DRAFT' })));
-    const { component } = await setup({
-      publish: publishMock,
-      getById: getByIdMock,
-    });
+    const { component } = await setup({ publish: publishMock });
 
     component.onPublish();
 
+    // Agora o dialog é aberto primeiro; API só é chamada após confirmação
+    expect(component.confirmAction()).toBe('publish');
+    expect(component.confirmDialogOpen()).toBe(true);
+    expect(publishMock).not.toHaveBeenCalled();
+  });
+
+  it('confirmar no confirm dialog chama pollsApi.publish', async () => {
+    const publishMock = vi.fn(() => of(makePoll({ status: 'SCHEDULED' })));
+    const { component } = await setup({ publish: publishMock });
+
+    component.onPublish();
+    component.onConfirmDialogConfirmed();
+
     expect(publishMock).toHaveBeenCalledWith('poll-1');
+    expect(component.confirmAction()).toBeNull();
+  });
+
+  it('cancelar no confirm dialog fecha o dialog sem chamar API', async () => {
+    const publishMock = vi.fn(() => of(makePoll({ status: 'SCHEDULED' })));
+    const { component } = await setup({ publish: publishMock });
+
+    component.onPublish();
+    component.onConfirmDialogCancelled();
+
+    expect(component.confirmAction()).toBeNull();
+    expect(component.confirmDialogOpen()).toBe(false);
+    expect(publishMock).not.toHaveBeenCalled();
   });
 
   it('click em Cancelar abre o dialog', async () => {
@@ -215,6 +265,7 @@ describe('PollDetailPage', () => {
     });
 
     component.onPublish();
+    component.onConfirmDialogConfirmed();
 
     expect(component.actionError()).toBe('Erro de validação');
   });
@@ -226,6 +277,7 @@ describe('PollDetailPage', () => {
     });
 
     component.onOpen();
+    component.onConfirmDialogConfirmed();
 
     expect(component.actionError()).toContain('elegíveis');
   });
@@ -247,6 +299,7 @@ describe('PollDetailPage', () => {
       getById: vi.fn(() => throwError(() => new Error('Falha na rede'))),
     });
     expect(component.pageState()).toBe('error');
+    // Error puro cai no fallback curado (evita vazar mensagens técnicas ao usuário).
     expect(component.errorMessage()).toContain('Erro ao carregar votação');
   });
 
@@ -337,5 +390,142 @@ describe('PollDetailPage', () => {
       result: null,
     };
     expect(component.breakdownRows(draftDetail)).toHaveLength(0);
+  });
+
+  // ── breakdown() com JSON inválido ─────────────────────────────────────────
+
+  it('breakdown() retorna null quando optionsBreakdown é JSON inválido', async () => {
+    const badDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'CLOSED' }),
+      options: mockOptions,
+      result: {
+        totalVotes: 5,
+        winningOptionId: null,
+        quorumReached: true,
+        closeTrigger: 'MANUAL',
+        invalidationReason: null,
+        determinedAt: '2026-06-01T18:00:00Z',
+        optionsBreakdown: '{invalid',
+      },
+    };
+
+    const { fixture, component } = await setup({
+      getById: vi.fn(() => of(badDetail)),
+    });
+    fixture.detectChanges();
+
+    expect(component.breakdown()).toBeNull();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Não foi possível exibir o detalhamento desta votação');
+  });
+
+  it('breakdown() retorna array e não exibe banner quando optionsBreakdown é JSON válido', async () => {
+    const goodDetail: PollDetailResponse = {
+      poll: makePoll({ status: 'CLOSED' }),
+      options: [
+        { id: 'opt-1', label: 'Sim', displayOrder: 1 },
+        { id: 'opt-2', label: 'Não', displayOrder: 2 },
+      ],
+      result: {
+        totalVotes: 6,
+        winningOptionId: 'opt-1',
+        quorumReached: true,
+        closeTrigger: 'MANUAL',
+        invalidationReason: null,
+        determinedAt: '2026-06-01T18:00:00Z',
+        optionsBreakdown: '{"opt-1":4,"opt-2":2}',
+      },
+    };
+
+    const { fixture, component } = await setup({
+      getById: vi.fn(() => of(goodDetail)),
+    });
+    fixture.detectChanges();
+
+    expect(component.breakdown()).not.toBeNull();
+    expect(component.breakdown()!.length).toBe(2);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).not.toContain('Não foi possível exibir o detalhamento desta votação');
+    expect(el.textContent).toContain('Sim');
+  });
+
+  // ── Painel "Sua participação" (morador) ────────────────────────────────────
+
+  it('morador vê painel "Sua participação" com aptos votados e pendentes', async () => {
+    const { fixture, component } = await setup(
+      {
+        getById: vi.fn(() => of(makeDetail({ status: 'OPEN' }))),
+        getMyBallots: vi.fn(() =>
+          of({
+            ballots: [
+              { apartmentId: 'apt-101', apartmentLabel: '101', alreadyVoted: true, votedOptionId: 'opt-1' },
+              { apartmentId: 'apt-102', apartmentLabel: '102', alreadyVoted: false, votedOptionId: null },
+            ],
+            excludedApartments: [],
+            totalVotesSoFar: null,
+            eligibleCount: 2,
+          }),
+        ),
+      },
+      { isResident: true, isAdmin: false },
+    );
+    expect(component.myBallots()).not.toBeNull();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Sua participação');
+    expect(el.textContent).toContain('Apto 101');
+    expect(el.textContent).toContain('Sim'); // option label for opt-1
+    expect(el.textContent).toContain('Apto 102');
+    expect(el.textContent).toContain('Votar →');
+  });
+
+  it('admin não vê painel "Sua participação"', async () => {
+    const { fixture } = await setup({}, { isAdmin: true, isResident: false });
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).not.toContain('Sua participação');
+  });
+
+  it('morador vê aptos excluídos com label "Não elegível"', async () => {
+    const { fixture } = await setup(
+      {
+        getById: vi.fn(() => of(makeDetail({ status: 'OPEN' }))),
+        getMyBallots: vi.fn(() =>
+          of({
+            ballots: [],
+            excludedApartments: [
+              { apartmentId: 'apt-202', apartmentLabel: '202', reason: 'EXCLUDED' as const },
+            ],
+            totalVotesSoFar: null,
+            eligibleCount: 5,
+          }),
+        ),
+      },
+      { isResident: true, isAdmin: false },
+    );
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Apto 202');
+    expect(el.textContent).toContain('Não elegível');
+  });
+
+  it('totalVotesSoFar não é exibido em poll OPEN (sigilo do voto)', async () => {
+    const { fixture } = await setup(
+      {
+        getById: vi.fn(() => of(makeDetail({ status: 'OPEN' }))),
+        getMyBallots: vi.fn(() =>
+          of({
+            ballots: [
+              { apartmentId: 'apt-101', apartmentLabel: '101', alreadyVoted: false, votedOptionId: null },
+            ],
+            excludedApartments: [],
+            // Backend já garante null em OPEN; teste UI confirma que nenhum número de votos vaza
+            totalVotesSoFar: null,
+            eligibleCount: 10,
+          }),
+        ),
+      },
+      { isResident: true, isAdmin: false },
+    );
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('10 apartamento(s) elegível(is)');
+    expect(el.textContent ?? '').not.toContain(' votos já');
   });
 });

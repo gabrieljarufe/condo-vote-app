@@ -496,9 +496,10 @@ class PollServiceTest {
   @Test
   void listByCondominium_adminLista_retornaPagina() {
     when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
-    when(pollRepository.findByCondominiumIdFilteredPaged(condoId, null, 20, 0))
+    when(pollRepository.findByCondominiumIdFilteredPaged(condoId, true, List.of("__NONE__"), 20, 0))
         .thenReturn(List.of(draftPoll()));
-    when(pollRepository.countByCondominiumIdFiltered(condoId, null)).thenReturn(1L);
+    when(pollRepository.countByCondominiumIdFiltered(condoId, true, List.of("__NONE__")))
+        .thenReturn(1L);
 
     PageResponse<PollResponse> result = service.listByCondominium(condoId, null, 0, 20);
 
@@ -509,14 +510,37 @@ class PollServiceTest {
   @Test
   void listByCondominium_comFiltroStatus_passaFiltroAoRepository() {
     when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
-    when(pollRepository.findByCondominiumIdFilteredPaged(condoId, "OPEN", 10, 0))
+    when(pollRepository.findByCondominiumIdFilteredPaged(condoId, false, List.of("OPEN"), 10, 0))
         .thenReturn(List.of(openPoll()));
-    when(pollRepository.countByCondominiumIdFiltered(condoId, "OPEN")).thenReturn(1L);
+    when(pollRepository.countByCondominiumIdFiltered(condoId, false, List.of("OPEN")))
+        .thenReturn(1L);
 
     PageResponse<PollResponse> result = service.listByCondominium(condoId, "OPEN", 0, 10);
 
     assertThat(result.content()).hasSize(1);
     assertThat(result.content().get(0).status()).isEqualTo("OPEN");
+  }
+
+  @Test
+  void listByCondominium_comFiltroMultiStatus_passaListaAoRepository() {
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
+    when(pollRepository.findByCondominiumIdFilteredPaged(
+            condoId, false, List.of("OPEN", "SCHEDULED"), 10, 0))
+        .thenReturn(List.of(openPoll()));
+    when(pollRepository.countByCondominiumIdFiltered(condoId, false, List.of("OPEN", "SCHEDULED")))
+        .thenReturn(1L);
+
+    PageResponse<PollResponse> result = service.listByCondominium(condoId, "OPEN,SCHEDULED", 0, 10);
+
+    assertThat(result.content()).hasSize(1);
+  }
+
+  @Test
+  void listByCondominium_statusInvalido_lancaIllegalArgument() {
+    when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
+
+    assertThatThrownBy(() -> service.listByCondominium(condoId, "INVALID", 0, 10))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -530,9 +554,10 @@ class PollServiceTest {
   @Test
   void listByCondominium_residenteNaoAdmin_retornaPagina() {
     when(membershipRepository.userBelongsToTenant(userId, condoId)).thenReturn(true);
-    when(pollRepository.findByCondominiumIdFilteredPaged(condoId, null, 20, 0))
+    when(pollRepository.findByCondominiumIdFilteredPaged(condoId, true, List.of("__NONE__"), 20, 0))
         .thenReturn(List.of(draftPoll()));
-    when(pollRepository.countByCondominiumIdFiltered(condoId, null)).thenReturn(1L);
+    when(pollRepository.countByCondominiumIdFiltered(condoId, true, List.of("__NONE__")))
+        .thenReturn(1L);
 
     PageResponse<PollResponse> result = service.listByCondominium(condoId, null, 0, 20);
 

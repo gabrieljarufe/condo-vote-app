@@ -184,7 +184,10 @@ class MyBallotsControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(semCedula.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(0)));
+        .andExpect(jsonPath("$.ballots", hasSize(0)))
+        .andExpect(jsonPath("$.excludedApartments", hasSize(0)))
+        .andExpect(jsonPath("$.eligibleCount").value(1))
+        .andExpect(jsonPath("$.totalVotesSoFar").isEmpty());
   }
 
   @Test
@@ -205,9 +208,13 @@ class MyBallotsControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(voterUserId.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].alreadyVoted").value(false))
-        .andExpect(jsonPath("$[0].votedOptionId").isEmpty());
+        .andExpect(jsonPath("$.ballots", hasSize(1)))
+        .andExpect(jsonPath("$.ballots[0].alreadyVoted").value(false))
+        .andExpect(jsonPath("$.ballots[0].votedOptionId").isEmpty())
+        .andExpect(jsonPath("$.excludedApartments", hasSize(0)))
+        .andExpect(jsonPath("$.eligibleCount").value(1))
+        // OPEN poll — totalVotesSoFar é sigiloso até o fechamento
+        .andExpect(jsonPath("$.totalVotesSoFar").isEmpty());
   }
 
   @Test
@@ -231,9 +238,9 @@ class MyBallotsControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(voterUserId.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].alreadyVoted").value(true))
-        .andExpect(jsonPath("$[0].votedOptionId").value(optionId.toString()));
+        .andExpect(jsonPath("$.ballots", hasSize(1)))
+        .andExpect(jsonPath("$.ballots[0].alreadyVoted").value(true))
+        .andExpect(jsonPath("$.ballots[0].votedOptionId").value(optionId.toString()));
   }
 
   @Test
@@ -260,10 +267,11 @@ class MyBallotsControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(voterUserId.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(3)))
-        .andExpect(jsonPath("$[0].alreadyVoted").value(true))
-        .andExpect(jsonPath("$[1].alreadyVoted").value(false))
-        .andExpect(jsonPath("$[2].alreadyVoted").value(false));
+        .andExpect(jsonPath("$.ballots", hasSize(3)))
+        .andExpect(jsonPath("$.ballots[0].alreadyVoted").value(true))
+        .andExpect(jsonPath("$.ballots[1].alreadyVoted").value(false))
+        .andExpect(jsonPath("$.ballots[2].alreadyVoted").value(false))
+        .andExpect(jsonPath("$.eligibleCount").value(3));
   }
 
   @Test
@@ -287,8 +295,8 @@ class MyBallotsControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(userA.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].apartmentLabel").value("101"));
+        .andExpect(jsonPath("$.ballots", hasSize(1)))
+        .andExpect(jsonPath("$.ballots[0].apartmentLabel").value("101"));
   }
 
   @Test
@@ -315,8 +323,8 @@ class MyBallotsControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(voterComBlock.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].apartmentLabel").value("A 101"));
+        .andExpect(jsonPath("$.ballots", hasSize(1)))
+        .andExpect(jsonPath("$.ballots[0].apartmentLabel").value("A 101"));
 
     // Poll para voterSemBlock
     String pollIdB = criarDraftPoll(condoId, adminId);
@@ -328,8 +336,71 @@ class MyBallotsControllerIT extends AbstractIntegrationTest {
                 .header("X-Tenant-Id", condoId.toString())
                 .with(jwt().jwt(b -> b.subject(voterSemBlock.toString()))))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$", hasSize(1)))
-        .andExpect(jsonPath("$[0].apartmentLabel").value("202"));
+        .andExpect(jsonPath("$.ballots", hasSize(1)))
+        .andExpect(jsonPath("$.ballots[0].apartmentLabel").value("202"));
+  }
+
+  @Test
+  void myBallots_aptoExcluidoDoSnapshot_apareceEmExcludedApartments() throws Exception {
+    UUID condoId = insertCondo("Condo MyBallots Excluded");
+    UUID adminId = UuidV7.generate();
+    insertAdmin(condoId, adminId);
+
+    UUID voterUserId = UuidV7.generate();
+    // Apto elegível normal (entra no snapshot)
+    insertApartmentEligivel(condoId, "101", voterUserId);
+    // Apto inadimplente — eligible_voter aponta pro mesmo user, mas é excluído do snapshot
+    UUID aptInadimplente = UuidV7.generate();
+    jdbc.update(
+        "INSERT INTO apartment (id, condominium_id, unit_number, is_delinquent,"
+            + " eligible_voter_user_id, created_at) VALUES (?, ?, ?, true, ?, now())",
+        aptInadimplente,
+        condoId,
+        "202",
+        voterUserId);
+    insertResident(condoId, aptInadimplente, voterUserId, "OWNER");
+
+    String pollId = criarDraftPoll(condoId, adminId);
+    publicarPoll(pollId, condoId, adminId);
+    abrirPoll(pollId, condoId, adminId);
+
+    mvc.perform(
+            get("/api/polls/{pollId}/my-ballots", pollId)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(voterUserId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.ballots", hasSize(1)))
+        .andExpect(jsonPath("$.ballots[0].apartmentLabel").value("101"))
+        .andExpect(jsonPath("$.excludedApartments", hasSize(1)))
+        .andExpect(jsonPath("$.excludedApartments[0].apartmentLabel").value("202"))
+        .andExpect(jsonPath("$.excludedApartments[0].reason").value("EXCLUDED"))
+        .andExpect(jsonPath("$.eligibleCount").value(1));
+  }
+
+  @Test
+  void myBallots_pollClosed_revelaTotalVotesSoFar() throws Exception {
+    UUID condoId = insertCondo("Condo MyBallots Closed Total");
+    UUID adminId = UuidV7.generate();
+    insertAdmin(condoId, adminId);
+
+    UUID voterUserId = UuidV7.generate();
+    UUID aptId = insertApartmentEligivel(condoId, "101", voterUserId);
+
+    String pollId = criarDraftPoll(condoId, adminId);
+    publicarPoll(pollId, condoId, adminId);
+    abrirPoll(pollId, condoId, adminId);
+
+    UUID optionId = getFirstOptionId(pollId);
+    votar(pollId, condoId, voterUserId, aptId, optionId);
+    // Votar a única cédula faz auto-close — sigilo é liberado a partir daí
+
+    mvc.perform(
+            get("/api/polls/{pollId}/my-ballots", pollId)
+                .header("X-Tenant-Id", condoId.toString())
+                .with(jwt().jwt(b -> b.subject(voterUserId.toString()))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalVotesSoFar").value(1))
+        .andExpect(jsonPath("$.eligibleCount").value(1));
   }
 
   // =====================================================================

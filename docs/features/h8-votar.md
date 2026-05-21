@@ -1,5 +1,16 @@
 # H8 — Morador registra voto (smoke E2E)
 
+## Atualização UX vNext (2026-05-19)
+
+O fluxo bulk foi reformulado:
+
+- **Dropdown de apartamentos pendentes:** quando o morador tem ≥2 cédulas, um `<app-dropdown>` permite escolher qual apartamento votar primeiro (antes era sempre o primeiro elegível).
+- **Dialog reaparecível:** após cada voto, abre `<app-dialog>` perguntando "Aplicar a mesma opção aos outros apartamentos?" — com checkbox "Não perguntar novamente nesta votação" (escopo: sessão da poll atual, in-memory).
+- **"Votar um a um":** caminho explícito que **permanece** na `ballot-vote-page` em vez de jogar o morador para fora — o dropdown reduz, opção reseta, próximo voto começa imediatamente.
+- **`BallotReviewPage` simplificada:** virou tela de **confirmação** (lista somente leitura `Apto X · Sim`) — override individual foi **removido**; quem quer voto diferente usa o caminho "Votar um a um".
+- **Breadcrumb em ambas as telas:** `← Minhas votações` na vote-page; `← Voltar à votação` na review-page.
+- **Bloco 3 do roteiro abaixo (override individual)** está **substituído** pelo fluxo um-a-um.
+
 ## Problema da jornada (antes)
 
 O morador não tinha como participar das votações criadas pelo síndico. O produto existia apenas do ponto de vista do síndico — criar, agendar e abrir votações — sem que o lado do eleitor fosse funcional. Sem voto, o caso de uso central não se fecha.
@@ -142,7 +153,9 @@ WHERE s.poll_id = ':pollId';
 
 ---
 
-### Bloco 3 — Override individual antes do bulk
+### Bloco 3 — Override individual antes do bulk **(SUBSTITUÍDO em 2026-05-19)**
+
+> Esse bloco descreve o fluxo antigo de override dentro de `BallotReviewPage`. Foi substituído pelo fluxo "Votar um a um" direto na `BallotVotePage`: cada voto registra individualmente; o dropdown de apartamentos permite escolher qual votar; o dialog reaparece após cada voto. A `BallotReviewPage` continua existindo apenas no caminho "Aplicar a todos" (sem override).
 
 **Pré-condição:** Morador com 3 apartamentos elegíveis; poll OPEN com `eligible_count = 3`; nenhum voto registrado.
 
@@ -321,7 +334,8 @@ DELETE FROM vote WHERE poll_id = ':pollId' LIMIT 1;
 
 #### O que ainda falta testar
 
-- ⏳ **Banner de inadimplência na UI do morador** — frontend não informa qual apartamento foi excluído do snapshot por inadimplência. Bloco 4 validou o comportamento do backend; a UX do morador está incompleta.
+- ✅ **Banner de inadimplência na UI do morador** — implementado em `ballot-vote-page.ts`; `MyBallotsResponse.excludedApartments` lista aptos do morador fora do snapshot, e a UI exibe banner amarelo com a lista. Resolvido na entrega `feat: unifica votações no dashboard`.
+- ✅ **Painel "Sua participação" no detalhe da poll** — `poll-detail-page.ts` mostra, para morador, status por apto (votado, pendente com CTA "Votar →", não-elegível) + total elegível em pollas OPEN (sem totalVotesSoFar, por sigilo §5).
 - ⏳ **Retry parcial em rede flaky real** — o Bloco 5 usa 409 simulado; comportamento com timeout de rede (504/502) não exercitado.
 - ⏳ **Fluxo quando morador tem acesso a >10 apartamentos** — sem cap de paginação testado no bulk.
 - ⏳ **Integração com H9 (timeline de auditoria)** — quando H9 entrar, o evento `VOTE_CAST` deve aparecer na timeline do síndico; não validado ainda.
@@ -351,9 +365,11 @@ DELETE FROM vote WHERE poll_id = ':pollId' LIMIT 1;
 - `GET /api/polls/{pollId}/my-ballots` — cédulas do morador para a poll
 - `GET /api/condominiums/{condoId}/my-pending-polls` — polls OPEN com cédulas pendentes
 
-**Frontend (todas em `/app/condominiums/:condoId/...`, protegidas por `tenantRestoreGuard + residentGuard`):**
-- `/my-polls` — lista de polls com cédulas pendentes
-- `/polls/:pollId/vote` — BallotVotePage
+**Frontend (todas em `/app/condominiums/:condoId/...`, protegidas por `tenantRestoreGuard`):**
+- `/polls` — lista unificada com chips (Pendentes • Em andamento • Encerradas • Todas); default `Pendentes` para morador
+- `/my-polls` — **redirect** para `/polls?tab=pendentes` (compat com links antigos)
+- `/polls/:pollId` — PollDetailPage (com painel "Sua participação" para morador)
+- `/polls/:pollId/vote` — BallotVotePage (com banner de inadimplência)
 - `/polls/:pollId/vote/review` — BallotReviewPage
 
 ## Referências

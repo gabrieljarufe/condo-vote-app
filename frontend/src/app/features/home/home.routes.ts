@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 import { adminGuard } from '../../core/tenant/admin.guard';
 import { tenantRestoreGuard } from '../../core/tenant/tenant-restore.guard';
 
@@ -53,9 +54,19 @@ const routes: Routes = [
     loadComponent: () => import('../polls/poll-edit-page'),
   },
   {
+    // Legado: /my-polls → /polls?tab=pendentes (preserva links antigos em e-mails).
     path: 'condominiums/:condoId/my-polls',
-    canActivate: [tenantRestoreGuard],
-    loadComponent: () => import('../polls/voting/resident-pending-polls-page'),
+    canActivate: [
+      tenantRestoreGuard,
+      (route) => {
+        const router = inject(Router);
+        const condoId = route.params['condoId'];
+        return router.createUrlTree(['/app/condominiums', condoId, 'polls'], {
+          queryParams: { tab: 'pendentes' },
+        });
+      },
+    ],
+    children: [],
   },
   {
     path: 'condominiums/:condoId/polls/:pollId/vote',

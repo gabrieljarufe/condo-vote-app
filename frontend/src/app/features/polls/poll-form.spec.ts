@@ -3,6 +3,7 @@ import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
+import { Dropdown } from '../../shared/ui/dropdown';
 import { PollForm, PollFormValue } from './poll-form';
 
 let stubNextId = 0;
@@ -36,7 +37,7 @@ async function setup() {
     imports: [PollForm],
     providers: [provideRouter([])],
   })
-    .overrideComponent(PollForm, { set: { imports: [FormFieldStub, ReactiveFormsModule] } })
+    .overrideComponent(PollForm, { set: { imports: [FormFieldStub, ReactiveFormsModule, Dropdown] } })
     .compileComponents();
   const fixture = TestBed.createComponent(PollForm);
   fixture.detectChanges();
@@ -51,6 +52,17 @@ describe('PollForm', () => {
   it('inicia com form inválido (title vazio)', async () => {
     const { component } = await setup();
     expect(component.form.invalid).toBe(true);
+  });
+
+  it('scheduledStart e scheduledEnd vêm pré-preenchidos (agora e +30min)', async () => {
+    const { component } = await setup();
+    expect(component.scheduledStart.value).toBeTruthy();
+    expect(component.scheduledEnd.value).toBeTruthy();
+    const start = new Date(component.scheduledStart.value).getTime();
+    const end = new Date(component.scheduledEnd.value).getTime();
+    // ~30 min de diferença (com tolerância de 1 min para o relógio do teste)
+    expect(end - start).toBeGreaterThanOrEqual(29 * 60_000);
+    expect(end - start).toBeLessThanOrEqual(31 * 60_000);
   });
 
   it('inicia com 2 opções no FormArray', async () => {
@@ -144,6 +156,83 @@ describe('PollForm', () => {
     component.options.controls[0].setValue('Sim');
     component.options.controls[1].setValue('Não');
     expect(component.form.errors).toBeNull();
+  });
+
+  // --- Cross-field validator propaga erro para os controls individuais ---
+
+  it('start > end com só start alterado → erro endBeforeStart em scheduledStart', async () => {
+    const { component } = await setup();
+    component.ngOnInit(); // garante subscription ativa
+    // Define end válido primeiro
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    // Move start para depois do end — só start tocado
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    component.form.updateValueAndValidity();
+    // Dispara manualmente o valueChanges (TestBed não executa efeitos assíncronos automaticamente)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(true);
+    expect(component.scheduledStart.touched).toBe(true);
+  });
+
+  it('start > end com só end alterado → erro endBeforeStart em scheduledEnd', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    // Move end para antes do start — só end tocado
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledEnd.hasError('endBeforeStart')).toBe(true);
+    expect(component.scheduledEnd.touched).toBe(true);
+  });
+
+  it('start > end com ambos alterados → erro endBeforeStart em ambos os controls', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(true);
+    expect(component.scheduledEnd.hasError('endBeforeStart')).toBe(true);
+  });
+
+  it('start < end → erro endBeforeStart removido de ambos os controls', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    // Primeiro cria situação de erro
+    component.scheduledStart.setValue('2026-06-01T18:00');
+    component.scheduledEnd.setValue('2026-06-01T10:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(true);
+    // Corrige as datas
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(false);
+    expect(component.scheduledEnd.hasError('endBeforeStart')).toBe(false);
+  });
+
+  it('erro required em scheduledStart não é apagado pelo cross-validator quando datas são válidas', async () => {
+    const { component } = await setup();
+    component.ngOnInit();
+    // Força required manualmente (simula limpeza do valor)
+    component.scheduledStart.setErrors({ required: true });
+    // Datas válidas — cross-validator não deve mexer em required
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.form.updateValueAndValidity();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).syncDateRangeErrors();
+    // endBeforeStart não deve estar presente
+    expect(component.scheduledStart.hasError('endBeforeStart')).toBe(false);
   });
 
   // --- Submit emite request com ISO 8601 ---
@@ -245,6 +334,53 @@ describe('PollForm', () => {
     }
 
     expect(component.options.length).toBe(3);
+  });
+
+  // --- Bloqueio de duplo submit ---
+
+  it('botão de submit fica disabled enquanto submitting é true', async () => {
+    const { fixture, component } = await setup();
+    component.title.setValue('Votação teste');
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.options.at(0).setValue('Sim');
+    component.options.at(1).setValue('Não');
+    fixture.detectChanges();
+
+    // Simula submit em andamento
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submitting.set(true);
+    fixture.detectChanges();
+
+    const btn = fixture.nativeElement.querySelector('button[type="submit"]') as HTMLButtonElement;
+    expect(btn.disabled).toBe(true);
+  });
+
+  it('submit() chamado 2x emite apenas 1 evento', async () => {
+    const { component } = await setup();
+    component.title.setValue('Votação teste');
+    component.scheduledStart.setValue('2026-06-01T10:00');
+    component.scheduledEnd.setValue('2026-06-01T18:00');
+    component.options.at(0).setValue('Sim');
+    component.options.at(1).setValue('Não');
+
+    let emits = 0;
+    component.submit$.subscribe(() => emits++);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submit();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submit();
+    expect(emits).toBe(1);
+  });
+
+  it('setError reseta submitting para permitir nova tentativa', async () => {
+    const { component } = await setup();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (component as any).submitting.set(true);
+    component.setError('Falha');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect((component as any).submitting()).toBe(false);
   });
 
   // --- description opcional ---

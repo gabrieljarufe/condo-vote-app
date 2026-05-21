@@ -17,6 +17,7 @@ import com.condovote.shared.exception.UnprocessableEntityException;
 import com.condovote.shared.tenant.TenantMembershipRepository;
 import com.condovote.shared.web.PageResponse;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -393,14 +394,21 @@ public class PollService {
     UUID userId = authGateway.getCurrentUserId();
     requireMember(userId, condoId);
 
+    List<String> statuses = parseStatusFilter(statusFilter);
+    boolean disabled = statuses.isEmpty();
+    // PostgreSQL não aceita `IN ()` — bind precisa ser não-vazio. Quando o filtro está
+    // desabilitado, passamos uma lista sentinela: o OR antecede o IN no SQL, então
+    // o conteúdo nunca é avaliado, mas precisa estar presente para o parser.
+    List<String> bindStatuses = disabled ? List.of("__NONE__") : statuses;
+
     int offset = page * size;
     List<PollResponse> content =
         pollRepository
-            .findByCondominiumIdFilteredPaged(condoId, statusFilter, size, offset)
+            .findByCondominiumIdFilteredPaged(condoId, disabled, bindStatuses, size, offset)
             .stream()
             .map(PollResponse::from)
             .toList();
-    long total = pollRepository.countByCondominiumIdFiltered(condoId, statusFilter);
+    long total = pollRepository.countByCondominiumIdFiltered(condoId, disabled, bindStatuses);
     return PageResponse.of(content, page, size, total);
   }
 
@@ -485,6 +493,28 @@ public class PollService {
           "Modo de quórum inválido. Valores aceitos: SIMPLE_MAJORITY, ABSOLUTE_MAJORITY,"
               + " QUALIFIED_2_3, QUALIFIED_3_4");
     }
+  }
+
+  private static final Set<String> VALID_STATUSES =
+      Set.of("DRAFT", "SCHEDULED", "OPEN", "CLOSED", "INVALIDATED", "CANCELLED");
+
+  private static List<String> parseStatusFilter(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return List.of();
+    }
+    List<String> parsed =
+        Arrays.stream(raw.split(","))
+            .map(String::trim)
+            .filter(s -> !s.isEmpty())
+            .map(String::toUpperCase)
+            .distinct()
+            .toList();
+    for (String s : parsed) {
+      if (!VALID_STATUSES.contains(s)) {
+        throw new IllegalArgumentException("Status inválido: " + s);
+      }
+    }
+    return parsed;
   }
 
   private void insertOptions(UUID pollId, List<String> labels) {

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { from, mergeMap, of, catchError, map } from 'rxjs';
 import {
   MyBallotResponse,
@@ -8,7 +8,7 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { AppHeader } from '../../../shared/layout/app-header';
-import { BallotCard } from './ballot-card';
+import { SuccessPopup } from '../../../shared/ui/success-popup';
 
 interface ReviewState {
   appliedOptionId: string;
@@ -31,39 +31,44 @@ interface SubmitResultRow {
 
 @Component({
   selector: 'app-ballot-review-page',
-  imports: [CommonModule, AppHeader, BallotCard],
+  imports: [CommonModule, AppHeader, RouterLink, SuccessPopup],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
 
     <main class="max-w-2xl mx-auto px-6 py-12">
+      <div class="flex items-center gap-3 mb-8">
+        <a
+          [routerLink]="['/app/condominiums', condoId, 'polls', pollId, 'vote']"
+          class="text-sm text-on-surface-variant hover:text-on-surface"
+          >← Voltar à votação</a
+        >
+      </div>
+
       @if (!stateData()) {
         <p class="text-sm text-on-surface-variant">Redirecionando…</p>
       } @else {
         <h1 class="text-2xl font-semibold text-on-surface mb-2">{{ stateData()!.pollTitle }}</h1>
         <p class="text-sm text-on-surface-variant mb-6">
-          Revise as cédulas restantes. Toque numa cédula para alterar a opção.
+          Confirme o envio do mesmo voto para os {{ rows().length }} apartamentos abaixo.
         </p>
 
         @if (!hasResults()) {
-          <div class="space-y-3 mb-6">
+          <ul class="space-y-2 mb-6">
             @for (row of rows(); track row.ballot.apartmentId) {
-              <app-ballot-card
-                [apartmentLabel]="row.ballot.apartmentLabel"
-                [options]="stateData()!.pollOptions"
-                [selectedOptionId]="row.optionId"
-                [radioGroupName]="'review-' + row.ballot.apartmentId"
-                (optionChange)="onOverride(row.ballot.apartmentId, $event)"
-              />
+              <li class="flex justify-between items-center bg-surface-container-low rounded-xl p-4 border border-outline-variant">
+                <span class="text-sm text-on-surface">Apto {{ row.ballot.apartmentLabel }}</span>
+                <span class="text-sm font-medium text-on-surface">{{ optionLabel(row.optionId) }}</span>
+              </li>
             }
-          </div>
+          </ul>
 
           <button
             class="w-full bg-primary text-on-primary rounded-2xl py-3 font-semibold disabled:opacity-50"
             [disabled]="submitting()"
             (click)="onConfirmAll()"
           >
-            {{ submitting() ? 'Enviando…' : 'Confirmar ' + rows().length + ' votos' }}
+            {{ submitting() ? 'Enviando…' : 'Confirmar e enviar ' + rows().length + ' votos' }}
           </button>
         } @else {
           <!-- Resultado pós-submit -->
@@ -97,6 +102,12 @@ interface SubmitResultRow {
           </div>
         }
       }
+
+      <app-success-popup
+        [open]="showSuccessPopup()"
+        [voteCount]="successCount()"
+        (closed)="onSuccessClosed()"
+      />
     </main>
   `,
 })
@@ -109,6 +120,7 @@ export default class BallotReviewPage {
   protected readonly pollId = this.route.snapshot.paramMap.get('pollId') ?? '';
 
   protected readonly stateData = signal<ReviewState | null>(null);
+  protected readonly showSuccessPopup = signal(false);
   protected readonly rows = signal<ReadonlyArray<BallotRow>>([]);
   protected readonly submitting = signal(false);
   protected readonly submitResults = signal<ReadonlyArray<SubmitResultRow>>([]);
@@ -128,12 +140,8 @@ export default class BallotReviewPage {
     this.rows.set(state.remainingBallots.map((b) => ({ ballot: b, optionId: state.appliedOptionId })));
   }
 
-  protected onOverride(apartmentId: string, newOptionId: string): void {
-    this.rows.set(
-      this.rows().map((r) =>
-        r.ballot.apartmentId === apartmentId ? { ...r, optionId: newOptionId } : r,
-      ),
-    );
+  protected optionLabel(optionId: string): string {
+    return this.stateData()?.pollOptions.find((o) => o.id === optionId)?.label ?? '';
   }
 
   protected onConfirmAll(): void {
@@ -172,6 +180,9 @@ export default class BallotReviewPage {
         complete: () => {
           this.submitting.set(false);
           this.submitResults.set(results);
+          if (results.every((r) => r.success)) {
+            this.showSuccessPopup.set(true);
+          }
         },
       });
   }
@@ -184,6 +195,11 @@ export default class BallotReviewPage {
     this.rows.set(remainingRows);
     this.submitResults.set([]);
     this.onConfirmAll();
+  }
+
+  protected onSuccessClosed(): void {
+    this.showSuccessPopup.set(false);
+    this.backToList();
   }
 
   protected backToList(): void {

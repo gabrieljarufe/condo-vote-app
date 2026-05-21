@@ -11,6 +11,9 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../../core/auth/supabase.client';
+import { Dialog } from '../../../shared/ui/dialog';
+import { Dropdown } from '../../../shared/ui/dropdown';
+import { SuccessPopup } from '../../../shared/ui/success-popup';
 import BallotVotePage from './ballot-vote-page';
 
 // ─── Stubs ────────────────────────────────────────────────────────────────────
@@ -85,6 +88,18 @@ function makeBallot(overrides: Partial<MyBallotResponse> = {}): MyBallotResponse
   };
 }
 
+function makeMyBallots(
+  ballots: ReadonlyArray<MyBallotResponse>,
+  excluded: ReadonlyArray<{ apartmentId: string; apartmentLabel: string; reason: 'EXCLUDED' }> = [],
+) {
+  return {
+    ballots,
+    excludedApartments: excluded,
+    totalVotesSoFar: null,
+    eligibleCount: ballots.length,
+  };
+}
+
 function makeApi(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     list: vi.fn(),
@@ -95,7 +110,7 @@ function makeApi(overrides: Partial<Record<string, unknown>> = {}) {
     cancel: vi.fn(),
     close: vi.fn(),
     getById: vi.fn(() => of(makePollDetail())),
-    getMyBallots: vi.fn(() => of([makeBallot()])),
+    getMyBallots: vi.fn(() => of(makeMyBallots([makeBallot()]))),
     submitVote: vi.fn(() => of({ id: 'vote-1', pollId: 'poll-1', apartmentId: 'apt-101', optionId: 'opt-sim', votedAt: '' })),
     getMyPendingPolls: vi.fn(),
     ...overrides,
@@ -134,7 +149,7 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
     ],
   })
     .overrideComponent(BallotVotePage, {
-      set: { imports: [AppHeaderStub, SpinnerStub, BallotCardStub, RouterLink] },
+      set: { imports: [AppHeaderStub, SpinnerStub, BallotCardStub, RouterLink, Dialog, Dropdown, SuccessPopup] },
     })
     .compileComponents();
 
@@ -150,23 +165,43 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
 describe('BallotVotePage', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('renderiza breadcrumb "Minhas votações" no topo apontando para a lista de votações', async () => {
+    const { fixture } = await setup();
+    const link = fixture.nativeElement.querySelector('main a') as HTMLAnchorElement;
+    expect(link).toBeTruthy();
+    expect(link.textContent).toContain('Minhas votações');
+  });
+
   it('renderiza 1 cédula quando há 1 ballot pendente', async () => {
     const { component } = await setup();
     expect(component.state().kind).toBe('ready');
     expect(component.pendingBallots()).toHaveLength(1);
-    expect(component.firstBallot().apartmentLabel).toBe('101');
+    expect(component.pendingBallots()[0].apartmentLabel).toBe('101');
   });
 
-  it('renderiza texto explicativo com count quando há ≥2 ballots pendentes', async () => {
+  it('mostra dropdown de apartamentos quando há ≥2 ballots pendentes', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component } = await setup({
-      getMyBallots: vi.fn(() => of([ballot1, ballot2])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
     expect(component.pendingBallots()).toHaveLength(2);
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('2 apartamentos elegíveis');
+    expect(el.textContent).toContain('2 pendentes');
+  });
+
+  it('trocar apartamento no dropdown reseta selectedOptionId', async () => {
+    const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
+    const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
+    const { fixture, component } = await setup({
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
+    });
+    fixture.detectChanges();
+    component.selectedOptionId.set('opt-sim');
+    component.onApartmentChange('apt-202');
+    expect(component.selectedOptionId()).toBeNull();
+    expect(component.selectedApartmentId()).toBe('apt-202');
   });
 
   it('botão "Confirmar voto" disabled quando selectedOptionId é null', async () => {
@@ -177,7 +212,7 @@ describe('BallotVotePage', () => {
     expect(button?.disabled).toBe(true);
   });
 
-  it('clicar confirmar com 1 ballot dispara submitVote e navega para /my-polls', async () => {
+  it('clicar confirmar com 1 ballot dispara submitVote, abre popup, depois navega', async () => {
     const { fixture, component, api } = await setup();
     component.selectedOptionId.set('opt-sim');
     fixture.detectChanges();
@@ -186,14 +221,23 @@ describe('BallotVotePage', () => {
     fixture.detectChanges();
 
     expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
-    expect(mockRouter.navigate).toHaveBeenCalledWith(['/app/condominiums', 'condo-1', 'my-polls']);
+    // Popup abriu, navegação ainda NÃO aconteceu
+    expect(component.showSuccessPopup()).toBe(true);
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+
+    // Simula popup fechando
+    component.onSuccessClosed();
+    expect(mockRouter.navigate).toHaveBeenCalledWith(
+      ['/app/condominiums', 'condo-1', 'polls'],
+      { queryParams: { tab: 'pendentes' } },
+    );
   });
 
-  it('clicar confirmar com 2+ ballots dispara submitVote e abre modal de bulk', async () => {
+  it('clicar confirmar com 2+ ballots NÃO submete ainda — abre dialog primeiro', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
     const { fixture, component, api } = await setup({
-      getMyBallots: vi.fn(() => of([ballot1, ballot2])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
     component.selectedOptionId.set('opt-sim');
@@ -202,23 +246,24 @@ describe('BallotVotePage', () => {
     component.onConfirm();
     fixture.detectChanges();
 
-    expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
+    expect(api.submitVote).not.toHaveBeenCalled();
     expect(component.showBulkPrompt()).toBe(true);
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.textContent).toContain('Aplicar aos demais apartamentos?');
+    expect(el.textContent).toContain('Aplicar a mesma opção aos 2 apartamentos?');
   });
 
-  it('modal "Revisar e aplicar" navega para .../vote/review', async () => {
+  it('"Aplicar a todos" navega para review com TODOS os pending (incluindo o atual)', async () => {
     const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
     const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
-    const { fixture, component } = await setup({
-      getMyBallots: vi.fn(() => of([ballot1, ballot2])),
+    const { fixture, component, api } = await setup({
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
     });
     fixture.detectChanges();
     component.selectedOptionId.set('opt-sim');
-    // Simulate modal shown after submit
-    component.showBulkPrompt.set(true);
+    component.onConfirm();
     fixture.detectChanges();
+    expect(api.submitVote).not.toHaveBeenCalled();
+    expect(component.showBulkPrompt()).toBe(true);
 
     component.onApplyBulk();
 
@@ -227,11 +272,61 @@ describe('BallotVotePage', () => {
       expect.objectContaining({
         state: expect.objectContaining({
           appliedOptionId: 'opt-sim',
-          remainingBallots: [ballot2],
+          remainingBallots: [ballot1, ballot2],
           pollTitle: 'Votação anual',
         }),
       }),
     );
+  });
+
+  it('"Votar um a um" submete o voto atual e permanece na page', async () => {
+    const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
+    const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
+    const { fixture, component, api } = await setup({
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2]))),
+    });
+    fixture.detectChanges();
+    component.selectedOptionId.set('opt-sim');
+    component.onConfirm();
+    fixture.detectChanges();
+
+    component.onVoteOneByOne();
+    fixture.detectChanges();
+
+    expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-101', 'opt-sim', false);
+    expect(component.showBulkPrompt()).toBe(false);
+    expect(component.selectedOptionId()).toBeNull();
+    expect(component.pendingBallots()).toHaveLength(1);
+    expect(component.pendingBallots()[0].apartmentId).toBe('apt-202');
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('checkbox "não perguntar novamente" suprime dialog em votos subsequentes', async () => {
+    const ballot1 = makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' });
+    const ballot2 = makeBallot({ apartmentId: 'apt-202', apartmentLabel: '202' });
+    const ballot3 = makeBallot({ apartmentId: 'apt-303', apartmentLabel: '303' });
+    const { fixture, component, api } = await setup({
+      getMyBallots: vi.fn(() => of(makeMyBallots([ballot1, ballot2, ballot3]))),
+    });
+    fixture.detectChanges();
+    component.selectedOptionId.set('opt-sim');
+    component.onConfirm();
+    fixture.detectChanges();
+    component.suppressFutureChecked.set(true);
+    component.onVoteOneByOne();
+    fixture.detectChanges();
+
+    expect(component.suppressBulkPromptForPoll()).toBe(true);
+    expect(api.submitVote).toHaveBeenCalledTimes(1);
+
+    component.selectedOptionId.set('opt-nao');
+    component.onConfirm();
+    fixture.detectChanges();
+
+    // Voto direto, sem dialog.
+    expect(component.showBulkPrompt()).toBe(false);
+    expect(api.submitVote).toHaveBeenCalledTimes(2);
+    expect(component.pendingBallots()).toHaveLength(1);
   });
 
   it('erro 409 mostra mensagem "votação encerrada"', async () => {
@@ -251,16 +346,43 @@ describe('BallotVotePage', () => {
   it('quando pendingBallots vazio mostra mensagem "já votou em todas"', async () => {
     const votedBallot = makeBallot({ alreadyVoted: true, votedOptionId: 'opt-sim' });
     const { fixture } = await setup({
-      getMyBallots: vi.fn(() => of([votedBallot])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([votedBallot]))),
     });
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Você já votou em todas as suas cédulas');
   });
 
+  it('banner de inadimplência aparece quando há apartamentos excluídos', async () => {
+    const { fixture, component } = await setup({
+      getMyBallots: vi.fn(() =>
+        of(
+          makeMyBallots(
+            [makeBallot({ apartmentId: 'apt-101', apartmentLabel: '101' })],
+            [{ apartmentId: 'apt-202', apartmentLabel: '202', reason: 'EXCLUDED' as const }],
+          ),
+        ),
+      ),
+    });
+    fixture.detectChanges();
+    const s = component.state();
+    expect(s.kind).toBe('ready');
+    expect(s.myBallots.excludedApartments).toHaveLength(1);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Apartamentos fora desta votação');
+    expect(el.textContent).toContain('Apto 202');
+  });
+
+  it('sem apartamentos excluídos, banner de inadimplência não aparece', async () => {
+    const { fixture } = await setup();
+    fixture.detectChanges();
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).not.toContain('Apartamentos fora desta votação');
+  });
+
   it('quando myBallots vazia mostra painel "não pode votar" sem CTA de voto', async () => {
     const { fixture, component } = await setup({
-      getMyBallots: vi.fn(() => of([])),
+      getMyBallots: vi.fn(() => of(makeMyBallots([]))),
     });
     fixture.detectChanges();
     expect(component.voteEligibility()).toBe('not-eligible');

@@ -7,7 +7,21 @@
 
 ## 1. Estado atual em uma frase
 
-Pacote **P0 (6 PRs bloqueadores)** do redesign está **mergeado** em `feat/ux-unificar-votacoes-dashboard` (HEAD `ec39b95`). Próximo passo é **PR-07 (paleta + tipografia + warm surface)** — é o ponto onde o usuário vai começar a sentir o redesign visual de fato.
+Pacote **P0 (6 PRs bloqueadores)** do redesign está **mergeado** em `feat/ux-unificar-votacoes-dashboard` (HEAD `ec39b95`). Próximo passo é **PR-07 (paleta + tipografia + warm surface)** — mas **NÃO comece direto**: entre em **modo plano primeiro** para refinar identidade visual + paleta (light + dark) com o usuário (ver §5.0).
+
+---
+
+## 0. ⚠️ Mudança de escopo: dark mode entra na v1
+
+Decisão revertida do usuário: **dark mode AGORA está no escopo da v1.**
+
+Razão: implementar dark mode depois custa caro (re-testar contraste em todos os tokens, ajustar sombras, refatorar componentes). Mais barato pensar nas duas variantes juntas no momento de definir a paleta.
+
+**Implicação prática:** o PR-07 cresce — vira "paleta light + dark + tipografia + warm surface". E **antes** de implementar, é obrigatório uma sessão de **modo plano** com o usuário para:
+
+1. **Refinar identidade visual.** O proposal atual (Fraunces + Geist + warm `#FAFAF7` + primary `#1B3FBE`) é um ponto de partida do Agent 2 — não foi validado em variações. Apresentar 2–3 direções alternativas e deixar o usuário escolher.
+2. **Escolher paleta dupla coerente.** Cada token precisa de variante dark com contraste WCAG AA contra `--color-surface` dark. Definir os 2 conjuntos juntos previne "patch dark mode" depois.
+3. **Definir gatilho.** `prefers-color-scheme: dark` automático? Toggle manual? Persistência onde (não em localStorage por convenção do projeto — definir alternativa)?
 
 ---
 
@@ -37,7 +51,7 @@ Pacote **P0 (6 PRs bloqueadores)** do redesign está **mergeado** em `feat/ux-un
 - **Sair do Inter** — Inter é AI-slop por excelência (regra da skill `frontend-design`).
 - **Background warm `#FAFAF7`** (substitui `#f7f9fb` azulado-frio).
 - **Primary `#1B3FBE`** — contraste 8.4:1 ✅ AAA.
-- **Dark mode:** **fora da v1.** Tokens estruturados para receber, mas implementação adiada.
+- **Dark mode:** **NA v1** (decisão revertida — ver §0). Light e dark devem ser desenhados juntos no momento da paleta.
 - **Angular Material:** **não migrar.** Tailwind v4 `@theme` como fonte única.
 - **Ordem de PRs:** §8 do `redesign-proposal.md` (PR-01 → PR-16).
 - **Screenshot tests (Playwright/Percy):** não investir agora; smoke manual basta.
@@ -63,13 +77,41 @@ Pacote **P0 (6 PRs bloqueadores)** do redesign está **mergeado** em `feat/ux-un
 
 ---
 
-## 5. Próximo passo: PR-07 (paleta + tipografia + warm)
+## 5. Próximo passo: PR-07 (paleta light + dark + tipografia + warm)
 
-### Resumo do que muda
+### 5.0 OBRIGATÓRIO antes de tocar código — modo plano
 
-- `frontend/src/styles.scss` — bloco `@theme { ... }` reescrito com paleta refinada (§3.2), tokens de tipografia novos (§3.3), spacing semântico (§3.4), raios (§3.5), elevação (§3.6).
-- `frontend/src/index.html` — link Google Fonts para Fraunces + Geist Sans (preconnect + display=swap).
-- Componentes que usam classes Tailwind hardcoded de cor — auditar e migrar para utility classes que apontam para tokens novos (ex: badges de convite, cards de poll, hero da landing).
+Entre em **modo plano** (`ExitPlanMode` no final) e conduza uma sessão de refinamento com o usuário:
+
+1. **Apresentar 2–3 direções de identidade visual** (não só a do Agent 2). Para cada uma:
+   - Par tipográfico (display + texto). Ex: A) Fraunces + Geist Sans · B) Instrument Serif + Inter Display · C) Editorial New + Söhne (paid).
+   - Paleta primária + warm/cool/neutral surface.
+   - Tom: "editorial sóbrio", "tech-friendly clean", "institucional confiável", etc.
+   - Mockup descritivo (ASCII ou prose) de hero + card de poll.
+2. **Para a direção escolhida, definir paleta DUPLA:**
+   - Light: surface, on-surface, primary, success, error, warning, info + containers + variants.
+   - Dark: mesmo conjunto, com contraste WCAG AA mínimo recalculado contra dark surface.
+   - Usar oklch() ou hex — escolha por consistência (Tailwind v4 aceita ambos).
+3. **Definir gatilho do dark mode:**
+   - `prefers-color-scheme` automático? Ou toggle explícito?
+   - Persistência: localStorage NÃO é convenção do projeto (`TenantService` é em memória — ver `docs/coding-patterns.md`). Alternativas: cookie, signal global sem persist (perde no F5), backend prefs.
+4. **Pesquisar referências atuais** (use WebFetch/WebSearch + context7 para Tailwind v4 dark variants):
+   - Linear, Vercel, Stripe, Resend dark modes.
+   - Material 3 dark theme tokens.
+   - Tailwind v4 `@theme` + `@media (prefers-color-scheme: dark)` patterns.
+5. **Gerar `docs/ux/visual-identity-decision.md`** com a direção escolhida + paleta dupla + decisões de motion/elevation que mudam no dark.
+6. **Só então** sair do plan mode e executar o PR-07.
+
+**Skills obrigatórias durante o plan mode:**
+- `ui-ux-master` (rigor WCAG AA em ambas paletas)
+- `frontend-design` (direção estética distintiva)
+
+### 5.1 PR-07 — Resumo do que muda (após decisões do §5.0 estarem em `visual-identity-decision.md`)
+
+- `frontend/src/styles.scss` — bloco `@theme { ... }` reescrito com paleta **light + dark** validada no plan mode, tokens de tipografia/spacing/raios/elevação novos. Dark via `@media (prefers-color-scheme: dark)` ou variant Tailwind v4 (decidido em §5.0).
+- `frontend/src/index.html` — link Google Fonts para o par tipográfico escolhido em §5.0 (preconnect + display=swap).
+- Componentes que usam classes Tailwind hardcoded de cor — auditar e migrar para utility classes que apontam para tokens novos.
+- **Validar visualmente light AND dark** em pelo menos 6 telas (landing, login, home, criar poll, votar, success).
 
 ### Modelo recomendado
 
@@ -90,10 +132,11 @@ Logo no primeiro turno, invocar via Skill tool:
 
 ### Critérios de aceite do PR-07
 
+- `docs/ux/visual-identity-decision.md` existe e foi aprovado pelo usuário no plan mode.
 - `npm run lint && npm run test:ci && npm run cpd` passa (388+ testes).
-- Lighthouse a11y sem regressão de contraste em nenhuma página principal.
+- Lighthouse a11y sem regressão de contraste em **light E dark**.
 - Nenhum `#hex` ou `rgb(` hardcoded em componente (`grep -rn '#[0-9a-fA-F]\{3,6\}\|rgb(' frontend/src/app --include='*.ts'`).
-- Visual smoke em landing + login + dashboard + criar poll + votar.
+- Visual smoke em **light E dark** em landing + login + dashboard + criar poll + votar.
 
 ---
 
@@ -233,4 +276,6 @@ Cobertura ≥ 70% por arquivo modificado (CI bloqueia). UT obrigatório em toda 
 
 ## 11. Prompt sugerido para abrir a próxima sessão
 
-> Continue o redesign UX do condo-vote-app. Estou em `feat/ux-unificar-votacoes-dashboard` (HEAD `ec39b95`, P0 mergeado). Leia `docs/ux/HANDOFF.md` primeiro — é auto-contido. Depois execute o **PR-07 (paleta + tipografia + warm surface)** seguindo `docs/ux/redesign-proposal.md §3` e `§8 PR-07`. Crie worktree `ux-redesign-p1` antes de tocar código. Use Opus 4.7. Invoque `ui-ux-master` + `frontend-design` no início.
+Cole o texto abaixo (o `@docs/ux/HANDOFF.md` carrega automaticamente este arquivo no contexto da nova sessão):
+
+> Continue o redesign UX do condo-vote-app. Leia @docs/ux/HANDOFF.md (é auto-contido). Antes de qualquer código, entre em **modo plano** e conduza a sessão descrita na §5.0 do HANDOFF (refinar identidade visual + paleta light + dark + gatilho). Apresente 2–3 direções de identidade para eu escolher; gere `docs/ux/visual-identity-decision.md` com a decisão; só então saia do plan mode e implemente o PR-07. Modelo: Opus 4.7. Invoque `ui-ux-master` + `frontend-design` logo no início.

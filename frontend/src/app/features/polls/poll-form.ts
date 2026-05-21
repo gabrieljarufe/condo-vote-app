@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  OnDestroy,
   OnInit,
   effect,
   inject,
@@ -19,6 +20,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { CreatePollRequest } from '../../core/api/polls-api.service';
 import { Dropdown } from '../../shared/ui/dropdown';
 import { FormField } from '../../shared/ui/form-field';
@@ -155,7 +157,7 @@ function optionsValidator(): ValidatorFn {
           #startField
           label="Início previsto"
           [control]="scheduledStart"
-          [errors]="{ required: 'Obrigatório' }"
+          [errors]="{ required: 'Obrigatório', endBeforeStart: 'A data de fim deve ser posterior à data de início.' }"
         >
           <input
             [id]="startField.fieldId"
@@ -170,7 +172,7 @@ function optionsValidator(): ValidatorFn {
           #endField
           label="Fim previsto"
           [control]="scheduledEnd"
-          [errors]="{ required: 'Obrigatório' }"
+          [errors]="{ required: 'Obrigatório', endBeforeStart: 'A data de fim deve ser posterior à data de início.' }"
         >
           <input
             [id]="endField.fieldId"
@@ -180,10 +182,6 @@ function optionsValidator(): ValidatorFn {
           />
         </app-form-field>
       </div>
-
-      @if (form.hasError('endBeforeStart') && (scheduledEnd.dirty || scheduledEnd.touched)) {
-        <p class="text-xs text-error" role="alert">A data de fim deve ser posterior ao início.</p>
-      }
 
       <!-- Opções de votação -->
       <div class="flex flex-col gap-3">
@@ -255,7 +253,7 @@ function optionsValidator(): ValidatorFn {
     </form>
   `,
 })
-export class PollForm implements OnInit {
+export class PollForm implements OnInit, OnDestroy {
   readonly initialValue = input<PollFormValue | null>(null);
   readonly submitLabel = input<string>('Criar rascunho');
   readonly submit$ = output<CreatePollRequest>({ alias: 'submit' });
@@ -263,6 +261,8 @@ export class PollForm implements OnInit {
 
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly submitting = signal(false);
+
+  private readonly dateRangeSub = new Subscription();
 
   protected readonly convocationOptions = CONVOCATION_OPTIONS;
   protected readonly quorumOptions = QUORUM_OPTIONS;
@@ -345,6 +345,46 @@ export class PollForm implements OnInit {
 
   ngOnInit(): void {
     this.errorMessage.set(null);
+    this.dateRangeSub.add(
+      this.form.valueChanges.subscribe(() => this.syncDateRangeErrors()),
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.dateRangeSub.unsubscribe();
+  }
+
+  /**
+   * Propaga o erro `endBeforeStart` do group para ambos os controls
+   * individualmente, para que o `app-form-field` de cada campo possa
+   * exibir a mensagem inline sem depender de qual campo foi tocado por último.
+   *
+   * Preserva outros erros existentes (ex: `required`) via spread.
+   */
+  private syncDateRangeErrors(): void {
+    const hasError = this.form.hasError('endBeforeStart');
+
+    if (hasError) {
+      const startErrors = { ...(this.scheduledStart.errors ?? {}), endBeforeStart: true };
+      const endErrors = { ...(this.scheduledEnd.errors ?? {}), endBeforeStart: true };
+      this.scheduledStart.setErrors(startErrors);
+      this.scheduledEnd.setErrors(endErrors);
+      // Marcar como touched para que showError() no FormField seja ativado
+      this.scheduledStart.markAsTouched({ onlySelf: true });
+      this.scheduledEnd.markAsTouched({ onlySelf: true });
+    } else {
+      // Remove apenas o erro endBeforeStart; preserva os demais
+      if (this.scheduledStart.hasError('endBeforeStart')) {
+        const restStart = { ...(this.scheduledStart.errors ?? {}) };
+        delete restStart['endBeforeStart'];
+        this.scheduledStart.setErrors(Object.keys(restStart).length ? restStart : null);
+      }
+      if (this.scheduledEnd.hasError('endBeforeStart')) {
+        const restEnd = { ...(this.scheduledEnd.errors ?? {}) };
+        delete restEnd['endBeforeStart'];
+        this.scheduledEnd.setErrors(Object.keys(restEnd).length ? restEnd : null);
+      }
+    }
   }
 
   setError(message: string): void {

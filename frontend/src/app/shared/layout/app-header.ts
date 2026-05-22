@@ -41,13 +41,15 @@ import { ThemeToggle } from '../ui/theme-toggle';
                 Votações
               </a>
             }
-            <button
-              type="button"
-              (click)="switchCondo()"
-              class="text-sm text-primary hover:underline"
-            >
-              Trocar
-            </button>
+            @if (canSwitchCondo()) {
+              <button
+                type="button"
+                (click)="switchCondo()"
+                class="text-sm text-primary hover:underline"
+              >
+                Trocar
+              </button>
+            }
           }
           <app-theme-toggle />
           <button
@@ -69,6 +71,10 @@ export class AppHeader {
   private readonly router = inject(Router);
 
   readonly condominiums = input<readonly { id: string; name: string }[]>([]);
+
+  protected readonly canSwitchCondo = computed(
+    () => this.tenant.isAdmin() || this.condominiums().length > 1,
+  );
 
   protected readonly activeCondoName = computed(() => {
     const id = this.tenant.activeCondominiumId();

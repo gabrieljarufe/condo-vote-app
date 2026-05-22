@@ -7,6 +7,13 @@
 
 * **h5:** morador vê apartamentos onde reside + docs/repriorização MVP ([94fd63d](https://github.com/gabrieljarufe/condo-vote-app/commit/94fd63d314bb10e921a0460941a52d5d2f7efc3f))
 
+## [0.1.1](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.0...frontend-v0.1.1) (2026-05-17)
+
+
+### Features
+
+* **h5:** morador vê apartamentos onde reside + docs/repriorização MVP ([94fd63d](https://github.com/gabrieljarufe/condo-vote-app/commit/94fd63d314bb10e921a0460941a52d5d2f7efc3f))
+
 ## 0.1.0 (2026-05-17)
 
 

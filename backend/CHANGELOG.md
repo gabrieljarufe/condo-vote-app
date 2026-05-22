@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.0.6](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.5...backend-v0.0.6) (2026-05-22)
+
+
+### Features
+
+* **backend:** unifica resposta de my-ballots e habilita filtro multi-status ([b89283f](https://github.com/gabrieljarufe/condo-vote-app/commit/b89283f1317d42f8460b1e45268396f93d9d8f5d))
+* **h7:** síndico cria votação com lifecycle completo ([5dc6810](https://github.com/gabrieljarufe/condo-vote-app/commit/5dc6810221fb9eb3bbd5ffa73121132872b6e2da))
+* unifica votações no dashboard e enriquece jornada H8 ([31a19b3](https://github.com/gabrieljarufe/condo-vote-app/commit/31a19b3a924be7085b0c235a1bfa894f3a7a4280))
+
+
+### Bug Fixes
+
+* **backend:** abre leitura de polls para membros do condo (morador vê lista e detalhe) ([88fd734](https://github.com/gabrieljarufe/condo-vote-app/commit/88fd734637fcb896d79201ff2a7528d12a9b1d6d))
+* **h8:** mantém invariante eligible_voter_user_id + UX timezone no edit + log jobs ([9269591](https://github.com/gabrieljarufe/condo-vote-app/commit/92695911a6d430d7bb839134938532e040477601))
+* **h8:** mantém invariante eligible_voter_user_id ao aceitar convite + log jobs ([66d942a](https://github.com/gabrieljarufe/condo-vote-app/commit/66d942ad737857bedb19ce4662a97b2d2a1ee406))
+* morador vê polls do condomínio (read-only) e CTA de voto condicional ([74fd80a](https://github.com/gabrieljarufe/condo-vote-app/commit/74fd80a6f7e387846510f11d66b86e84244c23b8))
+* **onboarding:** seta apartment.eligible_voter_user_id ao aceitar convite como existing user ([d8655a0](https://github.com/gabrieljarufe/condo-vote-app/commit/d8655a0fa82c4e39e29c761e78ef43cc47351952))
+* **test:** corrige Spotless e assinatura de CompleteRegistrationRequest pós-merge H4+H7+H8 ([42f2627](https://github.com/gabrieljarufe/condo-vote-app/commit/42f2627f26d2d3cf4a832dcf18aacd5e6e8e7e15))
+* **test:** desbloqueia quality-gate em develop (Spotless + CompleteRegistrationRequest) ([0e572ac](https://github.com/gabrieljarufe/condo-vote-app/commit/0e572ac2524cd0e352a734d4f703935d793928a1))
+* **ux:** dialog bulk pergunta antes de submeter; CORS aceita X-Bulk-Operation ([71cfad5](https://github.com/gabrieljarufe/condo-vote-app/commit/71cfad588f349f76e59631906a84ee4a452f7ace))
+
 ## [0.0.5](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.4...backend-v0.0.5) (2026-05-17)
 
 

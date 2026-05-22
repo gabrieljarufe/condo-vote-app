@@ -7,6 +7,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Apartment } from '../../../core/api/apartments-api.service';
 import { BulkInvitationEntry, InvitationRole } from '../../../core/api/invitations-api.service';
@@ -56,7 +57,7 @@ function validateRow(row: ParsedRow, apartments: readonly Apartment[]): string[]
 
 @Component({
   selector: 'app-invitation-bulk-preview-grid',
-  imports: [FormsModule, Dropdown],
+  imports: [FormsModule, NgClass, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex flex-col gap-4">
@@ -94,8 +95,8 @@ function validateRow(row: ParsedRow, apartments: readonly Apartment[]): string[]
             <tbody>
               @for (row of mutableRows(); track row.rowIndex; let i = $index) {
                 <tr
-                  class="border-b border-outline-variant last:border-0"
-                  [class.bg-error-container]="row.errors.length > 0"
+                  class="border-b border-outline-variant last:border-0 transition-colors duration-200"
+                  [ngClass]="row.errors.length > 0 ? 'bg-error/10 border-l-4 border-l-error' : ''"
                 >
                   <td class="px-2 py-2 text-on-surface-variant text-xs">{{ row.rowIndex }}</td>
 
@@ -178,7 +179,7 @@ function validateRow(row: ParsedRow, apartments: readonly Apartment[]): string[]
 
                 <!-- Mensagens de erro por linha -->
                 @if (row.errors.length > 0) {
-                  <tr class="border-b border-outline-variant last:border-0 bg-error-container">
+                  <tr class="border-b border-outline-variant last:border-0 bg-error/10 border-l-4 border-l-error">
                     <td colspan="7" class="px-4 pb-2">
                       <ul class="flex flex-col gap-0.5">
                         @for (err of row.errors; track err) {

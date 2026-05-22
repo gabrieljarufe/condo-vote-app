@@ -49,7 +49,7 @@ const EXIT_ANIMATION_MS = 280;
               aria-live="polite"
               class="mt-6 text-xl font-medium text-on-surface success-text"
             >
-              {{ message }}
+              {{ resolvedMessage }}
             </p>
           </div>
         </div>
@@ -125,6 +125,7 @@ export class SuccessPopup implements OnChanges {
   @Input() open = false;
   @Input() voteCount = 1;
   @Input() durationMs = 2500;
+  @Input() message?: string;
   @Output() readonly closed = new EventEmitter<void>();
 
   protected closing = false;
@@ -156,7 +157,8 @@ export class SuccessPopup implements OnChanges {
     }
   }
 
-  protected get message(): string {
+  protected get resolvedMessage(): string {
+    if (this.message) return this.message;
     return this.voteCount === 1
       ? 'Voto computado com sucesso!'
       : `${this.voteCount} votos computados com sucesso!`;

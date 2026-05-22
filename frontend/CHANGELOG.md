@@ -1,5 +1,60 @@
 # Changelog
 
+## [0.1.2](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.1...frontend-v0.1.2) (2026-05-22)
+
+
+### Features
+
+* **frontend:** unifica votações no dashboard e enriquece jornada H8 ([ad23598](https://github.com/gabrieljarufe/condo-vote-app/commit/ad235989ed4b30ae5105da9234eeaad24e349401))
+* **h7:** adiciona poll-detail-page + cancel dialog com ações por status ([5d7e51b](https://github.com/gabrieljarufe/condo-vote-app/commit/5d7e51bc0ef439a29aa9f36ed86a34fc7d0276fb))
+* **h7:** adiciona poll-form compartilhado + create-page + edit-page ([0bdafa5](https://github.com/gabrieljarufe/condo-vote-app/commit/0bdafa55d1923e68687afdc5e2b4cb65c4109ae7))
+* **h7:** adiciona polls-api.service + polls-page com filtro de status ([2cec7d1](https://github.com/gabrieljarufe/condo-vote-app/commit/2cec7d1f52e502caf31bdfd211c23d3edd3a0b90))
+* **h7:** registra rotas de polls + link no header e tile no dashboard ([18d62d9](https://github.com/gabrieljarufe/condo-vote-app/commit/18d62d9e7c520097d9158314f4e834adf2a8eac7))
+* **h7:** síndico cria votação com lifecycle completo ([5dc6810](https://github.com/gabrieljarufe/condo-vote-app/commit/5dc6810221fb9eb3bbd5ffa73121132872b6e2da))
+* **h8:** BallotCard componente reutilizável ([eb9306b](https://github.com/gabrieljarufe/condo-vote-app/commit/eb9306bb08e596696aa57c4a43dbc9dab084b652))
+* **h8:** BallotReviewPage com bulk submit + falha parcial + retry ([d0ad1f1](https://github.com/gabrieljarufe/condo-vote-app/commit/d0ad1f13ff27b1c4f37f441401f59dc1f290013a))
+* **h8:** BallotVotePage com fluxo 1 cédula + CTA bulk ([94f115c](https://github.com/gabrieljarufe/condo-vote-app/commit/94f115c755afb31bf88bfc3a52b0b300184cc547))
+* **h8:** breakdown real por opção em poll-detail (CLOSED/INVALIDATED) ([be45d81](https://github.com/gabrieljarufe/condo-vote-app/commit/be45d81de2060c174570658b8465312650cbde96))
+* **h8:** PollsApiService submitVote/getMyBallots/getMyPendingPolls ([1459cdb](https://github.com/gabrieljarufe/condo-vote-app/commit/1459cdb6a0955acb80d305b4b4fa4c87dc4e4020))
+* **h8:** ResidentPendingPollsPage + tile no dashboard ([cbcfd34](https://github.com/gabrieljarufe/condo-vote-app/commit/cbcfd34adf82ae863e26a5d29198369ab758573b))
+* unifica votações no dashboard e enriquece jornada H8 ([31a19b3](https://github.com/gabrieljarufe/condo-vote-app/commit/31a19b3a924be7085b0c235a1bfa894f3a7a4280))
+* **ux:** adiciona &lt;app-confirm-dialog&gt; e remove window.confirm() ([318563f](https://github.com/gabrieljarufe/condo-vote-app/commit/318563fd9870e62f9abfb693ca51720611b2e975))
+* **ux:** adiciona componente &lt;app-success-popup&gt; com animação de check ([0b727bf](https://github.com/gabrieljarufe/condo-vote-app/commit/0b727bf18fc0c9c0ea00f0859e15b6d695ee900e))
+* **ux:** copy honesta na landing — remove claims de ata PDF e assinatura digital ([1cfd3c1](https://github.com/gabrieljarufe/condo-vote-app/commit/1cfd3c1988bad8b6335e49a286c8f8e8e0aad32a))
+* **ux:** mostra popup de sucesso após voto antes de navegar ([01e601d](https://github.com/gabrieljarufe/condo-vote-app/commit/01e601d359a6cc4b3f915867e1fdb6f16430c9a5))
+* **ux:** nav e ícones do dashboard em verde + amplia max-width das telas ([dc806dd](https://github.com/gabrieljarufe/condo-vote-app/commit/dc806dd9587e892fc7558b7c1249d7cf2ebe96b0))
+* **ux:** normaliza CTAs primários para bg-primary verde (PR-07b) ([bd6e9b2](https://github.com/gabrieljarufe/condo-vote-app/commit/bd6e9b245afb3b1ecfe51384a6845e61e53c5f73))
+* **ux:** PR-07 — paleta Bossa Cívica (light + dark) + tipografia Literata/Be Vietnam Pro ([41db3fb](https://github.com/gabrieljarufe/condo-vote-app/commit/41db3fbcc5f23022c9394edfcbbd46ea89468bd5))
+* **ux:** pré-preenche datas da criação de votação com agora e +30min ([76890a8](https://github.com/gabrieljarufe/condo-vote-app/commit/76890a8d12561733d668f8623a3f9221ffc0f9df))
+* **ux:** redesign visual da v1 — paleta Bossa Cívica + normalização de CTAs + refinos ([f20c589](https://github.com/gabrieljarufe/condo-vote-app/commit/f20c5892b2a781f097a9fcb52c91d1e66fc62358))
+* **ux:** refatora fluxo de votação com dropdown de apartamentos, dialog reaparecível e review simplificado ([fef26f9](https://github.com/gabrieljarufe/condo-vote-app/commit/fef26f9dce953c8fc05b7ab1881ee159b683ff4a))
+* **ux:** restringe 'Trocar' no header a quem pode trocar de condomínio ([bf4c50b](https://github.com/gabrieljarufe/condo-vote-app/commit/bf4c50b5b0c8b4f3a12ba7cc37eeda219bad09ac))
+* **ux:** SuccessPopup fechável (OK/Esc/Enter), default 1800ms, role=alertdialog ([07c8733](https://github.com/gabrieljarufe/condo-vote-app/commit/07c873379588677731da8901a931e7b5ef357837))
+* **ux:** toggle de dark/light mode com persistência em localStorage ([d174ac7](https://github.com/gabrieljarufe/condo-vote-app/commit/d174ac711cb1826d063b3fa33bb1ffcb9f848c72))
+
+
+### Bug Fixes
+
+* **frontend:** morador vê polls (read-only) e CTA de voto condicional ([ed5b665](https://github.com/gabrieljarufe/condo-vote-app/commit/ed5b6651499f27dab12dea0cc2919fb794280107))
+* **h5:** expõe acceptAsExisting e acceptanceConfirmed no api service ([12373fc](https://github.com/gabrieljarufe/condo-vote-app/commit/12373fcaa4a79f32cef620e70f13e65aaac30271))
+* **h5:** permite aceite de convite para e-mail com conta existente ([1a999e1](https://github.com/gabrieljarufe/condo-vote-app/commit/1a999e1aafdc21d95a2789f2e459f0aec9b940cd))
+* **h5:** ramifica invitation-accept-page em 4 modos com checkbox de declaração ([86993f1](https://github.com/gabrieljarufe/condo-vote-app/commit/86993f1783528c9a20c4edb29a4838c2ebe62479))
+* **h5:** remove CPF do fluxo LINK (minimizacao LGPD) ([932ec02](https://github.com/gabrieljarufe/condo-vote-app/commit/932ec02c6a074dca5d23417dc39094de526a0770))
+* **h5:** suporta ?redirect= no login com whitelist anti-open-redirect ([aa1f619](https://github.com/gabrieljarufe/condo-vote-app/commit/aa1f6199ec0da4a4551c0a9047449431b88f7d2a))
+* **h8:** corrige erros de tipagem TS no frontend pós-H8 ([293395d](https://github.com/gabrieljarufe/condo-vote-app/commit/293395d8d26c812a5604ffed7d09a4e65aaf52e6))
+* **h8:** corrige erros de tipagem TS no frontend pós-H8 ([360476c](https://github.com/gabrieljarufe/condo-vote-app/commit/360476c148c28e1124d0d81436a7cfd9753b9a1a))
+* **h8:** corrige UX de timezone no form de edição de poll ([9065498](https://github.com/gabrieljarufe/condo-vote-app/commit/9065498f3b7e77ddbea3d8ec08ee0cd78c5057a1))
+* **h8:** mantém invariante eligible_voter_user_id + UX timezone no edit + log jobs ([9269591](https://github.com/gabrieljarufe/condo-vote-app/commit/92695911a6d430d7bb839134938532e040477601))
+* morador vê polls do condomínio (read-only) e CTA de voto condicional ([74fd80a](https://github.com/gabrieljarufe/condo-vote-app/commit/74fd80a6f7e387846510f11d66b86e84244c23b8))
+* **ux:** adiciona breadcrumb nas telas de votação ([bbd0d71](https://github.com/gabrieljarufe/condo-vote-app/commit/bbd0d71385c4737399c5b9187b63fd9e8b492849))
+* **ux:** adiciona tokens --color-warning-* e --color-info-* faltantes ([a4782f8](https://github.com/gabrieljarufe/condo-vote-app/commit/a4782f8d3e1c1a7be68ba1074fdf345d6c8c5ee0))
+* **ux:** app-dropdown usa position: fixed para escapar overflow de containers ([a034dae](https://github.com/gabrieljarufe/condo-vote-app/commit/a034dae4771c8d2447070d34a55028320fe7c982))
+* **ux:** bloqueia duplo submit no formulário de criação de votação ([b7da7aa](https://github.com/gabrieljarufe/condo-vote-app/commit/b7da7aa899817a922e7281f002f18971b153baf0))
+* **ux:** dialog bulk pergunta antes de submeter; CORS aceita X-Bulk-Operation ([71cfad5](https://github.com/gabrieljarufe/condo-vote-app/commit/71cfad588f349f76e59631906a84ee4a452f7ace))
+* **ux:** renderiza banner de erro quando breakdown da votação não pode ser parseado ([2d140f2](https://github.com/gabrieljarufe/condo-vote-app/commit/2d140f2a4bc3d74110b47cd4a327df05baf5f3dd))
+* **ux:** usa [@let](https://github.com/let) para narrowing do signal breakdown() no template ([84c05e4](https://github.com/gabrieljarufe/condo-vote-app/commit/84c05e4c16770bd1d38acd5b2a119b84e1285f86))
+* **ux:** validator endBeforeStart marca ambos os campos do formulário de votação ([d418d99](https://github.com/gabrieljarufe/condo-vote-app/commit/d418d994a68733505e5fccdaed29a0217b9a581a))
+
 ## [0.1.1](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.0...frontend-v0.1.1) (2026-05-17)
 
 

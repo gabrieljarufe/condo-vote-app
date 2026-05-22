@@ -21,7 +21,7 @@ type LoadResult =
   template: `
     <app-app-header [condominiums]="condominiums()" />
 
-    <main class="max-w-3xl mx-auto px-6 py-12">
+    <main class="max-w-4xl mx-auto px-6 py-12">
       @switch (state().kind) {
         @case ('loading') {
           <div class="flex justify-center py-12">

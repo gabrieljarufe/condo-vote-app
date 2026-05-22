@@ -26,7 +26,7 @@ import { ThemeToggle } from '../ui/theme-toggle';
             @if (apartmentsLink()) {
               <a
                 [routerLink]="apartmentsLink()"
-                routerLinkActive="text-secondary font-semibold"
+                routerLinkActive="text-primary font-semibold"
                 class="text-sm text-on-surface-variant hover:text-on-surface"
               >
                 Apartamentos
@@ -35,7 +35,7 @@ import { ThemeToggle } from '../ui/theme-toggle';
             @if (pollsLink()) {
               <a
                 [routerLink]="pollsLink()"
-                routerLinkActive="text-secondary font-semibold"
+                routerLinkActive="text-primary font-semibold"
                 class="text-sm text-on-surface-variant hover:text-on-surface"
               >
                 Votações
@@ -44,7 +44,7 @@ import { ThemeToggle } from '../ui/theme-toggle';
             <button
               type="button"
               (click)="switchCondo()"
-              class="text-sm text-secondary hover:underline"
+              class="text-sm text-primary hover:underline"
             >
               Trocar
             </button>

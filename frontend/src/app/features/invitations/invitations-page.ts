@@ -41,7 +41,7 @@ type PageState = 'loading' | 'error' | 'ready';
   template: `
     <app-app-header />
 
-    <main class="max-w-5xl mx-auto px-6 py-12">
+    <main class="max-w-6xl mx-auto px-6 py-12">
       <div class="flex items-center gap-3 mb-8">
         <a [routerLink]="dashboardLink()" class="text-sm text-on-surface-variant hover:text-on-surface">
           ← Início

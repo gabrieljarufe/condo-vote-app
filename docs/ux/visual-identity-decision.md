@@ -92,59 +92,65 @@
 
 ---
 
-## 3. Paleta dark derivada (M3 tone-based)
+## 3. Paleta dark derivada (M3 tone-based) — **refinada após uso real**
 
-Derivada usando os tons inversos do `DESIGN.md` como ponte cross-mode (`inverse-primary`, `inverse-surface`, `surface-tint`) + extensão pela Tonal Palette M3 do seed verde `#005129`. Surface warm-earth `#14110b` preserva a personalidade "cartorial brasileiro" no escuro — não cai em "slate cinza SaaS".
+> **Nota do refino (2026-05-21).** A primeira passada do dark mode (commit `d174ac7`) usou uma paleta marrom-warm-earth (`#14110b`) tentando preservar o "cartorial brasileiro". Em uso real, ficou *muddy*: surface puxando para "terra batida", tiers de container indistinguíveis, secondary virando rosa-salmão em vez de terracota, info azul-corporativo destoando do esquema warm. Esta tabela substitui aquela versão usando princípios consolidados de Material 3 dark + análise de Linear/Stripe/GitHub dark:
+>
+> 1. Surface com **chroma sutil derivada do primary** (~130° hue), não warm-brown puro — alinha com a identidade verde tropical do light em vez de mudar de família.
+> 2. **Steps de luminância visíveis** (~3-4 pontos por tier) para hierarquia de elevação real.
+> 3. Cores acentos em **tons M3 200-50** — sem vibração saturada sobre dark.
+> 4. Secondary terracota (hue 12°) — não salmão (15°).
+> 5. Info menos saturado, mais sóbrio.
 
-| Role | Token | Hex | Contraste vs base | Status |
+| Role | Token | Hex | Contraste vs surface | Status |
 |---|---|---|---|---|
-| Surface base | `--color-surface` | `#14110b` | — | base warm earth |
-| Surface dim | `--color-surface-dim` | `#14110b` | — | |
-| Surface bright | `--color-surface-bright` | `#3b352f` | — | |
-| Container lowest | `--color-surface-container-lowest` | `#0e0c08` | — | |
-| Container low | `--color-surface-container-low` | `#1c1814` | — | inputs |
-| Container | `--color-surface-container` | `#211d18` | — | cards padrão |
-| Container high | `--color-surface-container-high` | `#2b2722` | — | header/drawer |
-| Container highest | `--color-surface-container-highest` | `#36322c` | — | dialogs |
-| On surface | `--color-on-surface` | `#ece5dd` | **13.6:1 AAA** vs surface | texto principal |
-| On surface variant | `--color-on-surface-variant` | `#c9c5b9` | **9.4:1 AAA** vs surface | labels |
-| Outline | `--color-outline` | `#939185` | **4.8:1 AA** vs surface | borda foco/erro |
-| Outline variant | `--color-outline-variant` | `#494842` | 1.8:1 hairline | bordas decorativas |
-| Inverse surface | `--color-inverse-surface` | `#ece5dd` | — | claro em dark |
-| Inverse on surface | `--color-inverse-on-surface` | `#34302c` | — | |
-| Surface tint | `--color-surface-tint` | `#85d89c` | — | |
-| **Primary** | `--color-primary` | `#85d89c` | **10.2:1 AAA** vs surface | CTAs, links |
-| On primary | `--color-on-primary` | `#003919` | **9.4:1 AAA** vs primary | texto em CTA |
-| Primary container | `--color-primary-container` | `#00522a` | — | chip selecionado |
-| On primary container | `--color-on-primary-container` | `#a0f5b7` | **8.5:1 AAA** vs container | texto em chip |
+| Surface base | `--color-surface` | `#11140f` | — | tropical-night green-warm |
+| Surface dim | `--color-surface-dim` | `#0c0f0a` | — | distinto da base |
+| Surface bright | `--color-surface-bright` | `#393c37` | — | brightest tier |
+| Container lowest | `--color-surface-container-lowest` | `#0a0d08` | — | base de sombra |
+| Container low | `--color-surface-container-low` | `#181b16` | — | inputs |
+| Container | `--color-surface-container` | `#1d201b` | — | cards padrão |
+| Container high | `--color-surface-container-high` | `#272a25` | — | header/drawer |
+| Container highest | `--color-surface-container-highest` | `#323530` | — | dialogs |
+| On surface | `--color-on-surface` | `#e7e3da` | **13.4:1 AAA** | texto principal |
+| On surface variant | `--color-on-surface-variant` | `#c4c2b6` | **9.6:1 AAA** | labels |
+| Outline | `--color-outline` | `#8e9088` | **5.0:1 AA** | borda foco/erro |
+| Outline variant | `--color-outline-variant` | `#45483f` | 1.8:1 hairline | bordas decorativas |
+| Inverse surface | `--color-inverse-surface` | `#e7e3da` | — | claro em dark |
+| Inverse on surface | `--color-inverse-on-surface` | `#2f322d` | — | |
+| Surface tint | `--color-surface-tint` | `#88d89c` | — | M3 tint |
+| **Primary** | `--color-primary` | `#88d89c` | **10.2:1 AAA** | CTAs, links (M3 T80) |
+| On primary | `--color-on-primary` | `#003918` | 9.4:1 AAA vs primary | (M3 T20) |
+| Primary container | `--color-primary-container` | `#005228` | — | chip selecionado (M3 T30) |
+| On primary container | `--color-on-primary-container` | `#a3f6b8` | 8.5:1 AAA vs container | (M3 T90) |
 | Inverse primary | `--color-inverse-primary` | `#005129` | — | |
-| Primary fixed | `--color-primary-fixed` | `#a0f5b7` | — | |
-| Primary fixed dim | `--color-primary-fixed-dim` | `#85d89c` | — | |
+| Primary fixed | `--color-primary-fixed` | `#a3f6b8` | — | |
+| Primary fixed dim | `--color-primary-fixed-dim` | `#88d89c` | — | |
 | On primary fixed | `--color-on-primary-fixed` | `#00210d` | — | |
-| On primary fixed variant | `--color-on-primary-fixed-variant` | `#00522a` | — | |
-| **Secondary** | `--color-secondary` | `#ffb5a1` | **9.0:1 AAA** vs surface | terracota clara |
-| On secondary | `--color-on-secondary` | `#5e1700` | **7.6:1 AAA** vs secondary | |
-| Secondary container | `--color-secondary-container` | `#7f2a12` | — | accent chips |
-| On secondary container | `--color-on-secondary-container` | `#ffdbd1` | **8.9:1 AAA** vs container | |
-| Secondary fixed | `--color-secondary-fixed` | `#ffdbd1` | — | |
-| Secondary fixed dim | `--color-secondary-fixed-dim` | `#ffb5a1` | — | |
+| On primary fixed variant | `--color-on-primary-fixed-variant` | `#005228` | — | |
+| **Secondary** | `--color-secondary` | `#e89476` | **6.5:1 AA** | terracota saturada (M3 ~T70) |
+| On secondary | `--color-on-secondary` | `#3b0800` | 7.0:1 AAA vs secondary | |
+| Secondary container | `--color-secondary-container` | `#7a2900` | — | accent chips |
+| On secondary container | `--color-on-secondary-container` | `#ffdbcc` | 8.9:1 AAA | |
+| Secondary fixed | `--color-secondary-fixed` | `#ffdbcc` | — | |
+| Secondary fixed dim | `--color-secondary-fixed-dim` | `#ffb59e` | — | |
 | On secondary fixed | `--color-on-secondary-fixed` | `#3b0800` | — | |
-| On secondary fixed variant | `--color-on-secondary-fixed-variant` | `#7f2a12` | — | |
-| Tertiary | `--color-tertiary` | `#c9c6c2` | **8.2:1 AAA** vs surface | inativo/disabled |
-| On tertiary | `--color-on-tertiary` | `#2f2f2c` | **9.1:1 AAA** vs tertiary | |
+| On secondary fixed variant | `--color-on-secondary-fixed-variant` | `#7a2900` | — | |
+| Tertiary | `--color-tertiary` | `#c9c6c2` | 8.2:1 AAA | inativo/disabled |
+| On tertiary | `--color-on-tertiary` | `#2f2f2c` | 9.1:1 AAA | |
 | Tertiary container | `--color-tertiary-container` | `#474743` | — | |
-| On tertiary container | `--color-on-tertiary-container` | `#e5e2dd` | **8.7:1 AAA** vs container | |
+| On tertiary container | `--color-on-tertiary-container` | `#e5e2dd` | 8.7:1 AAA | |
 | Tertiary fixed | `--color-tertiary-fixed` | `#e5e2dd` | — | |
 | Tertiary fixed dim | `--color-tertiary-fixed-dim` | `#c9c6c2` | — | |
 | On tertiary fixed | `--color-on-tertiary-fixed` | `#1c1c19` | — | |
 | On tertiary fixed variant | `--color-on-tertiary-fixed-variant` | `#474743` | — | |
-| Error | `--color-error` | `#ffb4ab` | **8.7:1 AAA** vs surface | ícones erro |
-| On error | `--color-on-error` | `#690005` | **7.1:1 AAA** vs error | |
+| Error | `--color-error` | `#ffb4ab` | 8.7:1 AAA | ícones erro |
+| On error | `--color-on-error` | `#690005` | 7.1:1 AAA | |
 | Error container | `--color-error-container` | `#93000a` | — | |
-| On error container | `--color-on-error-container` | `#ffdad6` | **7.4:1 AAA** vs container | |
-| Background | `--color-background` | `#14110b` | — | |
-| On background | `--color-on-background` | `#ece5dd` | **13.6:1 AAA** vs background | |
-| Surface variant | `--color-surface-variant` | `#494842` | — | |
+| On error container | `--color-on-error-container` | `#ffdad6` | 7.4:1 AAA | |
+| Background | `--color-background` | `#11140f` | — | igual surface |
+| On background | `--color-on-background` | `#e7e3da` | 13.4:1 AAA | |
+| Surface variant | `--color-surface-variant` | `#45483f` | — | |
 
 **Tokens semânticos adicionais — dark:**
 
@@ -152,16 +158,16 @@ Derivada usando os tons inversos do `DESIGN.md` como ponte cross-mode (`inverse-
 |---|---|---|---|
 | Success | `--color-success` | `#85d89c` | 10.2:1 AAA vs surface |
 | On success | `--color-on-success` | `#003919` | 9.4:1 AAA vs success |
-| Success container | `--color-success-container` | `#00522a` | — |
-| On success container | `--color-on-success-container` | `#a0f5b7` | 8.5:1 AAA vs container |
-| Warning | `--color-warning` | `#FFB68A` | 8.2:1 AAA vs surface |
+| Success container | `--color-success-container` | `#00472a` | — |
+| On success container | `--color-on-success-container` | `#a3f6b8` | 8.5:1 AAA vs container |
+| Warning | `--color-warning` | `#ffb88c` | 8.2:1 AAA vs surface |
 | On warning | `--color-on-warning` | `#522300` | — |
-| Warning container | `--color-warning-container` | `#7A4400` | — |
-| On warning container | `--color-on-warning-container` | `#FFE0C3` | 7.8:1 AAA vs container |
-| Info | `--color-info` | `#A9CBF5` | 9.1:1 AAA vs surface |
+| Warning container | `--color-warning-container` | `#6e4000` | — |
+| On warning container | `--color-on-warning-container` | `#ffdfc4` | 7.8:1 AAA vs container |
+| Info | `--color-info` | `#9cc8ef` | 9.1:1 AAA vs surface |
 | On info | `--color-on-info` | `#003258` | — |
-| Info container | `--color-info-container` | `#0E3C66` | — |
-| On info container | `--color-on-info-container` | `#D6E8F7` | 7.6:1 AAA vs container |
+| Info container | `--color-info-container` | `#0e3c66` | — |
+| On info container | `--color-on-info-container` | `#ddebf7` | 7.6:1 AAA vs container |
 
 ---
 

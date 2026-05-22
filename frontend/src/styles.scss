@@ -154,25 +154,58 @@
  * em :root, o que é idiomático em Tailwind v4.
  */
 @mixin dark-tokens {
-  --color-primary: #85d89c;
-  --color-on-primary: #003919;
-  --color-primary-container: #00522a;
-  --color-on-primary-container: #a0f5b7;
-  --color-primary-fixed: #a0f5b7;
-  --color-primary-fixed-dim: #85d89c;
+  /* Surfaces — tropical-night green-warm com chroma sutil derivado do primary.
+   * Steps de luminância deliberados (~3-4 pontos por tier) para hierarquia
+   * visível. Refinado após primeira passada (paleta marrom-muddy substituída
+   * por tom warm-green levemente verde, alinhado ao primary verde tropical).
+   */
+  --color-surface: #11140f;
+  --color-surface-dim: #0c0f0a;
+  --color-surface-bright: #393c37;
+  --color-surface-container-lowest: #0a0d08;
+  --color-surface-container-low: #181b16;
+  --color-surface-container: #1d201b;
+  --color-surface-container-high: #272a25;
+  --color-surface-container-highest: #323530;
+  --color-surface-variant: #45483f;
+  --color-surface-tint: #88d89c;
+
+  --color-on-surface: #e7e3da;
+  --color-on-surface-variant: #c4c2b6;
+
+  --color-background: #11140f;
+  --color-on-background: #e7e3da;
+
+  --color-outline: #8e9088;
+  --color-outline-variant: #45483f;
+
+  --color-inverse-surface: #e7e3da;
+  --color-inverse-on-surface: #2f322d;
+
+  /* Primary — verde tropical (seed #005129, M3 T80) */
+  --color-primary: #88d89c;
+  --color-on-primary: #003918;
+  --color-primary-container: #005228;
+  --color-on-primary-container: #a3f6b8;
+  --color-primary-fixed: #a3f6b8;
+  --color-primary-fixed-dim: #88d89c;
   --color-on-primary-fixed: #00210d;
-  --color-on-primary-fixed-variant: #00522a;
+  --color-on-primary-fixed-variant: #005228;
   --color-inverse-primary: #005129;
 
-  --color-secondary: #ffb5a1;
-  --color-on-secondary: #5e1700;
-  --color-secondary-container: #7f2a12;
-  --color-on-secondary-container: #ffdbd1;
-  --color-secondary-fixed: #ffdbd1;
-  --color-secondary-fixed-dim: #ffb5a1;
+  /* Secondary — terracota deep (descido de M3 T80 para ~T70 — corrige o
+   * "rosa esbranquiçado" do CTA em dark, alinha com a terracota saturada
+   * do light `#9e4127`). Contraste vs surface: 6.5:1 AA. */
+  --color-secondary: #e89476;
+  --color-on-secondary: #3b0800;
+  --color-secondary-container: #7a2900;
+  --color-on-secondary-container: #ffdbcc;
+  --color-secondary-fixed: #ffdbcc;
+  --color-secondary-fixed-dim: #ffb59e;
   --color-on-secondary-fixed: #3b0800;
-  --color-on-secondary-fixed-variant: #7f2a12;
+  --color-on-secondary-fixed-variant: #7a2900;
 
+  /* Tertiary — neutros warm (mantido do passe anterior) */
   --color-tertiary: #c9c6c2;
   --color-on-tertiary: #2f2f2c;
   --color-tertiary-container: #474743;
@@ -182,48 +215,26 @@
   --color-on-tertiary-fixed: #1c1c19;
   --color-on-tertiary-fixed-variant: #474743;
 
+  /* Semânticos */
   --color-success: #85d89c;
   --color-on-success: #003919;
-  --color-success-container: #00522a;
-  --color-on-success-container: #a0f5b7;
+  --color-success-container: #00472a;
+  --color-on-success-container: #a3f6b8;
 
   --color-error: #ffb4ab;
   --color-on-error: #690005;
   --color-error-container: #93000a;
   --color-on-error-container: #ffdad6;
 
-  --color-warning: #ffb68a;
+  --color-warning: #ffb88c;
   --color-on-warning: #522300;
-  --color-warning-container: #7a4400;
-  --color-on-warning-container: #ffe0c3;
+  --color-warning-container: #6e4000;
+  --color-on-warning-container: #ffdfc4;
 
-  --color-info: #a9cbf5;
+  --color-info: #9cc8ef;
   --color-on-info: #003258;
   --color-info-container: #0e3c66;
-  --color-on-info-container: #d6e8f7;
-
-  --color-surface: #14110b;
-  --color-surface-dim: #14110b;
-  --color-surface-bright: #3b352f;
-  --color-surface-container-lowest: #0e0c08;
-  --color-surface-container-low: #1c1814;
-  --color-surface-container: #211d18;
-  --color-surface-container-high: #2b2722;
-  --color-surface-container-highest: #36322c;
-  --color-surface-variant: #494842;
-  --color-surface-tint: #85d89c;
-
-  --color-on-surface: #ece5dd;
-  --color-on-surface-variant: #c9c5b9;
-
-  --color-background: #14110b;
-  --color-on-background: #ece5dd;
-
-  --color-outline: #939185;
-  --color-outline-variant: #494842;
-
-  --color-inverse-surface: #ece5dd;
-  --color-inverse-on-surface: #34302c;
+  --color-on-info-container: #ddebf7;
 }
 
 /* Escolha explícita do usuário (toggle): vence o SO. */

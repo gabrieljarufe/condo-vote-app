@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.7](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.6...backend-v0.0.7) (2026-05-22)
+
+
+### Features
+
+* **db:** bootstrap do Condomínio Central Park Paulista ([71ba2ae](https://github.com/gabrieljarufe/condo-vote-app/commit/71ba2aea171802f175fe6e3ec01c519cf2fdbd5b))
+* **db:** bootstrap do Condomínio Central Park Paulista ([a8c3c00](https://github.com/gabrieljarufe/condo-vote-app/commit/a8c3c0050a20f26bf1eb44efc2f7dac67f314d04))
+
 ## [0.0.6](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.5...backend-v0.0.6) (2026-05-22)
 
 

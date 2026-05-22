@@ -84,7 +84,7 @@ function expiresLabel(inv: Invitation): string {
                       <button
                         type="button"
                         (click)="resend.emit(inv.id)"
-                        class="text-xs text-secondary hover:underline whitespace-nowrap"
+                        class="text-xs text-primary hover:underline whitespace-nowrap"
                       >
                         Reenviar
                       </button>
@@ -105,13 +105,13 @@ function expiresLabel(inv: Invitation): string {
                             type="email"
                             [formControl]="fixEmailControl"
                             placeholder="Novo e-mail"
-                            class="px-2 py-1 rounded border border-outline-variant text-xs bg-surface-container-lowest text-on-surface focus:border-secondary"
+                            class="px-2 py-1 rounded border border-outline-variant text-xs bg-surface-container-lowest text-on-surface focus:border-primary"
                           />
                           <button
                             type="button"
                             [disabled]="fixEmailControl.invalid"
                             (click)="submitFixEmail(inv.id)"
-                            class="text-xs text-secondary hover:underline disabled:opacity-50 whitespace-nowrap"
+                            class="text-xs text-primary hover:underline disabled:opacity-50 whitespace-nowrap"
                           >
                             Reenviar
                           </button>
@@ -127,7 +127,7 @@ function expiresLabel(inv: Invitation): string {
                         <button
                           type="button"
                           (click)="openFixEmail(inv.id)"
-                          class="text-xs text-secondary hover:underline whitespace-nowrap"
+                          class="text-xs text-primary hover:underline whitespace-nowrap"
                         >
                           Corrigir e-mail
                         </button>

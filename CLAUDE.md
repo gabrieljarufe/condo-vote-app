@@ -78,6 +78,37 @@ docker compose up --build backend
 > `docker compose up --build backend` sobe o Redis automaticamente (dependência declarada).
 > Nunca use `./mvnw spring-boot:run` para desenvolvimento — o compose garante paridade com prod.
 
+### Restart completo do stack (quando algo trava ou o Flyway diverge)
+
+Quando o backend não sobe por divergência de `flyway_schema_history` (ex: migration renomeada localmente), ou quando você quer um estado limpo do zero:
+
+```bash
+# 1. parar tudo que está usando portas (frontend pode ter ficado dangling)
+lsof -ti :4200 -sTCP:LISTEN 2>/dev/null | xargs -I{} kill {} 2>/dev/null
+
+# 2. derrubar docker compose (backend + redis) — rode em CADA worktree que tenha subido
+docker compose down
+
+# 3. resetar o banco (perde dados locais; re-aplica migrations + seed.sql + bootstrap-local)
+cd infra/supabase && supabase db reset && cd -
+
+# 4. rebuild + subir backend (sobe redis junto)
+docker compose up --build -d backend
+
+# 5. subir frontend
+cd frontend && npm ci && npm start
+```
+
+Health checks rápidos:
+```bash
+curl -s http://localhost:8080/actuator/health/liveness   # backend
+curl -sI http://localhost:4200 | head -1                 # frontend
+```
+
+> **Quando NÃO precisa `supabase db reset`:** se trocou só de branch sem renomear migration, `supabase stop && supabase start` preserva dados e basta. Reset só quando o erro for `Validate failed: Migrations have failed validation`.
+
+> **Conflito de container entre worktrees:** se duas worktrees subirem o compose, a segunda falha com `container name already in use`. Solução: `docker rm condo-vote-backend condo-vote-redis` antes de subir.
+
 ### Outros comandos úteis
 ```bash
 cd backend && ./mvnw verify                   # roda unit + integration tests (Testcontainers)
@@ -134,6 +165,42 @@ O PR `develop → main` é criado **automaticamente** pelo workflow `auto-pr.yml
 Não crie PR de feature direto para `main`.
 
 > **Quality gate em PR aberto:** workflow versionado como skill `.claude/skills/pr-quality-gates/SKILL.md` (auto-invocada quando o usuário pede análise de comments/coverage/duplicação).
+
+## Antes de planejar ou executar — varra as skills disponíveis
+
+**Sempre, antes de iniciar um plano ou task**, liste as skills disponíveis e leia o frontmatter (`name` + `description`) de cada uma para decidir quais aplicar. Skills relevantes devem ser invocadas — não trabalhe sem elas se uma delas cobre o domínio do pedido.
+
+```bash
+# Skills globais do usuário
+ls ~/.claude/skills/ 2>/dev/null && \
+  for d in ~/.claude/skills/*/; do
+    echo "--- $(basename $d) ---"
+    sed -n '/^---$/,/^---$/p' "$d/SKILL.md" 2>/dev/null | head -20
+  done
+
+# Skills do projeto
+ls .claude/skills/ 2>/dev/null && \
+  for d in .claude/skills/*/; do
+    echo "--- $(basename $d) ---"
+    sed -n '/^---$/,/^---$/p' "$d/SKILL.md" 2>/dev/null | head -20
+  done
+
+# Skills de plugins instalados
+find ~/.claude/plugins/cache -name "SKILL.md" 2>/dev/null | while read f; do
+  echo "--- $(dirname $f | xargs basename) ---"
+  sed -n '/^---$/,/^---$/p' "$f" | head -20
+done
+```
+
+Heurística de aplicação:
+
+- Pedido envolve UI/UX, componente Angular, design, acessibilidade → **`ui-ux-master`** + **`frontend-design`**
+- Pedido envolve análise de PR/CI/coverage → **`pr-quality-gates`**
+- Pedido envolve debugging não-trivial → **`systematic-debugging`**
+- Pedido envolve plano antes de código → **`writing-plans`** / **`brainstorming`**
+- Antes de declarar "pronto" → **`verification-before-completion`**
+
+Se nenhuma skill se aplica, declare isso explicitamente antes de seguir ("Varri as skills disponíveis; nenhuma cobre este pedido — vou trabalhar direto"). O custo de varrer é baixo; o custo de ignorar uma skill que existia é alto.
 
 ## Como o Claude deve raciocinar
 

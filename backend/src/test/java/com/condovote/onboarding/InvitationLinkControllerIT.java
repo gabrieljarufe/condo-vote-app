@@ -154,6 +154,63 @@ class InvitationLinkControllerIT extends AbstractIntegrationTest {
             fx.condoId(),
             fx.userId());
     assertThat(residentJoined).isEqualTo(1L);
+
+    // OWNER aceitando convite deve virar eligible_voter do apartamento — sem isso, o snapshot
+    // de elegibilidade (PollEligibleSnapshotRepository) exclui o apto e o morador não vota.
+    UUID eligibleVoter =
+        jdbc.queryForObject(
+            "SELECT eligible_voter_user_id FROM apartment WHERE id = ?", UUID.class, fx.aptId());
+    assertThat(eligibleVoter).isEqualTo(fx.userId());
+
+    Long eligibleVoterSetAudit =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM audit_event "
+                + "WHERE event_type = 'APARTMENT_ELIGIBLE_VOTER_SET'::audit_event_type "
+                + "AND entity_id = ?",
+            Long.class,
+            fx.aptId());
+    assertThat(eligibleVoterSetAudit).isEqualTo(1L);
+  }
+
+  @Test
+  void ownerJaTinhaEligibleVoter_naoSobrescreveENaoEmiteAudit() throws Exception {
+    Fixture fx = seed("preexist", "605", "111.444.777-35");
+
+    // Pré-popula eligible_voter_user_id com outro UUID (simula OWNER anterior).
+    UUID outroOwner = UuidV7.generate();
+    jdbc.update(
+        "INSERT INTO app_user (id, name, email, cpf_encrypted, is_active, consent_accepted_at,"
+            + " consent_policy_version, created_at) VALUES (?, 'Outro', 'outro-pre@example.com',"
+            + " ?, true, now(), 'v1', now())",
+        outroOwner,
+        cpfEncryptor.encryptToBytes("529.982.247-25"));
+    jdbc.update(
+        "UPDATE apartment SET eligible_voter_user_id = ? WHERE id = ?", outroOwner, fx.aptId());
+
+    String body = "{\"acceptanceConfirmed\":true}";
+
+    mvc.perform(
+            post("/api/invitations/{token}/accept-as-existing", fx.token())
+                .with(jwt().jwt(b -> b.subject(fx.userId().toString()).claim("email", fx.email())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+        .andExpect(status().isNoContent());
+
+    // Guard IS NULL preserva o valor pré-existente — não sobrescreve.
+    UUID eligibleVoterApos =
+        jdbc.queryForObject(
+            "SELECT eligible_voter_user_id FROM apartment WHERE id = ?", UUID.class, fx.aptId());
+    assertThat(eligibleVoterApos).isEqualTo(outroOwner);
+
+    // Nenhum audit APARTMENT_ELIGIBLE_VOTER_SET emitido (rowsUpdated == 0).
+    Long auditCount =
+        jdbc.queryForObject(
+            "SELECT count(*) FROM audit_event "
+                + "WHERE event_type = 'APARTMENT_ELIGIBLE_VOTER_SET'::audit_event_type "
+                + "AND entity_id = ?",
+            Long.class,
+            fx.aptId());
+    assertThat(auditCount).isEqualTo(0L);
   }
 
   @Test

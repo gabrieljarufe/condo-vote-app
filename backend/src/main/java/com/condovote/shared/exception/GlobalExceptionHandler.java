@@ -55,6 +55,12 @@ public class GlobalExceptionHandler {
         .body(ApiError.of("NOT_FOUND", ex.getMessage()));
   }
 
+  @ExceptionHandler(UnprocessableEntityException.class)
+  public ResponseEntity<ApiError> handleUnprocessable(UnprocessableEntityException ex) {
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+        .body(ApiError.of("UNPROCESSABLE_ENTITY", ex.getMessage()));
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ApiError> handleUnexpected(Exception ex) {
     log.error("Unexpected error", ex);

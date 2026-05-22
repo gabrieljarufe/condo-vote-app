@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { Router, Routes } from '@angular/router';
 import { adminGuard } from '../../core/tenant/admin.guard';
 import { tenantRestoreGuard } from '../../core/tenant/tenant-restore.guard';
 
@@ -31,6 +32,51 @@ const routes: Routes = [
     path: 'condominiums/:condoId/invitations/bulk',
     canActivate: [tenantRestoreGuard, adminGuard],
     loadComponent: () => import('../invitations/invitation-bulk/invitation-bulk-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/polls-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/new',
+    canActivate: [tenantRestoreGuard, adminGuard],
+    loadComponent: () => import('../polls/poll-create-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/poll-detail-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId/edit',
+    canActivate: [tenantRestoreGuard, adminGuard],
+    loadComponent: () => import('../polls/poll-edit-page'),
+  },
+  {
+    // Legado: /my-polls → /polls?tab=pendentes (preserva links antigos em e-mails).
+    path: 'condominiums/:condoId/my-polls',
+    canActivate: [
+      tenantRestoreGuard,
+      (route) => {
+        const router = inject(Router);
+        const condoId = route.params['condoId'];
+        return router.createUrlTree(['/app/condominiums', condoId, 'polls'], {
+          queryParams: { tab: 'pendentes' },
+        });
+      },
+    ],
+    children: [],
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId/vote',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/voting/ballot-vote-page'),
+  },
+  {
+    path: 'condominiums/:condoId/polls/:pollId/vote/review',
+    canActivate: [tenantRestoreGuard],
+    loadComponent: () => import('../polls/voting/ballot-review-page'),
   },
   {
     path: '**',

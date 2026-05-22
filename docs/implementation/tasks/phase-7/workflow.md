@@ -184,12 +184,12 @@ Estes são candidatos a `H{N}.0` identificados em pré-análise. **Não são cer
 | **H3/H4** (convite + onboarding) | Chave `CPF_ENCRYPTION_KEY` rotaciona entre staging/prod? | Se chaves diferem, convite criado em staging não valida em prod (e vice-versa) |
 | **H5** (listagem residências) | `TenantService` perde estado no F5 | `activeCondominiumId` é em memória (decisão arquitetural). Se H5 assume contexto, F5 zera tudo. Pode precisar de redirect para Home |
 | **H6** (delegação + promoção) | Bloqueio durante poll OPEN | Spec/CLAUDE.md já registra como invariante, mas backend precisa enforcement explícito (não há check hoje) |
-| **H7** (criar votação) | `poll_eligible_snapshot` write-once | Spec diz "snapshot fixo na transição SCHEDULED→OPEN". Sem trigger ou aspect garantindo, alguém pode atualizar acidentalmente |
-| **H7** | "Marcar apartamento como inadimplente" não tem história | Spec diz síndico marca, mas não há `H_inadimplência`. Vai virar tarefa de H2 ou H7.0 |
+| **H7** (criar votação) | `poll_eligible_snapshot` write-once | Spec diz "snapshot fixo na transição SCHEDULED→OPEN". Sem trigger ou aspect garantindo, alguém pode atualizar acidentalmente. **✅ Confirmado**: trigger SQL em V7 (linhas 101-111) rejeita UPDATE/DELETE. |
+| **H7** | "Marcar apartamento como inadimplente" não tem história | Spec diz síndico marca, mas não há `H_inadimplência`. Vai virar tarefa de H2 ou H7.0. **✅ Já existe**: endpoint `PATCH /apartments/{id}/delinquent` (ApartmentController.java:54) + UI (apartments-page.ts:216) entregues junto com H2. |
 | **H8** (votar) | Imutabilidade de voto | PK protege duplicata mas não revote via DELETE+INSERT. Aspect ou trigger pode ser necessário |
 | **H8** | Cálculo de quórum | Onde mora a lógica? Service? View materializada? Função PostgreSQL? Não decidido em `coding-patterns.md` |
 | **H9** (auditoria UI) | Performance da timeline | `audit_event` cresce ilimitado. Sem paginação cursor-based + índice em `(condominium_id, occurred_at DESC)`, página trava em ~10k eventos |
-| **H10** (jobs agendados) | Onde rodar `@Scheduled`? | Coolify backend é stateless single-instance? Se escalar para 2 réplicas, jobs duplicam. Precisa lock distribuído (Redis) ou ShedLock |
+| **H10** (jobs agendados) | Onde rodar `@Scheduled`? | Coolify backend é stateless single-instance? Se escalar para 2 réplicas, jobs duplicam. Precisa lock distribuído (Redis) ou ShedLock. **Decisão v1**: backend é single-instance (alinhado com `InvitationExpirerJob`, `EmailSenderJob`, Bucket4j in-memory da H4). ShedLock fica para v2 quando escalar. |
 
 **Como usar:** ao entrar em uma história, a Fase 2 (audit) deve confirmar/descartar cada item desta lista que toca aquela história. Atualize esta tabela conforme novos gaps forem descobertos.
 

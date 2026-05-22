@@ -16,16 +16,16 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
         <div>
           <h4 class="text-sm font-semibold text-on-surface mb-4">Navegação</h4>
           <ul class="space-y-3 text-sm text-on-surface-variant">
-            <li><a href="#funcionalidades" class="hover:text-secondary transition-colors">Funcionalidades</a></li>
-            <li><a href="#como-funciona" class="hover:text-secondary transition-colors">Como funciona</a></li>
-            <li><a href="#faq" class="hover:text-secondary transition-colors">FAQ</a></li>
+            <li><a href="#funcionalidades" class="hover:text-primary transition-colors">Funcionalidades</a></li>
+            <li><a href="#como-funciona" class="hover:text-primary transition-colors">Como funciona</a></li>
+            <li><a href="#faq" class="hover:text-primary transition-colors">FAQ</a></li>
           </ul>
         </div>
 
         <div>
           <h4 class="text-sm font-semibold text-on-surface mb-4">Contato</h4>
           <p class="text-sm text-on-surface-variant">
-            <a href="mailto:contato@condovote.com.br" class="hover:text-secondary transition-colors">
+            <a href="mailto:contato@condovote.com.br" class="hover:text-primary transition-colors">
               contato&#64;condovote.com.br
             </a>
           </p>

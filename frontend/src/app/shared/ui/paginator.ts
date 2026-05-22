@@ -5,11 +5,11 @@ import {
   Input,
   Output,
 } from '@angular/core';
-
-let nextPaginatorId = 0;
+import { Dropdown, DropdownOption } from './dropdown';
 
 @Component({
   selector: 'app-paginator',
+  imports: [Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav
@@ -17,17 +17,13 @@ let nextPaginatorId = 0;
       aria-label="Paginação"
     >
       <div class="flex items-center gap-2 text-sm text-on-surface-variant">
-        <label [for]="sizeSelectId" class="font-medium text-on-surface">Itens por página</label>
-        <select
-          [id]="sizeSelectId"
-          class="px-2 py-1 rounded-md border border-outline-variant bg-surface text-on-surface text-sm"
-          (change)="onSizeChange($event)"
-          aria-label="Itens por página"
-        >
-          @for (option of sizeOptions; track option) {
-            <option [value]="option" [selected]="option === size">{{ option }}</option>
-          }
-        </select>
+        <span class="font-medium text-on-surface">Itens por página</span>
+        <app-dropdown
+          [options]="sizeOptions"
+          [value]="size"
+          ariaLabel="Itens por página"
+          (valueChange)="onSizeChange($event)"
+        />
       </div>
 
       <div class="flex items-center gap-3 text-sm">
@@ -68,8 +64,12 @@ export class Paginator {
   @Output() readonly pageChange = new EventEmitter<number>();
   @Output() readonly sizeChange = new EventEmitter<number>();
 
-  protected readonly sizeOptions = [10, 20, 50, 100] as const;
-  protected readonly sizeSelectId = `pag-size-${nextPaginatorId++}`;
+  protected readonly sizeOptions: ReadonlyArray<DropdownOption<number>> = [
+    { value: 10, label: '10' },
+    { value: 20, label: '20' },
+    { value: 50, label: '50' },
+    { value: 100, label: '100' },
+  ];
 
   protected get isFirstPage(): boolean {
     return this.page <= 0;
@@ -96,8 +96,7 @@ export class Paginator {
     }
   }
 
-  protected onSizeChange(event: Event): void {
-    const value = Number((event.target as HTMLSelectElement).value);
+  protected onSizeChange(value: number): void {
     if (Number.isFinite(value) && value > 0) {
       this.sizeChange.emit(value);
     }

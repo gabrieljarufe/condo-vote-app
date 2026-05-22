@@ -52,7 +52,7 @@ export function isSafeRedirect(value: string | null): boolean {
                 type="email"
                 autocomplete="email"
                 formControlName="email"
-                class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
                 [attr.aria-invalid]="form.controls.email.invalid && form.controls.email.touched"
               />
             </app-form-field>
@@ -68,7 +68,7 @@ export function isSafeRedirect(value: string | null): boolean {
                 type="password"
                 autocomplete="current-password"
                 formControlName="password"
-                class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
                 [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched"
               />
             </app-form-field>
@@ -82,7 +82,7 @@ export function isSafeRedirect(value: string | null): boolean {
             <button
               type="submit"
               [disabled]="loading() || form.invalid"
-              class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
+              class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
             >
               @if (loading()) {
                 <app-spinner label="Entrando…" />

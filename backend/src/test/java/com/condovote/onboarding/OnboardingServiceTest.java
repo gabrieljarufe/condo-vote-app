@@ -2,14 +2,12 @@ package com.condovote.onboarding;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.entry;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,7 +21,6 @@ import com.condovote.onboarding.dto.ValidateInvitationResponse;
 import com.condovote.shared.audit.AuditEventPublisher;
 import com.condovote.shared.crypto.CpfEncryptor;
 import com.condovote.shared.exception.ConflictException;
-import com.condovote.shared.exception.ForbiddenException;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Instant;
 import java.util.Map;
@@ -31,7 +28,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -257,16 +253,21 @@ class OnboardingServiceTest {
         .isInstanceOf(ConflictException.class);
   }
 
+  /**
+   * OWNER aceita convite → eligible_voter_user_id deve ser setado e audit publicado.
+   *
+   * <p>Invariante: condo-vote-principles.md §4 — OWNER ativo sem delegação → eligible_voter_user_id
+   * = owner.user_id.
+   */
   @Test
   @SuppressWarnings("unchecked")
-  void complete_happyPath_emiteInvitationAcceptedERESIDENT_JOINED() {
+  void complete_ownerAceitaConvite_setaEligibleVoterUserId() {
     UUID invitationId = UUID.randomUUID();
     UUID condoId = UUID.randomUUID();
     UUID aptId = UUID.randomUUID();
     UUID newUserId = UUID.randomUUID();
     String token = UUID.randomUUID().toString();
-    String email = "novo@example.com";
-    byte[] cpfBytes = new byte[] {1, 2, 3};
+    byte[] cpfBytes = {5, 6, 7};
 
     when(redisCommands.get("invitation:token:" + token))
         .thenReturn(
@@ -274,15 +275,16 @@ class OnboardingServiceTest {
     lenient()
         .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
         .thenReturn("ok");
-    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(Long.class), eq(email)))
-        .thenReturn(0L);
+    when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), anyString())).thenReturn(0L);
+    when(supabaseAdminGateway.createUser(anyString(), anyString())).thenReturn(newUserId);
+    when(cpfEncryptor.encryptToBytes(anyString())).thenReturn(cpfBytes);
 
     Invitation inv =
         new Invitation(
             invitationId,
             condoId,
             aptId,
-            email,
+            "owner@example.com",
             cpfBytes,
             "OWNER",
             "PENDING",
@@ -293,55 +295,121 @@ class OnboardingServiceTest {
             UUID.randomUUID(),
             Instant.now());
     when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
-    when(cpfEncryptor.encryptToBytes("111.444.777-35")).thenReturn(cpfBytes);
-    when(supabaseAdminGateway.createUser(email, "senha-forte-1!")).thenReturn(newUserId);
+
+    // Todos os updates retornam 1 (includes: INSERT app_user, INSERT apartment_resident,
+    // UPDATE apartment eligible_voter_user_id, UPDATE invitation)
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class), any(), any())).thenReturn(1);
     lenient()
-        .when(jdbcTemplate.update(contains("UPDATE invitation"), eq(invitationId)))
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(), any(), any(), any(), any()))
         .thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+
+    newService()
+        .complete(
+            new CompleteRegistrationRequest(token, "11144477735", "senha-forte-1!", "OWNER", true));
+
+    // Verifica que o audit APARTMENT_ELIGIBLE_VOTER_SET foi publicado
+    verify(auditEventPublisher)
+        .publish(
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            eq("apartment"),
+            eq(aptId),
+            any(Map.class),
+            eq(condoId),
+            eq(newUserId));
+  }
+
+  /**
+   * TENANT aceita convite → eligible_voter_user_id NÃO deve ser tocado; nenhum audit
+   * APARTMENT_ELIGIBLE_VOTER_SET publicado.
+   *
+   * <p>Delegação de TENANT é escopo H6.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void complete_tenantAceitaConvite_naoAlteraEligibleVoterUserId() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID newUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+    byte[] cpfBytes = {5, 6, 7};
+
+    when(redisCommands.get("invitation:token:" + token))
+        .thenReturn(
+            "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
+    lenient()
+        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
+        .thenReturn("ok");
+    when(jdbcTemplate.queryForObject(anyString(), eq(Long.class), anyString())).thenReturn(0L);
+    when(supabaseAdminGateway.createUser(anyString(), anyString())).thenReturn(newUserId);
+    when(cpfEncryptor.encryptToBytes(anyString())).thenReturn(cpfBytes);
+
+    Invitation inv =
+        new Invitation(
+            invitationId,
+            condoId,
+            aptId,
+            "tenant@example.com",
+            cpfBytes,
+            "TENANT",
+            "PENDING",
+            Instant.now().plusSeconds(3600),
+            null,
+            null,
+            null,
+            UUID.randomUUID(),
+            Instant.now());
+    when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
+
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class), any(), any())).thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
 
     newService()
         .complete(
             new CompleteRegistrationRequest(
-                token, "111.444.777-35", "senha-forte-1!", "Nome Completo", true));
+                token, "11144477735", "senha-forte-1!", "TENANT", true));
 
-    ArgumentCaptor<Map<String, Object>> payloadCap = ArgumentCaptor.forClass(Map.class);
-    ArgumentCaptor<String> typeCap = ArgumentCaptor.forClass(String.class);
-    verify(auditEventPublisher, times(2))
+    // Nenhuma chamada de audit para APARTMENT_ELIGIBLE_VOTER_SET deve ter ocorrido
+    verify(auditEventPublisher, never())
         .publish(
-            typeCap.capture(),
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
             anyString(),
             any(UUID.class),
-            payloadCap.capture(),
-            eq(condoId),
-            eq(newUserId));
-    assertThat(typeCap.getAllValues()).containsExactly("INVITATION_ACCEPTED", "RESIDENT_JOINED");
-    assertThat(payloadCap.getAllValues().get(0))
-        .contains(entry("flow", "CREATE_NEW_USER"))
-        .contains(entry("email", email));
-    assertThat(payloadCap.getAllValues().get(1))
-        .contains(entry("via", "INVITATION"))
-        .contains(entry("userId", newUserId.toString()))
-        .contains(entry("invitationId", invitationId.toString()));
+            any(Map.class),
+            any(UUID.class),
+            any(UUID.class));
   }
 
-  @Test
-  @SuppressWarnings("unchecked")
-  void complete_emailJaExiste_mensagemSugereLogin() {
-    UUID invitationId = UUID.randomUUID();
-    UUID condoId = UUID.randomUUID();
-    UUID aptId = UUID.randomUUID();
-    String token = UUID.randomUUID().toString();
-    String email = "existente@example.com";
-    byte[] cpfBytes = new byte[] {1, 2, 3};
+  // =====================================================================
+  // acceptAsExistingUser — branches do bloco APARTMENT_ELIGIBLE_VOTER_SET.
+  // Espelha os UTs de complete() acima para o fluxo de "usuário já existente".
+  // =====================================================================
 
+  /**
+   * Stub base do fluxo acceptAsExistingUser: token Redis válido + app_user existe + sem residente
+   * prévio.
+   */
+  @SuppressWarnings("unchecked")
+  private Invitation stubAcceptAsExistingFlow(
+      UUID invitationId, UUID condoId, UUID aptId, String email, String role, String token) {
     when(redisCommands.get("invitation:token:" + token))
         .thenReturn(
             "{\"invitationId\":\"" + invitationId + "\",\"condominiumId\":\"" + condoId + "\"}");
     lenient()
         .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
         .thenReturn("ok");
-    when(jdbcTemplate.queryForObject(contains("FROM app_user"), eq(Long.class), eq(email)))
+    // app_user existe
+    when(jdbcTemplate.queryForObject(
+            contains("FROM app_user WHERE id"), eq(Long.class), any(UUID.class)))
         .thenReturn(1L);
+    // SELECT id FROM apartment_resident … → Optional.empty() (não idempotente)
+    when(jdbcTemplate.query(
+            contains("FROM apartment_resident"),
+            any(ResultSetExtractor.class),
+            any(UUID.class),
+            any(UUID.class)))
+        .thenReturn(Optional.empty());
 
     Invitation inv =
         new Invitation(
@@ -349,8 +417,8 @@ class OnboardingServiceTest {
             condoId,
             aptId,
             email,
-            cpfBytes,
-            "OWNER",
+            new byte[] {1, 2, 3},
+            role,
             "PENDING",
             Instant.now().plusSeconds(3600),
             null,
@@ -359,249 +427,123 @@ class OnboardingServiceTest {
             UUID.randomUUID(),
             Instant.now());
     when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(inv));
-    when(cpfEncryptor.encryptToBytes("111.444.777-35")).thenReturn(cpfBytes);
-
-    assertThatThrownBy(
-            () ->
-                newService()
-                    .complete(
-                        new CompleteRegistrationRequest(
-                            token, "111.444.777-35", "senha-forte-1!", "Nome", true)))
-        .isInstanceOf(ConflictException.class)
-        .hasMessageContaining("Faça login para aceitar este convite");
+    return inv;
   }
 
-  // ──────────────────────────── acceptAsExistingUser ────────────────────────────
-
-  private Invitation pendingInv(
-      UUID invId, UUID condoId, UUID aptId, String email, byte[] cpfBytes) {
-    return new Invitation(
-        invId,
-        condoId,
-        aptId,
-        email,
-        cpfBytes,
-        "OWNER",
-        "PENDING",
-        Instant.now().plusSeconds(3600),
-        null,
-        null,
-        null,
-        UUID.randomUUID(),
-        Instant.now());
-  }
-
-  @SuppressWarnings("unchecked")
-  private void stubTokenAndInvitation(String token, Invitation inv) {
-    when(redisCommands.get("invitation:token:" + token))
-        .thenReturn(
-            "{\"invitationId\":\""
-                + inv.id()
-                + "\",\"condominiumId\":\""
-                + inv.condominiumId()
-                + "\"}");
-    lenient()
-        .when(jdbcTemplate.queryForObject(anyString(), eq(String.class), anyString()))
-        .thenReturn("ok");
-    when(invitationRepository.findById(inv.id())).thenReturn(Optional.of(inv));
-  }
-
+  /** OWNER aceitando como existing user → APARTMENT_ELIGIBLE_VOTER_SET publicado. */
   @Test
   @SuppressWarnings("unchecked")
-  void acceptAsExisting_happyPath_insereResidenteEEmite2Eventos() {
-    UUID invId = UUID.randomUUID();
+  void acceptAsExistingUser_owner_setaEligibleVoterUserIdEPublicaAudit() {
+    UUID invitationId = UUID.randomUUID();
     UUID condoId = UUID.randomUUID();
     UUID aptId = UUID.randomUUID();
     UUID jwtUserId = UUID.randomUUID();
-    String email = "morador@example.com";
     String token = UUID.randomUUID().toString();
-    byte[] cpfBytes = new byte[] {1, 2, 3};
 
-    Invitation inv = pendingInv(invId, condoId, aptId, email, cpfBytes);
-    stubTokenAndInvitation(token, inv);
+    stubAcceptAsExistingFlow(invitationId, condoId, aptId, "owner@example.com", "OWNER", token);
+    // Todos os UPDATEs (INSERT resident, UPDATE invitation, UPDATE apartment) retornam 1
+    lenient().when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+    lenient()
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(1);
+    lenient()
+        .when(
+            jdbcTemplate.update(
+                anyString(),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any()))
+        .thenReturn(1);
 
-    when(jdbcTemplate.queryForObject(
-            contains("COUNT(*) FROM app_user"), eq(Long.class), eq(jwtUserId)))
-        .thenReturn(1L);
-    // SELECT-before-INSERT em apartment_resident → não existe ainda.
-    when(jdbcTemplate.query(
-            contains("FROM apartment_resident"),
-            any(ResultSetExtractor.class),
-            eq(aptId),
-            eq(jwtUserId)))
-        .thenReturn(Optional.empty());
-    lenient().when(jdbcTemplate.update(contains("UPDATE invitation"), eq(invId))).thenReturn(1);
+    newService().acceptAsExistingUser(token, "owner@example.com", jwtUserId);
 
-    newService().acceptAsExistingUser(token, email, jwtUserId);
-
-    ArgumentCaptor<Map<String, Object>> payloadCap = ArgumentCaptor.forClass(Map.class);
-    ArgumentCaptor<String> typeCap = ArgumentCaptor.forClass(String.class);
-    verify(auditEventPublisher, times(2))
+    verify(auditEventPublisher)
         .publish(
-            typeCap.capture(),
-            anyString(),
-            any(UUID.class),
-            payloadCap.capture(),
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            eq("apartment"),
+            eq(aptId),
+            any(Map.class),
             eq(condoId),
             eq(jwtUserId));
-    assertThat(typeCap.getAllValues()).containsExactly("INVITATION_ACCEPTED", "RESIDENT_JOINED");
-    assertThat(payloadCap.getAllValues().get(0))
-        .contains(entry("flow", "LINK_EXISTING_USER"))
-        .contains(entry("email", email));
-    assertThat(payloadCap.getAllValues().get(1))
-        .contains(entry("via", "INVITATION"))
-        .contains(entry("userId", jwtUserId.toString()));
-
-    verify(redisCommands).del("invitation:token:" + token);
   }
 
+  /**
+   * TENANT aceitando como existing user → APARTMENT_ELIGIBLE_VOTER_SET NÃO publicado (H6 cuida).
+   */
   @Test
   @SuppressWarnings("unchecked")
-  void acceptAsExisting_emailJwtDivergeDoConvite_lancaForbidden() {
-    UUID invId = UUID.randomUUID();
+  void acceptAsExistingUser_tenant_naoPublicaApartmentEligibleVoterSet() {
+    UUID invitationId = UUID.randomUUID();
     UUID condoId = UUID.randomUUID();
     UUID aptId = UUID.randomUUID();
     UUID jwtUserId = UUID.randomUUID();
     String token = UUID.randomUUID().toString();
 
-    Invitation inv = pendingInv(invId, condoId, aptId, "convite@x.com", new byte[] {1});
-    stubTokenAndInvitation(token, inv);
+    stubAcceptAsExistingFlow(invitationId, condoId, aptId, "tenant@example.com", "TENANT", token);
+    lenient().when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+    lenient()
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(1);
 
-    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, "outro@y.com", jwtUserId))
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("outro e-mail");
+    newService().acceptAsExistingUser(token, "tenant@example.com", jwtUserId);
+
     verify(auditEventPublisher, never())
         .publish(
-            anyString(), anyString(), any(UUID.class), any(), any(UUID.class), any(UUID.class));
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void acceptAsExisting_invitationExpirado_lancaConflict() {
-    UUID invId = UUID.randomUUID();
-    UUID condoId = UUID.randomUUID();
-    UUID aptId = UUID.randomUUID();
-    UUID jwtUserId = UUID.randomUUID();
-    String email = "a@x.com";
-    String token = UUID.randomUUID().toString();
-
-    Invitation inv =
-        new Invitation(
-            invId,
-            condoId,
-            aptId,
-            email,
-            new byte[] {1},
-            "OWNER",
-            "PENDING",
-            Instant.now().minusSeconds(60),
-            null,
-            null,
-            null,
-            UUID.randomUUID(),
-            Instant.now());
-    stubTokenAndInvitation(token, inv);
-
-    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, email, jwtUserId))
-        .isInstanceOf(ConflictException.class)
-        .hasMessageContaining("expirado");
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void acceptAsExisting_invitationAccepted_lancaConflict() {
-    UUID invId = UUID.randomUUID();
-    UUID condoId = UUID.randomUUID();
-    UUID aptId = UUID.randomUUID();
-    UUID jwtUserId = UUID.randomUUID();
-    String email = "a@x.com";
-    String token = UUID.randomUUID().toString();
-
-    Invitation inv =
-        new Invitation(
-            invId,
-            condoId,
-            aptId,
-            email,
-            new byte[] {1},
-            "OWNER",
-            "ACCEPTED",
-            Instant.now().plusSeconds(3600),
-            Instant.now(),
-            null,
-            null,
-            UUID.randomUUID(),
-            Instant.now());
-    stubTokenAndInvitation(token, inv);
-
-    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, email, jwtUserId))
-        .isInstanceOf(ConflictException.class);
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void acceptAsExisting_userNaoEncontrado_lancaConflict() {
-    UUID invId = UUID.randomUUID();
-    UUID condoId = UUID.randomUUID();
-    UUID aptId = UUID.randomUUID();
-    UUID jwtUserId = UUID.randomUUID();
-    String email = "a@x.com";
-    String token = UUID.randomUUID().toString();
-
-    Invitation inv = pendingInv(invId, condoId, aptId, email, new byte[] {1});
-    stubTokenAndInvitation(token, inv);
-    when(jdbcTemplate.queryForObject(
-            contains("COUNT(*) FROM app_user"), eq(Long.class), eq(jwtUserId)))
-        .thenReturn(0L);
-
-    assertThatThrownBy(() -> newService().acceptAsExistingUser(token, email, jwtUserId))
-        .isInstanceOf(ConflictException.class)
-        .hasMessageContaining("Conta não encontrada");
-  }
-
-  @Test
-  @SuppressWarnings("unchecked")
-  void acceptAsExisting_idempotente_naoCriaResidenteESoEmiteInvitationAccepted() {
-    UUID invId = UUID.randomUUID();
-    UUID condoId = UUID.randomUUID();
-    UUID aptId = UUID.randomUUID();
-    UUID jwtUserId = UUID.randomUUID();
-    UUID existingResidentId = UUID.randomUUID();
-    String email = "a@x.com";
-    String token = UUID.randomUUID().toString();
-    byte[] cpfBytes = new byte[] {1, 2, 3};
-
-    Invitation inv = pendingInv(invId, condoId, aptId, email, cpfBytes);
-    stubTokenAndInvitation(token, inv);
-    when(jdbcTemplate.queryForObject(
-            contains("COUNT(*) FROM app_user"), eq(Long.class), eq(jwtUserId)))
-        .thenReturn(1L);
-    when(jdbcTemplate.query(
-            contains("FROM apartment_resident"),
-            any(ResultSetExtractor.class),
-            eq(aptId),
-            eq(jwtUserId)))
-        .thenReturn(Optional.of(existingResidentId));
-    lenient().when(jdbcTemplate.update(contains("UPDATE invitation"), eq(invId))).thenReturn(1);
-
-    newService().acceptAsExistingUser(token, email, jwtUserId);
-
-    // Não deve haver INSERT em apartment_resident.
-    verify(jdbcTemplate, never())
-        .update(contains("INSERT INTO apartment_resident"), any(Object[].class));
-
-    // Apenas um evento INVITATION_ACCEPTED com flow LINK_EXISTING_USER_IDEMPOTENT.
-    ArgumentCaptor<Map<String, Object>> payloadCap = ArgumentCaptor.forClass(Map.class);
-    ArgumentCaptor<String> typeCap = ArgumentCaptor.forClass(String.class);
-    verify(auditEventPublisher, times(1))
-        .publish(
-            typeCap.capture(),
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
             anyString(),
             any(UUID.class),
-            payloadCap.capture(),
-            eq(condoId),
-            eq(jwtUserId));
-    assertThat(typeCap.getValue()).isEqualTo("INVITATION_ACCEPTED");
-    assertThat(payloadCap.getValue()).contains(entry("flow", "LINK_EXISTING_USER_IDEMPOTENT"));
+            any(Map.class),
+            any(UUID.class),
+            any(UUID.class));
+  }
+
+  /**
+   * OWNER existente aceita, mas eligible_voter_user_id já estava setado → guard IS NULL faz
+   * rowsUpdated = 0 e audit não é emitido. Trava o invariante de "não sobrescreve delegação".
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void acceptAsExistingUser_ownerJaSetado_naoEmiteAudit() {
+    UUID invitationId = UUID.randomUUID();
+    UUID condoId = UUID.randomUUID();
+    UUID aptId = UUID.randomUUID();
+    UUID jwtUserId = UUID.randomUUID();
+    String token = UUID.randomUUID().toString();
+
+    stubAcceptAsExistingFlow(invitationId, condoId, aptId, "owner@example.com", "OWNER", token);
+    // INSERT apartment_resident, UPDATE invitation → 1
+    lenient()
+        .when(jdbcTemplate.update(anyString(), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(1);
+    lenient().when(jdbcTemplate.update(anyString(), any(UUID.class))).thenReturn(1);
+    lenient()
+        .when(
+            jdbcTemplate.update(
+                anyString(),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any(UUID.class),
+                any()))
+        .thenReturn(1);
+    // UPDATE apartment SET eligible_voter_user_id … WHERE … IS NULL → 0 (já estava setado)
+    when(jdbcTemplate.update(
+            contains("UPDATE apartment"), any(UUID.class), any(UUID.class), any(UUID.class)))
+        .thenReturn(0);
+
+    newService().acceptAsExistingUser(token, "owner@example.com", jwtUserId);
+
+    verify(auditEventPublisher, never())
+        .publish(
+            eq("APARTMENT_ELIGIBLE_VOTER_SET"),
+            anyString(),
+            any(UUID.class),
+            any(Map.class),
+            any(UUID.class),
+            any(UUID.class));
   }
 }

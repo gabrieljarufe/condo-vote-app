@@ -14,6 +14,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
+import { Dropdown } from '../../shared/ui/dropdown';
 import { FormField } from '../../shared/ui/form-field';
 import {
   GeneratedApartment,
@@ -126,7 +127,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
 
 @Component({
   selector: 'app-apartment-bulk-generator-form',
-  imports: [ReactiveFormsModule, FormField],
+  imports: [ReactiveFormsModule, FormField, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate class="flex flex-col gap-6">
@@ -139,7 +140,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
           formControlName="block"
           maxlength="50"
           placeholder="Ex: A, Torre 1"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -156,7 +157,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             type="number"
             formControlName="floorStart"
             min="0"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
 
@@ -171,7 +172,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             type="number"
             formControlName="floorEnd"
             min="1"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
       </div>
@@ -190,7 +191,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             formControlName="unitsPerFloor"
             min="1"
             max="50"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
       </div>
@@ -202,15 +203,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
         [errors]="patternErrors"
         #patternField
       >
-        <select
-          [id]="patternField.fieldId"
-          formControlName="pattern"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-        >
-          @for (preset of presets; track preset.value) {
-            <option [value]="preset.value">{{ preset.label }}</option>
-          }
-        </select>
+        <app-dropdown [options]="presets" formControlName="pattern" />
       </app-form-field>
 
       @if (isCustomPattern()) {
@@ -225,7 +218,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             type="text"
             formControlName="customPattern"
             placeholder="Ex: {andar}{seq:02}"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
 
@@ -256,7 +249,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
           type="text"
           formControlName="skipFloorsRaw"
           placeholder="Ex: 13, 4"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -285,7 +278,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
         <button
           type="submit"
           [disabled]="form.invalid"
-          class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+          class="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
           Gerar preview
         </button>

@@ -1,8 +1,9 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { catchError, map, startWith } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
+import { PollsApiService } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
@@ -16,7 +17,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
   template: `
     <app-app-header [condominiums]="condominiums()" />
 
-    <main class="max-w-3xl mx-auto px-6 py-12">
+    <main class="max-w-4xl mx-auto px-6 py-12">
       @if (state().loading) {
         <div class="flex justify-center py-12">
           <app-spinner label="Carregando…" />
@@ -32,7 +33,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
             [routerLink]="['/app/condominiums', condoId(), 'apartments']"
             class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
           >
-            <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">apartment</span>
+            <span class="material-symbols-outlined text-primary" style="font-size: 32px;" aria-hidden="true">apartment</span>
             <div>
               <p class="font-semibold text-on-surface">Apartamentos</p>
               <p class="text-xs text-on-surface-variant mt-0.5">
@@ -46,13 +47,29 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
               [routerLink]="['/app/condominiums', condoId(), 'invitations']"
               class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
             >
-              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">mail</span>
+              <span class="material-symbols-outlined text-primary" style="font-size: 32px;" aria-hidden="true">mail</span>
               <div>
                 <p class="font-semibold text-on-surface">Convites</p>
                 <p class="text-xs text-on-surface-variant mt-0.5">Convide moradores por e-mail</p>
               </div>
             </a>
           }
+
+          <a
+            [routerLink]="['/app/condominiums', condoId(), 'polls']"
+            class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+          >
+            <span class="material-symbols-outlined text-primary" style="font-size: 32px;" aria-hidden="true">how_to_vote</span>
+            <div class="flex-1">
+              <p class="font-semibold text-on-surface">Votações</p>
+              <p class="text-xs text-on-surface-variant mt-0.5">{{ pollsSubtitle() }}</p>
+            </div>
+            @if (isResident() && pendingBallotsCount() > 0) {
+              <span class="rounded-full bg-primary text-on-primary text-xs font-bold px-2.5 py-1">
+                {{ pendingBallotsCount() }}
+              </span>
+            }
+          </a>
         </div>
 
         <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">
@@ -63,8 +80,9 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
     </main>
   `,
 })
-export default class CondominiumDashboard {
+export default class CondominiumDashboard implements OnInit {
   private readonly tenant = inject(TenantService);
+  private readonly pollsApi = inject(PollsApiService);
 
   protected readonly state = toSignal(
     inject(MeApiService).getCondominiums().pipe(
@@ -88,4 +106,34 @@ export default class CondominiumDashboard {
   protected readonly condoId = computed(() => this.tenant.activeCondominiumId() ?? '');
 
   protected readonly isAdmin = computed(() => this.tenant.activeRoles().has('ADMIN'));
+
+  protected readonly isResident = computed(() => this.tenant.isResident());
+
+  // Soma de cédulas pendentes (não de polls) — uma poll pode ter N cédulas se o
+  // morador possui múltiplos apartamentos. Carregado em ngOnInit porque depende do
+  // tenantRestoreGuard ter hidratado activeCondominiumId.
+  protected readonly pendingBallotsCount = signal(0);
+
+  ngOnInit(): void {
+    if (!this.isResident()) return;
+    const condoId = this.tenant.activeCondominiumId();
+    if (!condoId) return;
+    this.pollsApi.getMyPendingPolls(condoId).subscribe({
+      next: (polls) =>
+        this.pendingBallotsCount.set(
+          polls.reduce((acc, p) => acc + p.pendingBallotsCount, 0),
+        ),
+      error: () => this.pendingBallotsCount.set(0),
+    });
+  }
+
+  protected readonly pollsSubtitle = computed(() => {
+    if (!this.isResident()) {
+      return 'Crie e gerencie enquetes e votações';
+    }
+    const pending = this.pendingBallotsCount();
+    if (pending === 0) return 'Acompanhe e participe';
+    const suffix = pending > 1 ? 's' : '';
+    return `${pending} cédula${suffix} pendente${suffix}`;
+  });
 }

@@ -67,3 +67,65 @@ INSERT INTO auth.identities (
     now()
 )
 ON CONFLICT (provider_id, provider) DO NOTHING;
+
+-- Morador seed — credenciais: morador@local.dev / password123
+-- UUID b0b0b0b0-... é v4 fake memorizável; mesmo UUID em R__seed_dev.sql (app_user + apartment_resident)
+INSERT INTO auth.users (
+    id,
+    instance_id,
+    email,
+    encrypted_password,
+    email_confirmed_at,
+    role,
+    aud,
+    created_at,
+    updated_at,
+    raw_app_meta_data,
+    raw_user_meta_data,
+    is_super_admin,
+    confirmation_token,
+    recovery_token,
+    email_change_token_new,
+    email_change_token_current,
+    email_change,
+    phone_change,
+    phone_change_token,
+    reauthentication_token
+) VALUES (
+    'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0',
+    '00000000-0000-0000-0000-000000000000',
+    'morador@local.dev',
+    crypt('password123', gen_salt('bf')),
+    now(),
+    'authenticated',
+    'authenticated',
+    now(),
+    now(),
+    '{"provider":"email","providers":["email"]}',
+    '{}',
+    false,
+    '', '', '', '', '', '', '', ''
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO auth.identities (
+    provider_id,
+    user_id,
+    identity_data,
+    provider,
+    last_sign_in_at,
+    created_at,
+    updated_at
+) VALUES (
+    'morador@local.dev',
+    'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0',
+    jsonb_build_object(
+        'sub',   'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0',
+        'email', 'morador@local.dev'
+    ),
+    'email',
+    now(),
+    now(),
+    now()
+)
+ON CONFLICT (provider_id, provider) DO NOTHING;

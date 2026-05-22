@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, input } from '@an
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { TenantService } from '../../core/tenant/tenant.service';
+import { ThemeToggle } from '../ui/theme-toggle';
 
 /**
  * Header da área autenticada (/app).
@@ -9,7 +10,7 @@ import { TenantService } from '../../core/tenant/tenant.service';
  */
 @Component({
   selector: 'app-app-header',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header class="h-16 bg-surface-container-lowest border-b border-outline-variant">
@@ -25,20 +26,32 @@ import { TenantService } from '../../core/tenant/tenant.service';
             @if (apartmentsLink()) {
               <a
                 [routerLink]="apartmentsLink()"
-                routerLinkActive="text-secondary font-semibold"
+                routerLinkActive="text-primary font-semibold"
                 class="text-sm text-on-surface-variant hover:text-on-surface"
               >
                 Apartamentos
               </a>
             }
-            <button
-              type="button"
-              (click)="switchCondo()"
-              class="text-sm text-secondary hover:underline"
-            >
-              Trocar
-            </button>
+            @if (pollsLink()) {
+              <a
+                [routerLink]="pollsLink()"
+                routerLinkActive="text-primary font-semibold"
+                class="text-sm text-on-surface-variant hover:text-on-surface"
+              >
+                Votações
+              </a>
+            }
+            @if (canSwitchCondo()) {
+              <button
+                type="button"
+                (click)="switchCondo()"
+                class="text-sm text-primary hover:underline"
+              >
+                Trocar
+              </button>
+            }
           }
+          <app-theme-toggle />
           <button
             type="button"
             (click)="signOut()"
@@ -59,6 +72,10 @@ export class AppHeader {
 
   readonly condominiums = input<readonly { id: string; name: string }[]>([]);
 
+  protected readonly canSwitchCondo = computed(
+    () => this.tenant.isAdmin() || this.condominiums().length > 1,
+  );
+
   protected readonly activeCondoName = computed(() => {
     const id = this.tenant.activeCondominiumId();
     if (!id) return null;
@@ -68,6 +85,11 @@ export class AppHeader {
   protected readonly apartmentsLink = computed(() => {
     const condoId = this.tenant.activeCondominiumId();
     return condoId ? `/app/condominiums/${condoId}/apartments` : null;
+  });
+
+  protected readonly pollsLink = computed(() => {
+    const condoId = this.tenant.activeCondominiumId();
+    return condoId ? `/app/condominiums/${condoId}/polls` : null;
   });
 
   protected switchCondo(): void {

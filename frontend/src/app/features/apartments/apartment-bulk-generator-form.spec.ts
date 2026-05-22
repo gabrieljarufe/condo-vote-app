@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { AbstractControl, ReactiveFormsModule } from '@angular/forms';
 import { TestBed } from '@angular/core/testing';
 import { describe, it, expect, afterEach } from 'vitest';
+import { Dropdown } from '../../shared/ui/dropdown';
 import { ApartmentBulkGeneratorForm } from './apartment-bulk-generator-form';
 import { GeneratedApartment } from './generate-apartments';
 
@@ -24,7 +25,7 @@ async function setup() {
     imports: [ApartmentBulkGeneratorForm],
   })
     .overrideComponent(ApartmentBulkGeneratorForm, {
-      set: { imports: [FormFieldStub, ReactiveFormsModule] },
+      set: { imports: [FormFieldStub, ReactiveFormsModule, Dropdown] },
     })
     .compileComponents();
 

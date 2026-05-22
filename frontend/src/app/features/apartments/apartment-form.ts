@@ -26,7 +26,7 @@ import { FormField } from '../../shared/ui/form-field';
           type="text"
           formControlName="unitNumber"
           maxlength="20"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
       <app-form-field
@@ -40,7 +40,7 @@ import { FormField } from '../../shared/ui/form-field';
           type="text"
           formControlName="block"
           maxlength="50"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -59,7 +59,7 @@ import { FormField } from '../../shared/ui/form-field';
         <button
           type="submit"
           [disabled]="form.invalid"
-          class="px-4 py-2 text-sm rounded-lg bg-secondary text-white disabled:opacity-50"
+          class="px-4 py-2 text-sm rounded-lg bg-primary text-on-primary disabled:opacity-50"
         >
           Cadastrar
         </button>

@@ -37,7 +37,7 @@ import { Dialog } from '../../shared/ui/dialog';
           rows="4"
           maxlength="500"
           placeholder="Descreva o motivo do cancelamento..."
-          class="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface resize-none transition-colors focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+          class="w-full rounded-lg border border-outline-variant bg-surface px-3 py-2 text-sm text-on-surface resize-none transition-colors focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
         ></textarea>
         <div class="flex items-start justify-between gap-2 mt-0.5">
           @if (reasonControl.invalid && reasonControl.touched) {
@@ -63,7 +63,7 @@ import { Dialog } from '../../shared/ui/dialog';
         </button>
         <button
           type="button"
-          class="px-4 py-2 rounded-lg text-sm font-medium bg-error text-white hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          class="px-4 py-2 rounded-lg text-sm font-medium bg-error text-on-error hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           [disabled]="reasonControl.invalid"
           (click)="onConfirm()"
         >

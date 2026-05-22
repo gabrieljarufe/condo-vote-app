@@ -63,7 +63,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
             <button
               type="button"
               (click)="navigateToApartments()"
-              class="px-4 py-1.5 rounded-lg bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 whitespace-nowrap"
+              class="px-4 py-1.5 rounded-lg bg-primary text-on-primary text-sm font-medium hover:opacity-90 whitespace-nowrap"
             >
               Ver lista
             </button>

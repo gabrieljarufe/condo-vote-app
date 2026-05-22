@@ -56,11 +56,11 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
       <fieldset class="flex flex-col gap-1">
         <legend class="text-sm font-medium text-on-surface mb-1">Papel</legend>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" formControlName="role" value="OWNER" class="accent-secondary" />
+          <input type="radio" formControlName="role" value="OWNER" class="accent-primary" />
           <span class="text-sm text-on-surface">Proprietário</span>
         </label>
         <label class="flex items-center gap-2 cursor-pointer">
-          <input type="radio" formControlName="role" value="TENANT" class="accent-secondary" />
+          <input type="radio" formControlName="role" value="TENANT" class="accent-primary" />
           <span class="text-sm text-on-surface">Inquilino</span>
         </label>
       </fieldset>
@@ -76,7 +76,7 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
           type="email"
           formControlName="email"
           autocomplete="email"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -93,7 +93,7 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
           placeholder="000.000.000-00"
           maxlength="14"
           (input)="onCpfInput($event)"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -112,7 +112,7 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
         <button
           type="submit"
           [disabled]="form.invalid || loading()"
-          class="px-4 py-2 text-sm rounded-lg bg-secondary text-white disabled:opacity-50"
+          class="px-4 py-2 text-sm rounded-lg bg-primary text-on-primary disabled:opacity-50"
         >
           Enviar convite
         </button>

@@ -67,7 +67,7 @@ interface GridRow {
                             (input)="onCellInput(rowIndex, cellIndex, $event)"
                             (keydown)="onCellKeydown(rowIndex, cellIndex, $event)"
                             (blur)="confirmEdit(rowIndex, cellIndex)"
-                            class="w-full min-w-[4rem] px-2 py-1 rounded border bg-surface-container-lowest text-on-surface text-center focus:outline-none focus:border-secondary"
+                            class="w-full min-w-[4rem] px-2 py-1 rounded border bg-surface-container-lowest text-on-surface text-center focus:outline-none focus:border-primary"
                             [class.border-error]="isDuplicate(cell.unitNumber)"
                             [class.border-outline-variant]="!isDuplicate(cell.unitNumber)"
                             autofocus
@@ -76,7 +76,7 @@ interface GridRow {
                           <button
                             type="button"
                             (click)="startEdit(rowIndex, cellIndex)"
-                            class="w-full min-w-[4rem] px-2 py-1 rounded border text-center bg-surface-container-lowest text-on-surface hover:border-secondary transition-colors"
+                            class="w-full min-w-[4rem] px-2 py-1 rounded border text-center bg-surface-container-lowest text-on-surface hover:border-primary transition-colors"
                             [class.border-error]="isDuplicate(cell.unitNumber)"
                             [class.text-error]="isDuplicate(cell.unitNumber)"
                             [class.border-outline-variant]="!isDuplicate(cell.unitNumber)"
@@ -124,7 +124,7 @@ interface GridRow {
         <button
           type="button"
           (click)="addCustomRow()"
-          class="text-sm text-secondary hover:underline"
+          class="text-sm text-primary hover:underline"
         >
           + Adicionar andar
         </button>
@@ -160,7 +160,7 @@ interface GridRow {
           type="button"
           [disabled]="rows().length === 0 || hasDuplicates()"
           (click)="onSubmitBatch()"
-          class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+          class="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
           Criar {{ totalCount() }} apartamento{{ totalCount() === 1 ? '' : 's' }}
         </button>

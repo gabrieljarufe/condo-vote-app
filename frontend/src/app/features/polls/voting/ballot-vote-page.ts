@@ -172,7 +172,7 @@ type LoadState =
             <label dialog-body class="flex items-center gap-2 text-sm text-on-surface mb-4 cursor-pointer">
               <input
                 type="checkbox"
-                class="accent-secondary"
+                class="accent-primary"
                 [checked]="suppressFutureChecked()"
                 (change)="onSuppressChange($event)"
               />

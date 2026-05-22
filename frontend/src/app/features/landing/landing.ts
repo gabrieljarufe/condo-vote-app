@@ -51,7 +51,7 @@ interface ComingSoonItem {
             <div class="flex flex-col sm:flex-row gap-3">
               <a
                 routerLink="/login"
-                class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                class="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-primary text-on-primary font-medium hover:brightness-110 transition-all"
               >
                 Começar agora
                 <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>

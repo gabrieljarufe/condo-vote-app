@@ -42,7 +42,7 @@ const QUORUM_LABELS: Record<string, string> = {
                 <td class="py-3 pr-4 truncate">
                   <a
                     [routerLink]="['./', poll.id]"
-                    class="font-medium text-on-surface hover:text-secondary hover:underline"
+                    class="font-medium text-on-surface hover:text-primary hover:underline"
                   >
                     {{ poll.title }}
                   </a>

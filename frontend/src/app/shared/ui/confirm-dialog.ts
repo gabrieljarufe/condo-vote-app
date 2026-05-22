@@ -148,9 +148,9 @@ export class ConfirmDialog implements OnChanges {
     const base =
       'px-4 py-2 rounded-lg text-sm font-medium focus-visible:outline-none focus-visible:ring-2 disabled:opacity-40 disabled:cursor-not-allowed';
     if (this.variant === 'danger') {
-      return `${base} bg-error text-white hover:opacity-90 focus-visible:ring-error/40`;
+      return `${base} bg-error text-on-error hover:opacity-90 focus-visible:ring-error/40`;
     }
-    return `${base} bg-primary text-white hover:opacity-90 focus-visible:ring-primary/40`;
+    return `${base} bg-primary text-on-primary hover:opacity-90 focus-visible:ring-primary/40`;
   }
 
   protected onConfirm(): void {

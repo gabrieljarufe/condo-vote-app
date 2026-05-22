@@ -53,7 +53,7 @@ let nextId = 0;
         [attr.aria-expanded]="isOpen"
         [attr.aria-label]="ariaLabel"
         [disabled]="isDisabled"
-        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface text-left flex items-center justify-between gap-2 focus:outline-none focus:border-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface text-left flex items-center justify-between gap-2 focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
         (click)="toggle()"
         (keydown)="onButtonKeydown($event)"
       >

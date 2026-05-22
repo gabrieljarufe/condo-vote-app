@@ -64,7 +64,7 @@ export interface ParsedRow {
         <p class="text-sm font-medium text-on-surface">3. Faça o upload do arquivo</p>
 
         <label
-          class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-outline-variant rounded-xl px-6 py-8 cursor-pointer hover:border-secondary transition-colors"
+          class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-outline-variant rounded-xl px-6 py-8 cursor-pointer hover:border-primary transition-colors"
           [class.border-error]="parseError()"
         >
           <span class="text-2xl">📂</span>

@@ -109,7 +109,7 @@ function optionsValidator(): ValidatorFn {
           type="text"
           formControlName="title"
           maxlength="200"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -125,7 +125,7 @@ function optionsValidator(): ValidatorFn {
           formControlName="description"
           maxlength="2000"
           rows="3"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary resize-y"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary resize-y"
         ></textarea>
       </app-form-field>
 
@@ -163,7 +163,7 @@ function optionsValidator(): ValidatorFn {
             [id]="startField.fieldId"
             type="datetime-local"
             formControlName="scheduledStart"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
 
@@ -178,7 +178,7 @@ function optionsValidator(): ValidatorFn {
             [id]="endField.fieldId"
             type="datetime-local"
             formControlName="scheduledEnd"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
       </div>
@@ -195,7 +195,7 @@ function optionsValidator(): ValidatorFn {
                 [formControlName]="i"
                 [placeholder]="'Opção ' + (i + 1)"
                 maxlength="200"
-                class="flex-1 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                class="flex-1 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
               />
               <button
                 type="button"
@@ -245,7 +245,7 @@ function optionsValidator(): ValidatorFn {
         <button
           type="submit"
           [disabled]="form.invalid || submitting()"
-          class="px-5 py-2 text-sm rounded-lg bg-secondary text-white disabled:opacity-50"
+          class="px-5 py-2 text-sm rounded-lg bg-primary text-on-primary disabled:opacity-50"
         >
           {{ submitting() ? 'Enviando…' : submitLabel() }}
         </button>

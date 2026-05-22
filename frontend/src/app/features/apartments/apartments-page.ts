@@ -76,7 +76,7 @@ type PageState = 'loading' | 'error' | 'ready';
               <button
                 type="button"
                 (click)="showChooser.set(true)"
-                class="px-5 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:opacity-90"
+                class="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:opacity-90"
               >
                 + Novo apartamento
               </button>

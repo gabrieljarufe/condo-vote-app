@@ -76,7 +76,7 @@ const TAB_CONFIGS: ReadonlyArray<TabConfig> = [
         @if (isAdmin()) {
           <a
             routerLink="./new"
-            class="px-5 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:opacity-90"
+            class="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:opacity-90"
           >
             + Nova votação
           </a>

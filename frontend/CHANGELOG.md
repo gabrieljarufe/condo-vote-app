@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.2...frontend-v0.1.3) (2026-05-22)
+
+
+### Features
+
+* **ux:** centraliza spinner do login e refina alerts de cadastro em lote ([26107bf](https://github.com/gabrieljarufe/condo-vote-app/commit/26107bfb5d82a340c72667a56c9b80c13efb4b1b))
+* **ux:** centraliza spinner do login e refina alerts do cadastro em lote ([5e20090](https://github.com/gabrieljarufe/condo-vote-app/commit/5e200907ed3ab18f299183021649edf9372a2767))
+
 ## [0.1.2](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.1...frontend-v0.1.2) (2026-05-22)
 
 

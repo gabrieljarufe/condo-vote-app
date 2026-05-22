@@ -13,6 +13,7 @@ import {
 } from '../../core/api/apartments-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { AppHeader } from '../../shared/layout/app-header';
+import { SuccessPopup } from '../../shared/ui/success-popup';
 import { ApartmentBulkGeneratorForm } from './apartment-bulk-generator-form';
 import { ApartmentBulkPreviewGrid } from './apartment-bulk-preview-grid';
 import { GeneratedApartment } from './generate-apartments';
@@ -21,7 +22,13 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
 
 @Component({
   selector: 'app-apartments-bulk-page',
-  imports: [AppHeader, RouterLink, ApartmentBulkGeneratorForm, ApartmentBulkPreviewGrid],
+  imports: [
+    AppHeader,
+    RouterLink,
+    ApartmentBulkGeneratorForm,
+    ApartmentBulkPreviewGrid,
+    SuccessPopup,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -51,33 +58,15 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
 
       <!-- Step 2: Preview + submit -->
       @if (step() === 'preview') {
-        <!-- Banner de resultado -->
-        @if (batchStatus() === 'success') {
-          <div
-            class="mb-4 rounded-xl border border-green-200 bg-green-50 px-4 py-3 flex items-center justify-between gap-4"
-            role="status"
-          >
-            <p class="text-sm font-medium text-green-700">
-              {{ batchResult()?.created?.length ?? 0 }} apartamento{{ (batchResult()?.created?.length ?? 0) === 1 ? '' : 's' }} criado{{ (batchResult()?.created?.length ?? 0) === 1 ? '' : 's' }} com sucesso.
-            </p>
-            <button
-              type="button"
-              (click)="navigateToApartments()"
-              class="px-4 py-1.5 rounded-lg bg-primary text-on-primary text-sm font-medium hover:opacity-90 whitespace-nowrap"
-            >
-              Ver lista
-            </button>
-          </div>
-        }
-
+        <!-- Banner de resultado parcial (sucesso usa modal app-success-popup ao final) -->
         @if (batchStatus() === 'partial' && partialVisible()) {
           <div
-            class="mb-4 rounded-xl border border-yellow-200 bg-yellow-50 px-4 py-3 flex flex-col gap-2 transition-opacity duration-300"
+            class="mb-4 rounded-xl border border-warning-container bg-warning-container/60 px-4 py-3 flex flex-col gap-2 transition-opacity duration-300"
             [class.opacity-0]="partialFading()"
             role="status"
           >
             <div class="flex items-center justify-between gap-4">
-              <p class="text-sm font-medium text-yellow-700">
+              <p class="text-sm font-medium text-on-warning-container">
                 {{ batchResult()?.created?.length ?? 0 }} criado{{ (batchResult()?.created?.length ?? 0) === 1 ? '' : 's' }},
                 {{ batchResult()?.skipped?.length ?? 0 }} ignorado{{ (batchResult()?.skipped?.length ?? 0) === 1 ? '' : 's' }} (já existiam).
               </p>
@@ -85,7 +74,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
                 type="button"
                 (click)="dismissPartial()"
                 aria-label="Fechar"
-                class="text-yellow-500 hover:text-yellow-700 transition-colors shrink-0"
+                class="text-on-warning-container/70 hover:text-on-warning-container transition-colors shrink-0"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"/>
@@ -94,7 +83,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
               </button>
             </div>
             @if ((batchResult()?.skipped?.length ?? 0) > 0) {
-              <details class="text-xs text-yellow-700">
+              <details class="text-xs text-on-warning-container">
                 <summary class="cursor-pointer hover:underline">Ver ignorados</summary>
                 <ul class="mt-1 ml-4 list-disc">
                   @for (item of batchResult()?.skipped ?? []; track item.unitNumber) {
@@ -129,6 +118,13 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
         </section>
       }
     </main>
+
+    <app-success-popup
+      [open]="batchStatus() === 'success'"
+      [message]="successMessage()"
+      [durationMs]="1600"
+      (closed)="navigateToApartments()"
+    />
   `,
 })
 export default class ApartmentsBulkPage {
@@ -147,6 +143,13 @@ export default class ApartmentsBulkPage {
   protected readonly apartmentsLink = computed(() => {
     const id = this.tenant.activeCondominiumId();
     return id ? `/app/condominiums/${id}/apartments` : '/app';
+  });
+
+  protected readonly successMessage = computed(() => {
+    const count = this.batchResult()?.created?.length ?? 0;
+    return count === 1
+      ? '1 apartamento criado com sucesso!'
+      : `${count} apartamentos criados com sucesso!`;
   });
 
   protected onGenerate(apartments: GeneratedApartment[]): void {
@@ -170,7 +173,8 @@ export default class ApartmentsBulkPage {
         this.batchResult.set(response);
         if (response.skipped.length === 0) {
           this.batchStatus.set('success');
-          setTimeout(() => this.navigateToApartments(), 1500);
+          // Navegação acontece em (closed) do <app-success-popup>,
+          // depois da animação de saída (~280ms) — transição suave.
         } else {
           this.partialVisible.set(true);
           this.partialFading.set(false);

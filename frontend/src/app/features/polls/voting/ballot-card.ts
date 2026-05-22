@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { NgClass } from '@angular/common';
 import { PollOptionResponse } from '../../../core/api/polls-api.service';
 
 @Component({
   selector: 'app-ballot-card',
+  imports: [NgClass],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
@@ -28,10 +30,9 @@ import { PollOptionResponse } from '../../../core/api/polls-api.service';
         @for (opt of options; track opt.id) {
           <label
             class="flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors"
-            [class.bg-primary-fixed]="opt.id === selectedOptionId"
-            [class.border-primary]="opt.id === selectedOptionId"
-            [class.border-outline-variant]="opt.id !== selectedOptionId"
-            [class.hover:bg-surface-container]="!disabled && opt.id !== selectedOptionId"
+            [ngClass]="opt.id === selectedOptionId
+              ? 'bg-primary/10 border-primary'
+              : 'border-outline-variant ' + (!disabled ? 'hover:bg-surface-container' : '')"
             [class.cursor-not-allowed]="disabled"
           >
             <input

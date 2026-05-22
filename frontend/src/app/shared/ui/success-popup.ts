@@ -28,11 +28,11 @@ const EXIT_ANIMATION_MS = 280;
           role="alertdialog"
           aria-modal="true"
           aria-labelledby="success-popup-msg"
-          class="bg-surface-container rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl popup-container"
+          class="bg-surface-container rounded-2xl p-8 max-w-lg w-full mx-4 shadow-xl popup-container"
           [class.closing]="closing"
         >
-          <div class="flex flex-col items-center text-center py-4 success-pop">
-            <svg class="success-check" viewBox="0 0 52 52" width="80" height="80" aria-hidden="true">
+          <div class="flex flex-col items-center text-center py-6 success-pop">
+            <svg class="success-check" viewBox="0 0 52 52" width="120" height="120" aria-hidden="true">
               <circle class="check-circle" cx="26" cy="26" r="24" fill="none" stroke-width="3" />
               <path
                 class="check-mark"
@@ -47,7 +47,7 @@ const EXIT_ANIMATION_MS = 280;
               id="success-popup-msg"
               role="status"
               aria-live="polite"
-              class="mt-4 text-base font-medium text-on-surface success-text"
+              class="mt-6 text-xl font-medium text-on-surface success-text"
             >
               {{ message }}
             </p>

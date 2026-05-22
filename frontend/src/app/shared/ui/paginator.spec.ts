@@ -73,11 +73,14 @@ describe('Paginator', () => {
     expect(host.lastPage).toBe(2);
   });
 
-  it('alterar select emite sizeChange', async () => {
+  it('alterar dropdown emite sizeChange', async () => {
     const { fixture, host } = await setup({ size: 20, totalPages: 5 });
-    const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
-    select.value = '50';
-    select.dispatchEvent(new Event('change'));
+    const button = fixture.nativeElement.querySelector('button[role="combobox"]') as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    const options = fixture.nativeElement.querySelectorAll('[role="option"]') as NodeListOf<HTMLElement>;
+    // sizes: 10, 20, 50, 100 → index 2 = 50
+    options[2].click();
     expect(host.lastSize).toBe(50);
   });
 

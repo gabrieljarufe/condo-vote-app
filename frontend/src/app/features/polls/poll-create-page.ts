@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import { CreatePollRequest, PollsApiService } from '../../core/api/polls-api.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { PollForm } from './poll-form';
@@ -60,18 +61,21 @@ export default class PollCreatePage implements OnInit {
   }
 
   protected onSubmit(request: CreatePollRequest): void {
-    this.pollsApi.create(this.condoId, request).subscribe({
-      next: (response) => {
-        void this.router.navigate([`/app/condominiums/${this.condoId}/polls`, response.id]);
-      },
-      error: (e: unknown) => {
-        const message =
-          e instanceof HttpErrorResponse
-            ? (e.error?.message as string | undefined) ?? e.message
-            : 'Erro ao criar votação.';
-        this.pollForm?.setError(message);
-      },
-    });
+    this.pollsApi
+      .create(this.condoId, request)
+      .pipe(finalize(() => this.pollForm?.clearSubmitting()))
+      .subscribe({
+        next: (response) => {
+          void this.router.navigate([`/app/condominiums/${this.condoId}/polls`, response.id]);
+        },
+        error: (e: unknown) => {
+          const message =
+            e instanceof HttpErrorResponse
+              ? (e.error?.message as string | undefined) ?? e.message
+              : 'Erro ao criar votação.';
+          this.pollForm?.setError(message);
+        },
+      });
   }
 
   protected onCancel(): void {

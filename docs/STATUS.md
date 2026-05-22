@@ -78,6 +78,14 @@
   - ⏳ H9 — Timeline de auditoria (stretch)
   - ⏳ H10 — Jobs residuais (RetentionPruner placeholder, stretch)
 
+### Descobertas não-óbvias da iteração UX "Unificar votações" (2026-05-18)
+
+- **Cards por papel duplicavam ponto de entrada de domínio.** Morador via 2 cards no dashboard ("Minhas votações" + "Todas as votações"); admin via 1 ("Votações"). Unificação em 1 card único com subtítulo dinâmico reduziu cliques e centralizou o badge de pendências. `/my-polls` virou redirect para `/polls?tab=pendentes` para preservar links em e-mails antigos.
+- **Sigilo do voto em poll OPEN tem implicação concreta no DTO.** `MyBallotsResponse.totalVotesSoFar` é `Long` (nullable) e retorna `null` para `OPEN/SCHEDULED/DRAFT`; só revela total em `CLOSED/INVALIDATED/CANCELLED`. UI exibe apenas `eligibleCount` (cardinalidade do snapshot, estrutural, não vaza nada). Cumpre `condo-vote-principles.md §5`.
+- **Rótulo de exclusão é neutro (`EXCLUDED`) e não acusa inadimplência.** Apto pode ficar fora do snapshot por razões além de inadimplência (não tinha `eligible_voter_user_id` na abertura, delegação trocou depois, etc.). Banner UX diz "ficaram fora do conjunto elegível — geralmente por inadimplência" sem afirmar culpa.
+- **PostgreSQL rejeita `IN ()` mesmo com OR short-circuit.** Filtro multi-status no `PollService.listByCondominium` usa lista sentinela `["__NONE__"]` quando filtro está desabilitado — o `(true OR status IN (...))` curto-circuita semanticamente, mas o parser ainda precisa de bind não-vazio.
+- **Test isolation em Vitest + Angular TestBed quebra em paralelo.** Rodar `npx vitest run` paralelo gera falsos NG0303 (`Can't bind to 'routerLink'`); `--no-file-parallelism` resolve. Suite full = 305 testes verdes serialmente.
+
 ### Descobertas não-óbvias da H8 (2026-05-17)
 
 - **Spring Data JDBC com `@Id` pré-setado executa UPDATE, não INSERT.** Para entidades com UUID v7 gerado no Java, o padrão do projeto é `namedJdbc.update("INSERT INTO ...")` diretamente. `VoteRepository.insert()` segue esse padrão; `save()` não pode ser usado para `Vote`.

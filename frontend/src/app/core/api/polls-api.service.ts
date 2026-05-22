@@ -79,6 +79,20 @@ export interface MyBallotResponse {
   readonly votedOptionId: string | null;
 }
 
+export interface ExcludedApartmentResponse {
+  readonly apartmentId: string;
+  readonly apartmentLabel: string;
+  readonly reason: 'EXCLUDED';
+}
+
+export interface MyBallotsResponse {
+  readonly ballots: ReadonlyArray<MyBallotResponse>;
+  readonly excludedApartments: ReadonlyArray<ExcludedApartmentResponse>;
+  // Sigiloso enquanto a votação está aberta: null em OPEN/SCHEDULED/DRAFT.
+  readonly totalVotesSoFar: number | null;
+  readonly eligibleCount: number;
+}
+
 export interface MyPendingPollResponse {
   readonly pollId: string;
   readonly title: string;
@@ -91,10 +105,16 @@ export interface MyPendingPollResponse {
 export class PollsApiService {
   private readonly http = inject(HttpClient);
 
-  list(condoId: string, status?: string, page = 0, size = 10): Observable<Page<PollResponse>> {
+  list(
+    condoId: string,
+    status?: string | ReadonlyArray<string>,
+    page = 0,
+    size = 10,
+  ): Observable<Page<PollResponse>> {
     let params = new HttpParams().set('page', page).set('size', size);
-    if (status) {
-      params = params.set('status', status);
+    const statusParam = Array.isArray(status) ? status.join(',') : (status as string | undefined);
+    if (statusParam) {
+      params = params.set('status', statusParam);
     }
     return this.http.get<Page<PollResponse>>(
       `${environment.apiUrl}/api/condominiums/${condoId}/polls`,
@@ -166,8 +186,8 @@ export class PollsApiService {
     );
   }
 
-  getMyBallots(pollId: string): Observable<ReadonlyArray<MyBallotResponse>> {
-    return this.http.get<ReadonlyArray<MyBallotResponse>>(
+  getMyBallots(pollId: string): Observable<MyBallotsResponse> {
+    return this.http.get<MyBallotsResponse>(
       `${environment.apiUrl}/api/polls/${pollId}/my-ballots`,
     );
   }

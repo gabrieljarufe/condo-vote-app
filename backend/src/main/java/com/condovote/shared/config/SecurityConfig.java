@@ -101,7 +101,11 @@ public class SecurityConfig {
 
     config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
     config.setAllowedHeaders(
-        List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE, "X-Tenant-Id"));
+        List.of(
+            HttpHeaders.AUTHORIZATION,
+            HttpHeaders.CONTENT_TYPE,
+            "X-Tenant-Id",
+            "X-Bulk-Operation"));
     config.setAllowCredentials(false);
     config.setMaxAge(3600L);
 

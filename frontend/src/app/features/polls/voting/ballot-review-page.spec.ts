@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { provideLocationMocks } from '@angular/common/testing';
@@ -10,6 +10,7 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../../core/auth/supabase.client';
+import { SuccessPopup } from '../../../shared/ui/success-popup';
 import BallotReviewPage from './ballot-review-page';
 
 // ─── Stubs ────────────────────────────────────────────────────────────────────
@@ -24,16 +25,6 @@ const mockSupabase = {
 
 @Component({ selector: 'app-app-header', template: '', standalone: true })
 class AppHeaderStub {}
-
-@Component({ selector: 'app-ballot-card', template: '', standalone: true })
-class BallotCardStub {
-  @Input() apartmentLabel = '';
-  @Input() options: ReadonlyArray<PollOptionResponse> = [];
-  @Input() selectedOptionId: string | null = null;
-  @Input() disabled = false;
-  @Input() radioGroupName = 'ballot-options';
-  @Output() readonly optionChange = new EventEmitter<string>();
-}
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
@@ -128,7 +119,7 @@ async function setup(options: {
     ],
   })
     .overrideComponent(BallotReviewPage, {
-      set: { imports: [AppHeaderStub, BallotCardStub, RouterLink] },
+      set: { imports: [AppHeaderStub, RouterLink, SuccessPopup] },
     })
     .compileComponents();
 
@@ -191,6 +182,13 @@ describe('BallotReviewPage', () => {
   });
 
   describe('renderização com state válido', () => {
+    it('renderiza breadcrumb "Voltar à votação" no topo apontando para a vote-page', async () => {
+      const { fixture } = await setup();
+      const link = fixture.nativeElement.querySelector('main a') as HTMLAnchorElement;
+      expect(link).toBeTruthy();
+      expect(link.textContent).toContain('Voltar à votação');
+    });
+
     it('renderiza N cards quando state válido — 3 remainingBallots → 3 cards', async () => {
       const { component } = await setup();
       expect(component.rows()).toHaveLength(3);
@@ -210,20 +208,21 @@ describe('BallotReviewPage', () => {
     });
   });
 
-  describe('onOverride', () => {
-    it('troca optionId apenas do card alvo e mantém os demais', async () => {
-      const { component } = await setup();
+  describe('lista somente leitura', () => {
+    it('renderiza apto + label da opção em cada linha', async () => {
+      const { fixture } = await setup();
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.textContent).toContain('Apto 101');
+      expect(el.textContent).toContain('Apto 202');
+      expect(el.textContent).toContain('Apto 303');
+      // label 'Sim' aparece 3x (uma por linha)
+      const matches = (el.textContent ?? '').match(/Sim/g) ?? [];
+      expect(matches.length).toBeGreaterThanOrEqual(3);
+    });
 
-      component.onOverride('apt-202', 'opt-nao');
-
-      const rows = component.rows() as Array<{ ballot: MyBallotResponse; optionId: string }>;
-      const apt101 = rows.find((r) => r.ballot.apartmentId === 'apt-101')!;
-      const apt202 = rows.find((r) => r.ballot.apartmentId === 'apt-202')!;
-      const apt303 = rows.find((r) => r.ballot.apartmentId === 'apt-303')!;
-
-      expect(apt101.optionId).toBe('opt-sim');
-      expect(apt202.optionId).toBe('opt-nao');
-      expect(apt303.optionId).toBe('opt-sim');
+    it('texto explicativo cita N apartamentos', async () => {
+      const { fixture } = await setup();
+      expect(fixture.nativeElement.textContent).toContain('3 apartamentos abaixo');
     });
   });
 
@@ -239,19 +238,15 @@ describe('BallotReviewPage', () => {
       expect(api.submitVote).toHaveBeenCalledWith('poll-1', 'apt-303', 'opt-sim', true);
     });
 
-    it('sucesso total — mostra resultados todos verdes', async () => {
+    it('sucesso total — abre success popup com voteCount=N e o popup mostra o número correto', async () => {
       const { component, fixture } = await setup();
 
       component.onConfirmAll();
       fixture.detectChanges();
 
-      expect(component.hasResults()).toBe(true);
+      expect(component.showSuccessPopup()).toBe(true);
       expect(component.successCount()).toBe(3);
       expect(component.failureCount()).toBe(0);
-
-      const el: HTMLElement = fixture.nativeElement;
-      expect(el.textContent).toContain('✓ Registrado');
-      expect(el.textContent).not.toContain('Falha ao registrar');
     });
 
     it('falha parcial — mostra mistura de sucesso e erro + botão de retry', async () => {
@@ -270,6 +265,7 @@ describe('BallotReviewPage', () => {
 
       expect(component.successCount()).toBe(2);
       expect(component.failureCount()).toBe(1);
+      expect(component.showSuccessPopup()).toBe(false);
 
       const el: HTMLElement = fixture.nativeElement;
       expect(el.textContent).toContain('✓ Registrado');
@@ -337,6 +333,23 @@ describe('BallotReviewPage', () => {
 
       component.backToList();
 
+      expect(mockRouter.navigate).toHaveBeenCalledWith([
+        '/app/condominiums',
+        'condo-1',
+        'my-polls',
+      ]);
+    });
+  });
+
+  describe('onSuccessClosed', () => {
+    it('fecha popup e navega para /my-polls', async () => {
+      const { component, mockRouter } = await setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (component as any).showSuccessPopup.set(true);
+
+      component.onSuccessClosed();
+
+      expect(component.showSuccessPopup()).toBe(false);
       expect(mockRouter.navigate).toHaveBeenCalledWith([
         '/app/condominiums',
         'condo-1',

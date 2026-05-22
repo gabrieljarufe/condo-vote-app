@@ -28,15 +28,15 @@ import { PollOptionResponse } from '../../../core/api/polls-api.service';
         @for (opt of options; track opt.id) {
           <label
             class="flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors"
-            [class.bg-primary-container]="opt.id === selectedOptionId"
-            [class.border-primary]="opt.id === selectedOptionId"
+            [class.bg-secondary-fixed]="opt.id === selectedOptionId"
+            [class.border-secondary]="opt.id === selectedOptionId"
             [class.border-outline-variant]="opt.id !== selectedOptionId"
             [class.hover:bg-surface-container]="!disabled && opt.id !== selectedOptionId"
             [class.cursor-not-allowed]="disabled"
           >
             <input
               type="radio"
-              class="accent-primary"
+              class="accent-secondary"
               [name]="radioGroupName"
               [value]="opt.id"
               [checked]="opt.id === selectedOptionId"

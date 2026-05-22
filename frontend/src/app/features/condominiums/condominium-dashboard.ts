@@ -1,7 +1,7 @@
-import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
-import { catchError, map, of, startWith } from 'rxjs';
+import { catchError, map, startWith } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
 import { PollsApiService } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
@@ -55,47 +55,21 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
             </a>
           }
 
-          @if (isAdmin()) {
-            <a
-              [routerLink]="['/app/condominiums', condoId(), 'polls']"
-              class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
-            >
-              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">how_to_vote</span>
-              <div>
-                <p class="font-semibold text-on-surface">Votações</p>
-                <p class="text-xs text-on-surface-variant mt-0.5">Crie e gerencie enquetes e votações</p>
-              </div>
-            </a>
-          }
-
-          @if (isResident()) {
-            <a
-              [routerLink]="['/app/condominiums', condoId(), 'my-polls']"
-              class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
-            >
-              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">how_to_vote</span>
-              <div class="flex-1">
-                <p class="font-semibold text-on-surface">Minhas votações</p>
-                <p class="text-xs text-on-surface-variant mt-0.5">Cédulas pendentes para sua votação</p>
-              </div>
-              @if (pendingPollsCount() > 0) {
-                <span class="rounded-full bg-primary text-on-primary text-xs font-bold px-2.5 py-1">
-                  {{ pendingPollsCount() }}
-                </span>
-              }
-            </a>
-
-            <a
-              [routerLink]="['/app/condominiums', condoId(), 'polls']"
-              class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
-            >
-              <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">ballot</span>
-              <div>
-                <p class="font-semibold text-on-surface">Todas as votações</p>
-                <p class="text-xs text-on-surface-variant mt-0.5">Acompanhe o andamento e resultados</p>
-              </div>
-            </a>
-          }
+          <a
+            [routerLink]="['/app/condominiums', condoId(), 'polls']"
+            class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+          >
+            <span class="material-symbols-outlined text-secondary" style="font-size: 32px;" aria-hidden="true">how_to_vote</span>
+            <div class="flex-1">
+              <p class="font-semibold text-on-surface">Votações</p>
+              <p class="text-xs text-on-surface-variant mt-0.5">{{ pollsSubtitle() }}</p>
+            </div>
+            @if (isResident() && pendingBallotsCount() > 0) {
+              <span class="rounded-full bg-primary text-on-primary text-xs font-bold px-2.5 py-1">
+                {{ pendingBallotsCount() }}
+              </span>
+            }
+          </a>
         </div>
 
         <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">
@@ -106,7 +80,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
     </main>
   `,
 })
-export default class CondominiumDashboard {
+export default class CondominiumDashboard implements OnInit {
   private readonly tenant = inject(TenantService);
   private readonly pollsApi = inject(PollsApiService);
 
@@ -135,11 +109,31 @@ export default class CondominiumDashboard {
 
   protected readonly isResident = computed(() => this.tenant.isResident());
 
-  protected readonly pendingPollsCount = toSignal(
-    this.pollsApi.getMyPendingPolls(this.tenant.activeCondominiumId() ?? '').pipe(
-      map((polls) => polls.length),
-      catchError(() => of(0)),
-    ),
-    { initialValue: 0 },
-  );
+  // Soma de cédulas pendentes (não de polls) — uma poll pode ter N cédulas se o
+  // morador possui múltiplos apartamentos. Carregado em ngOnInit porque depende do
+  // tenantRestoreGuard ter hidratado activeCondominiumId.
+  protected readonly pendingBallotsCount = signal(0);
+
+  ngOnInit(): void {
+    if (!this.isResident()) return;
+    const condoId = this.tenant.activeCondominiumId();
+    if (!condoId) return;
+    this.pollsApi.getMyPendingPolls(condoId).subscribe({
+      next: (polls) =>
+        this.pendingBallotsCount.set(
+          polls.reduce((acc, p) => acc + p.pendingBallotsCount, 0),
+        ),
+      error: () => this.pendingBallotsCount.set(0),
+    });
+  }
+
+  protected readonly pollsSubtitle = computed(() => {
+    if (!this.isResident()) {
+      return 'Crie e gerencie enquetes e votações';
+    }
+    const pending = this.pendingBallotsCount();
+    if (pending === 0) return 'Acompanhe e participe';
+    const suffix = pending > 1 ? 's' : '';
+    return `${pending} cédula${suffix} pendente${suffix}`;
+  });
 }

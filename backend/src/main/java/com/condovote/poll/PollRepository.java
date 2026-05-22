@@ -17,13 +17,14 @@ public interface PollRepository extends CrudRepository<Poll, UUID> {
                  updated_at
           FROM poll
           WHERE condominium_id = :condoId
-            AND (:status IS NULL OR status::text = :status)
+            AND (:statusFilterDisabled OR status::text IN (:statuses))
           ORDER BY created_at DESC
           LIMIT :limit OFFSET :offset
           """)
   List<Poll> findByCondominiumIdFilteredPaged(
       @Param("condoId") UUID condoId,
-      @Param("status") String status,
+      @Param("statusFilterDisabled") boolean statusFilterDisabled,
+      @Param("statuses") List<String> statuses,
       @Param("limit") int limit,
       @Param("offset") int offset);
 
@@ -32,9 +33,12 @@ public interface PollRepository extends CrudRepository<Poll, UUID> {
           SELECT COUNT(*)
           FROM poll
           WHERE condominium_id = :condoId
-            AND (:status IS NULL OR status::text = :status)
+            AND (:statusFilterDisabled OR status::text IN (:statuses))
           """)
-  long countByCondominiumIdFiltered(@Param("condoId") UUID condoId, @Param("status") String status);
+  long countByCondominiumIdFiltered(
+      @Param("condoId") UUID condoId,
+      @Param("statusFilterDisabled") boolean statusFilterDisabled,
+      @Param("statuses") List<String> statuses);
 
   @Query(
       """

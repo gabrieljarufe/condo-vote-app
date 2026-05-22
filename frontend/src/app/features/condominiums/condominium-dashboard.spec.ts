@@ -106,24 +106,41 @@ async function setup(
 describe('CondominiumDashboard', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('tile "Minhas votações" aparece para resident', async () => {
-    const { component } = await setup(['OWNER']);
+  it('morador vê card único "Votações" com subtítulo de pendências', async () => {
+    const { fixture, component } = await setup(['OWNER'], 2);
     expect(component.isResident()).toBe(true);
+    // 2 polls × 1 cédula = 2 cédulas pendentes.
+    expect(component.pollsSubtitle()).toBe('2 cédulas pendentes');
+    const el: HTMLElement = fixture.nativeElement;
+    // Apenas 1 card "Votações" (não dois como antes)
+    const votacoesCards = Array.from(el.querySelectorAll('a')).filter((a) =>
+      a.textContent?.includes('Votações'),
+    );
+    expect(votacoesCards).toHaveLength(1);
+    // Não deve haver mais "Minhas votações" nem "Todas as votações"
+    expect(el.textContent).not.toContain('Minhas votações');
+    expect(el.textContent).not.toContain('Todas as votações');
   });
 
-  it('tile não aparece para admin-only', async () => {
+  it('admin vê card "Votações" com subtítulo de gestão', async () => {
     const { component } = await setup(['ADMIN']);
     expect(component.isResident()).toBe(false);
+    expect(component.pollsSubtitle()).toContain('gerencie');
   });
 
-  it('badge mostra contador quando > 0', async () => {
-    const { component } = await setup(['OWNER'], 3);
-    expect(component.pendingPollsCount()).toBe(3);
+  it('badge de pendências aparece apenas para resident com count > 0', async () => {
+    const { fixture: r3 } = await setup(['OWNER'], 3);
+    expect((r3.nativeElement as HTMLElement).textContent).toContain('3');
+    TestBed.resetTestingModule();
+    const { fixture: r0 } = await setup(['OWNER'], 0);
+    const el: HTMLElement = r0.nativeElement;
+    // Sem pendências, subtítulo neutro
+    expect(el.textContent).toContain('Acompanhe e participe');
   });
 
-  it('badge não aparece quando count == 0', async () => {
-    const { component } = await setup(['OWNER'], 0);
-    expect(component.pendingPollsCount()).toBe(0);
+  it('subtítulo singular "1 cédula pendente" para 1 cédula', async () => {
+    const { component } = await setup(['OWNER'], 1);
+    expect(component.pollsSubtitle()).toBe('1 cédula pendente');
   });
 
   it('isAdmin é true apenas quando tem role ADMIN', async () => {

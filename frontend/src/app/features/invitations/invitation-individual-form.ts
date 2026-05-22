@@ -2,6 +2,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   OnInit,
+  computed,
   input,
   output,
   signal,
@@ -9,6 +10,7 @@ import {
 import { AbstractControl, FormControl, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Apartment } from '../../core/api/apartments-api.service';
 import { CreateInvitationRequest, InvitationRole } from '../../core/api/invitations-api.service';
+import { Dropdown, DropdownOption } from '../../shared/ui/dropdown';
 import { FormField } from '../../shared/ui/form-field';
 
 function formatCpf(raw: string): string {
@@ -37,7 +39,7 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
 
 @Component({
   selector: 'app-invitation-individual-form',
-  imports: [ReactiveFormsModule, FormField],
+  imports: [ReactiveFormsModule, FormField, Dropdown],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <form (ngSubmit)="onSubmit()" [formGroup]="form" class="flex flex-col gap-4">
@@ -48,18 +50,7 @@ function sortedApartments(apartments: readonly Apartment[]): readonly Apartment[
         [control]="apartmentId"
         [errors]="{ required: 'Obrigatório' }"
       >
-        <select
-          [id]="aptField.fieldId"
-          formControlName="apartmentId"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
-        >
-          <option value="" disabled>Selecione…</option>
-          @for (apt of sortedApts(); track apt.id) {
-            <option [value]="apt.id">
-              {{ apt.block ? 'Bloco ' + apt.block + ' · ' + apt.unitNumber : apt.unitNumber }}
-            </option>
-          }
-        </select>
+        <app-dropdown [options]="apartmentOptions()" formControlName="apartmentId" />
       </app-form-field>
 
       <fieldset class="flex flex-col gap-1">
@@ -174,9 +165,12 @@ export class InvitationIndividualForm implements OnInit {
     this.loading.set(false);
   }
 
-  protected get sortedApts(): () => readonly Apartment[] {
-    return () => sortedApartments(this.apartments());
-  }
+  protected readonly apartmentOptions = computed<ReadonlyArray<DropdownOption<string>>>(() =>
+    sortedApartments(this.apartments()).map((apt) => ({
+      value: apt.id,
+      label: apt.block ? `Bloco ${apt.block} · ${apt.unitNumber}` : apt.unitNumber,
+    })),
+  );
 
   protected onCpfInput(event: Event): void {
     const input = event.target as HTMLInputElement;

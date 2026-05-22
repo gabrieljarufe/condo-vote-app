@@ -85,7 +85,7 @@ export function isSafeRedirect(value: string | null): boolean {
               class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
             >
               @if (loading()) {
-                <app-spinner label="Entrando…" />
+                <app-spinner size="md" [inline]="true" label="Entrando…" />
               } @else {
                 Entrar
               }

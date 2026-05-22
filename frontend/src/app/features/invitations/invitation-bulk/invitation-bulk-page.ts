@@ -28,7 +28,7 @@ type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';
   template: `
     <app-app-header />
 
-    <main class="max-w-4xl mx-auto px-6 py-12">
+    <main class="max-w-5xl mx-auto px-6 py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a

@@ -73,7 +73,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
   template: `
     <app-app-header />
 
-    <main class="max-w-3xl mx-auto px-6 py-12">
+    <main class="max-w-4xl mx-auto px-6 py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a
@@ -292,7 +292,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
               @if (d.poll.status === 'DRAFT') {
                 <button
                   type="button"
-                  class="px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-white hover:opacity-90 disabled:opacity-40"
+                  class="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:opacity-90 disabled:opacity-40"
                   [disabled]="actionPending()"
                   (click)="onPublish()"
                 >
@@ -302,7 +302,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
               @if (d.poll.status === 'SCHEDULED') {
                 <button
                   type="button"
-                  class="px-4 py-2 rounded-lg text-sm font-medium bg-secondary text-white hover:opacity-90 disabled:opacity-40"
+                  class="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:opacity-90 disabled:opacity-40"
                   [disabled]="actionPending()"
                   (click)="onOpen()"
                 >
@@ -312,7 +312,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
               @if (d.poll.status === 'OPEN') {
                 <button
                   type="button"
-                  class="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-white hover:opacity-90 disabled:opacity-40"
+                  class="px-4 py-2 rounded-lg text-sm font-medium bg-primary text-on-primary hover:opacity-90 disabled:opacity-40"
                   [disabled]="actionPending()"
                   (click)="onClose()"
                 >

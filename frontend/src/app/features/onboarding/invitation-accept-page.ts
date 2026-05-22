@@ -81,7 +81,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                         type="text"
                         autocomplete="name"
                         formControlName="fullName"
-                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
                       />
                     </app-form-field>
 
@@ -99,7 +99,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                         placeholder="000.000.000-00"
                         formControlName="cpf"
                         (input)="onCpfInput($event, form.controls.cpf)"
-                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
                       />
                     </app-form-field>
 
@@ -117,7 +117,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                         type="password"
                         autocomplete="new-password"
                         formControlName="password"
-                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
                       />
                     </app-form-field>
 
@@ -132,7 +132,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                         type="password"
                         autocomplete="new-password"
                         formControlName="confirmPassword"
-                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+                        class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
                       />
                     </app-form-field>
 
@@ -171,7 +171,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                     <button
                       type="submit"
                       [disabled]="submitting() || form.invalid"
-                      class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
+                      class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
                     >
                       @if (submitting()) {
                         <app-spinner label="Criando conta…" />
@@ -189,7 +189,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                   <button
                     type="button"
                     (click)="goToLogin()"
-                    class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                    class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium hover:brightness-110 transition-all"
                   >
                     Entrar
                   </button>
@@ -243,7 +243,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                     <button
                       type="submit"
                       [disabled]="submitting() || linkForm.invalid"
-                      class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
+                      class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium disabled:opacity-50 hover:brightness-110 transition-all"
                     >
                       @if (submitting()) {
                         <app-spinner label="Vinculando…" />
@@ -263,7 +263,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
                   <button
                     type="button"
                     (click)="signOutAndReload()"
-                    class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                    class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium hover:brightness-110 transition-all"
                   >
                     Sair
                   </button>
@@ -278,7 +278,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
               </p>
               <a
                 routerLink="/"
-                class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium hover:brightness-110 transition-all"
                 >Voltar para a home</a
               >
             }
@@ -289,7 +289,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
               </p>
               <a
                 routerLink="/"
-                class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium hover:brightness-110 transition-all"
                 >Voltar para a home</a
               >
             }
@@ -300,7 +300,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
               </p>
               <a
                 routerLink="/"
-                class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-secondary text-on-secondary font-medium hover:brightness-110 transition-all"
+                class="inline-flex items-center justify-center px-4 py-3 rounded-xl bg-primary text-on-primary font-medium hover:brightness-110 transition-all"
                 >Voltar para a home</a
               >
             }
@@ -308,7 +308,7 @@ type ValidMode = 'CREATE' | 'LOGIN_REQUIRED' | 'LINK' | 'WRONG_USER';
               <h1 class="text-2xl font-semibold text-on-surface mb-2">Convite já utilizado</h1>
               <p class="text-sm text-on-surface-variant mb-6">
                 Este convite já foi aceito. Use o link
-                <a routerLink="/login" class="text-secondary underline">entrar</a> com seu
+                <a routerLink="/login" class="text-primary underline">entrar</a> com seu
                 e-mail.
               </p>
             }

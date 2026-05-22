@@ -140,7 +140,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
           formControlName="block"
           maxlength="50"
           placeholder="Ex: A, Torre 1"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -157,7 +157,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             type="number"
             formControlName="floorStart"
             min="0"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
 
@@ -172,7 +172,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             type="number"
             formControlName="floorEnd"
             min="1"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
       </div>
@@ -191,7 +191,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             formControlName="unitsPerFloor"
             min="1"
             max="50"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
       </div>
@@ -218,7 +218,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
             type="text"
             formControlName="customPattern"
             placeholder="Ex: {andar}{seq:02}"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
 
@@ -249,7 +249,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
           type="text"
           formControlName="skipFloorsRaw"
           placeholder="Ex: 13, 4"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-secondary"
+          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -278,7 +278,7 @@ const patternRequiredWhenCustom: ValidatorFn = (control: AbstractControl) => {
         <button
           type="submit"
           [disabled]="form.invalid"
-          class="px-5 py-2.5 rounded-xl bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
+          class="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
           Gerar preview
         </button>

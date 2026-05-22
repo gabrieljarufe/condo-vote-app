@@ -39,7 +39,7 @@ import { Apartment } from '../../core/api/apartments-api.service';
                 <button
                   type="button"
                   (click)="toggleDelinquent.emit(apt)"
-                  class="text-xs text-secondary hover:underline whitespace-nowrap"
+                  class="text-xs text-primary hover:underline whitespace-nowrap"
                 >
                   {{ apt.isDelinquent ? 'Remover inadimplência' : 'Marcar inadimplente' }}
                 </button>

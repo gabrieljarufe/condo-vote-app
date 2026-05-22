@@ -1,9 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ThemeToggle } from '../ui/theme-toggle';
 
 @Component({
   selector: 'app-public-header',
-  imports: [RouterLink],
+  imports: [RouterLink, ThemeToggle],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <header
@@ -13,17 +14,20 @@ import { RouterLink } from '@angular/router';
         <a routerLink="/" class="text-xl font-bold tracking-tight text-on-surface">Condo Vote</a>
 
         <nav class="hidden md:flex items-center gap-8" aria-label="Navegação principal">
-          <a href="#funcionalidades" class="text-sm font-medium text-on-surface-variant hover:text-secondary transition-colors">Funcionalidades</a>
-          <a href="#como-funciona" class="text-sm font-medium text-on-surface-variant hover:text-secondary transition-colors">Como funciona</a>
-          <a href="#faq" class="text-sm font-medium text-on-surface-variant hover:text-secondary transition-colors">FAQ</a>
+          <a href="#funcionalidades" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Funcionalidades</a>
+          <a href="#como-funciona" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">Como funciona</a>
+          <a href="#faq" class="text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">FAQ</a>
         </nav>
 
-        <a
-          routerLink="/login"
-          class="inline-flex items-center px-5 py-2 rounded-lg bg-secondary text-on-secondary text-sm font-medium hover:brightness-110 transition-all"
-        >
-          Entrar
-        </a>
+        <div class="flex items-center gap-2">
+          <app-theme-toggle />
+          <a
+            routerLink="/login"
+            class="inline-flex items-center px-5 py-2 rounded-lg bg-primary text-on-primary text-sm font-medium hover:brightness-110 transition-all"
+          >
+            Entrar
+          </a>
+        </div>
       </div>
     </header>
   `,

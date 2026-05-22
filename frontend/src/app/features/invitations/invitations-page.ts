@@ -41,7 +41,7 @@ type PageState = 'loading' | 'error' | 'ready';
   template: `
     <app-app-header />
 
-    <main class="max-w-5xl mx-auto px-6 py-12">
+    <main class="max-w-6xl mx-auto px-6 py-12">
       <div class="flex items-center gap-3 mb-8">
         <a [routerLink]="dashboardLink()" class="text-sm text-on-surface-variant hover:text-on-surface">
           ← Início
@@ -99,14 +99,14 @@ type PageState = 'loading' | 'error' | 'ready';
               <button
                 type="button"
                 (click)="navigateToBulk()"
-                class="px-5 py-2.5 rounded-xl border border-secondary text-secondary text-sm font-medium hover:bg-secondary/5"
+                class="px-5 py-2.5 rounded-xl border border-primary text-primary text-sm font-medium hover:bg-primary/5"
               >
                 Importar planilha (XLSX)
               </button>
               <button
                 type="button"
                 (click)="showForm.set(true)"
-                class="px-5 py-2.5 rounded-xl bg-secondary text-white text-sm font-medium hover:opacity-90"
+                class="px-5 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-medium hover:opacity-90"
               >
                 + Convite individual
               </button>

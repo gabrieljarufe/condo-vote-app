@@ -64,7 +64,7 @@ type LoadState =
           @if (s.myBallots.excludedApartments.length > 0) {
             <section
               role="status"
-              class="bg-warning-container text-on-warning-container rounded-2xl border border-outline-variant p-5 mb-6"
+              class="bg-warning-container text-on-warning-container rounded-2xl border border-on-warning-container/20 p-5 mb-6"
             >
               <h2 class="text-sm font-semibold mb-2">
                 Apartamentos fora desta votação
@@ -172,7 +172,7 @@ type LoadState =
             <label dialog-body class="flex items-center gap-2 text-sm text-on-surface mb-4 cursor-pointer">
               <input
                 type="checkbox"
-                class="accent-secondary"
+                class="accent-primary"
                 [checked]="suppressFutureChecked()"
                 (change)="onSuppressChange($event)"
               />

@@ -26,7 +26,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
   template: `
     <app-app-header />
 
-    <main class="max-w-4xl mx-auto px-6 py-12">
+    <main class="max-w-5xl mx-auto px-6 py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a
@@ -63,7 +63,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
             <button
               type="button"
               (click)="navigateToApartments()"
-              class="px-4 py-1.5 rounded-lg bg-secondary text-on-secondary text-sm font-medium hover:opacity-90 whitespace-nowrap"
+              class="px-4 py-1.5 rounded-lg bg-primary text-on-primary text-sm font-medium hover:opacity-90 whitespace-nowrap"
             >
               Ver lista
             </button>

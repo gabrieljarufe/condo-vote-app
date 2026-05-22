@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR"><head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Aurora Apts - Assembleia da Fachada</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Literata:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#00522a",
+                        "secondary-container": "#ff8b6b",
+                        "on-surface": "#1e1b18",
+                        "primary-fixed-dim": "#85d89c",
+                        "surface": "#fff8f5",
+                        "surface-container": "#f5ece7",
+                        "surface-tint": "#116c3b",
+                        "on-primary-container": "#94e9ab",
+                        "on-tertiary-container": "#d9d6d1",
+                        "outline-variant": "#bfc9be",
+                        "surface-container-high": "#efe6e2",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e9e1dc",
+                        "inverse-surface": "#34302c",
+                        "surface-container-highest": "#e9e1dc",
+                        "on-secondary-fixed": "#3b0800",
+                        "primary-fixed": "#a0f5b7",
+                        "tertiary-container": "#5e5d59",
+                        "on-tertiary": "#ffffff",
+                        "secondary": "#9e4127",
+                        "surface-dim": "#e1d8d4",
+                        "primary": "#005129",
+                        "on-tertiary-fixed-variant": "#474743",
+                        "on-primary-fixed": "#00210d",
+                        "surface-container-low": "#fbf2ed",
+                        "on-primary": "#ffffff",
+                        "background": "#fff8f5",
+                        "inverse-on-surface": "#f8efea",
+                        "on-secondary-container": "#75230b",
+                        "outline": "#6f7a70",
+                        "on-surface-variant": "#3f4940",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb5a1",
+                        "inverse-primary": "#85d89c",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#1c1c19",
+                        "on-secondary-fixed-variant": "#7f2a12",
+                        "on-secondary": "#ffffff",
+                        "tertiary-fixed-dim": "#c9c6c2",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#fff8f5",
+                        "on-background": "#1e1b18",
+                        "tertiary": "#464642",
+                        "primary-container": "#0e6b3a",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#ffdbd1",
+                        "tertiary-fixed": "#e5e2dd"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "container-max": "1200px",
+                        "unit": "8px",
+                        "margin-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Be Vietnam Pro"],
+                        "headline-md": ["Literata"],
+                        "label-sm": ["Be Vietnam Pro"],
+                        "display-lg": ["Literata"],
+                        "headline-lg-mobile": ["Literata"],
+                        "headline-lg": ["Literata"],
+                        "label-md": ["Be Vietnam Pro"],
+                        "body-md": ["Be Vietnam Pro"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.04em", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .organic-shape {
+            clip-path: ellipse(80% 90% at 50% 50%);
+        }
+        body {
+            background-color: #fff8f5;
+            color: #1e1b18;
+            -webkit-font-smoothing: antialiased;
+        }
+        .custom-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+    </style>
+    <style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="font-body-md text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-margin-desktop h-16 bg-surface border-b border-outline-variant">
+    <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary" data-icon="apartment">apartment</span>
+        <h1 class="font-headline-md text-headline-md-mobile md:text-headline-md text-primary font-bold">Aurora Apts</h1>
+    </div>
+    <div class="flex items-center gap-4">
+        <button class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+            <span class="material-symbols-outlined text-on-surface-variant" data-icon="notifications">notifications</span>
+        </button>
+        <div class="w-8 h-8 rounded-full bg-secondary-fixed-dim overflow-hidden border border-outline-variant">
+            <img alt="User Profile" data-alt="A professional and warm headshot of a person with a friendly expression, set against a soft, sun-drenched architectural background. The lighting is natural and flattering, reflecting the light-mode aesthetic of a modern Brazilian residential complex. The image quality is high-resolution with a focus on a clean and approachable professional persona." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD7uiMVtldKB8UOk4MrskNeMRxpj2pPmJ3ugl5PZmuTkQUqrXSd5ozZVgoUmC9I5AEHYo8uuwG3AvEk_uaPt2C7fzDh3v6STl9anJJ8jKK3RsvdgNNxow76kJZA-TvLj1IKF1FoctauWFT2MTJHMKgXS-tg-pR71fAApnEkwKqoJuWx5PWlfezOmbSL7Sz6zljAaS6Ediyz12sH00U0mp5CxKezKMs3a2ciKpzRtEIqZyNVdHjwScSDsZgQR3JCU-_Q70o8qzK7WLzU"/>
+        </div>
+    </div>
+</header>
+<main class="pt-24 pb-32 px-4 md:px-margin-desktop max-w-container-max mx-auto">
+    <!-- Hero Section: Organic Bento Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+        <!-- Left: Main Discussion/Details -->
+        <div class="lg:col-span-7 flex flex-col gap-8">
+            <section>
+                <div class="inline-flex items-center gap-2 px-3 py-1 bg-primary-fixed text-on-primary-fixed rounded-full mb-4">
+                    <span class="material-symbols-outlined text-[18px]" data-icon="how_to_vote">how_to_vote</span>
+                    <span class="font-label-md text-label-md">Enquete Ativa</span>
+                </div>
+                <h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-2">Assembleia da Fachada</h2>
+                <p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl">
+                    Aprovação do orçamento de R$ 180.000 para reforma de fachada do bloco A. Esta intervenção é necessária para manutenção preventiva e valorização patrimonial.
+                </p>
+            </section>
+            <!-- Status & Countdown -->
+            <div class="flex flex-wrap items-center gap-6 p-6 rounded-xl bg-surface-container border border-outline-variant">
+                <div class="flex items-center gap-3">
+                    <div class="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+                    <span class="font-label-md text-label-md text-on-surface">Status: Aberta</span>
+                </div>
+                <div class="flex items-center gap-3 text-secondary">
+                    <span class="material-symbols-outlined" data-icon="schedule">schedule</span>
+                    <span class="font-label-md text-label-md font-bold">Encerra em 2d 4h</span>
+                </div>
+                <div class="ml-auto flex items-center gap-2 text-on-surface-variant">
+                    <span class="material-symbols-outlined" data-icon="group">group</span>
+                    <span class="font-label-md text-label-md">142 Condôminos votaram</span>
+                </div>
+            </div>
+            <!-- Detail Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="p-6 rounded-xl bg-surface border border-outline-variant custom-shadow hover:bg-surface-container-low transition-colors">
+                    <h3 class="font-headline-md text-headline-md mb-2">Escopo da Obra</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Pintura completa, reparo de fissuras estruturais e atualização da iluminação externa com LED.</p>
+                </div>
+                <div class="p-6 rounded-xl bg-surface border border-outline-variant custom-shadow hover:bg-surface-container-low transition-colors">
+                    <h3 class="font-headline-md text-headline-md mb-2">Impacto Financeiro</h3>
+                    <p class="font-body-md text-body-md text-on-surface-variant">Parcelamento em 10x de R$ 18.000 via fundo de reserva, sem taxas extraordinárias imediatas.</p>
+                </div>
+            </div>
+            <!-- Visual Documentation -->
+            <div class="rounded-2xl overflow-hidden relative h-64 md:h-80 group">
+                <img alt="Fachada do Bloco A" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A modern architectural facade of a residential building in Brazil, showing signs of aging but maintaining a classic modernist structure. The lighting is warm late-afternoon sun, highlighting the textures of the concrete and the lush tropical greenery surrounding the base. The style is sophisticated and architectural, emphasizing the potential for restoration and beauty in communal living spaces." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAcyNEKRdzmRiQD5VPWmOhzjBZqrXPMaKBnJSSE5tqKY_hZvKy6DvzNh2DXNiIzmvVM-C_e5nCz88xAMISMgksn1ONBKD8q6s34pB9xNMX3L1B0X2FVMmKeRxnJzEWx0DtMu-PK28nOK6MXY8FP7WBQ9TaRYdqpl1Z8A9Jvp4ZKNVSqisKCS4ZQYNIISmv6vkd8isukF8-kM_OgWLH5WcYZ1QLHHi5Q2FuTz8skqf4CZidF0pN69UYrTYsSm5GdYoQ8xyklJmPG_DWd"/>
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+                    <button class="flex items-center gap-2 bg-white/20 backdrop-blur-md text-white px-4 py-2 rounded-full font-label-md text-label-md hover:bg-white/30 transition-colors">
+                        <span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+                        Ver Orçamento Detalhado (PDF)
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Right: Voting Interface & Sidebar -->
+        <aside class="lg:col-span-5 flex flex-col gap-gutter">
+            <!-- Voting Card -->
+            <div class="p-8 rounded-3xl bg-white border border-outline-variant custom-shadow sticky top-24">
+                <h3 class="font-headline-md text-headline-md mb-6 text-center">Seu Voto</h3>
+                <div class="flex flex-col gap-4">
+                    <!-- Aprovar -->
+                    <button class="group relative w-full flex items-center justify-between p-5 rounded-full border-2 border-primary bg-surface hover:bg-primary hover:text-white transition-all duration-300">
+                        <span class="font-headline-md text-headline-md">Aprovar</span>
+                        <span class="material-symbols-outlined text-primary group-hover:text-white" data-icon="check_circle">check_circle</span>
+                    </button>
+                    <!-- Rejeitar -->
+                    <button class="group relative w-full flex items-center justify-between p-5 rounded-full border-2 border-secondary bg-surface hover:bg-secondary hover:text-white transition-all duration-300">
+                        <span class="font-headline-md text-headline-md">Rejeitar</span>
+                        <span class="material-symbols-outlined text-secondary group-hover:text-white" data-icon="cancel">cancel</span>
+                    </button>
+                    <!-- Abster -->
+                    <button class="group relative w-full flex items-center justify-between p-5 rounded-full border-2 border-outline bg-surface hover:bg-tertiary-container hover:text-white transition-all duration-300">
+                        <span class="font-headline-md text-headline-md">Abster</span>
+                        <span class="material-symbols-outlined text-outline group-hover:text-white" data-icon="do_not_disturb_on">do_not_disturb_on</span>
+                    </button>
+                </div>
+                <div class="mt-8 pt-8 border-t border-outline-variant">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="font-label-md text-label-md text-on-surface-variant">Participação Atual</span>
+                        <span class="font-label-md text-label-md text-primary font-bold">64%</span>
+                    </div>
+                    <div class="w-full bg-surface-container rounded-full h-3 overflow-hidden">
+                        <div class="bg-primary h-full rounded-full" style="width: 64%"></div>
+                    </div>
+                    <p class="mt-4 text-center text-label-sm font-label-sm text-on-surface-variant italic">
+                        O quórum mínimo para aprovação é de 50% + 1 dos proprietários.
+                    </p>
+                </div>
+            </div>
+            <!-- Discussion/Comments Preview -->
+            <div class="p-6 rounded-2xl bg-surface-container-high border border-outline-variant">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-label-md text-label-md text-on-surface">Comentários Recentes</h4>
+                    <button class="text-primary font-label-md text-label-md">Ver todos</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-tertiary-fixed shrink-0"></div>
+                        <div>
+                            <p class="text-label-md font-bold">Marcos S. <span class="text-label-sm font-normal text-on-surface-variant ml-2">Há 2h</span></p>
+                            <p class="text-body-md text-on-surface-variant">Concordo com a reforma, o Bloco A está bem desgastado.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3">
+                        <div class="w-8 h-8 rounded-full bg-secondary-fixed shrink-0"></div>
+                        <div>
+                            <p class="text-label-md font-bold">Julia T. <span class="text-label-sm font-normal text-on-surface-variant ml-2">Há 4h</span></p>
+                            <p class="text-body-md text-on-surface-variant">Poderíamos avaliar mais um orçamento antes de fechar?</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center bg-surface py-2 pb-safe border-t border-outline-variant rounded-t-xl shadow-sm md:hidden">
+    <a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+        <span class="material-symbols-outlined" data-icon="home">home</span>
+        <span class="font-label-md text-label-md">Início</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+        <span class="material-symbols-outlined" data-icon="mail">mail</span>
+        <span class="font-label-md text-label-md">Convites</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-primary bg-primary-fixed rounded-full px-4 py-1 scale-95" href="#">
+        <span class="material-symbols-outlined" data-icon="ballot" style="font-variation-settings: 'FILL' 1;">ballot</span>
+        <span class="font-label-md text-label-md">Enquetes</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-colors" href="#">
+        <span class="material-symbols-outlined" data-icon="person">person</span>
+        <span class="font-label-md text-label-md">Perfil</span>
+    </a>
+</nav>
+<!-- Floating Action Button for Desktop Support (Optional Context) -->
+<button class="hidden md:flex fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full items-center justify-center shadow-lg hover:scale-110 transition-transform">
+    <span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<script>
+    // Simple Interaction logic for voting buttons
+    const voteButtons = document.querySelectorAll('aside button.group');
+    voteButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            voteButtons.forEach(b => b.classList.remove('bg-primary', 'bg-secondary', 'bg-tertiary-container', 'text-white'));
+            // In a real app, logic for specific coloring would go here
+            btn.classList.add('opacity-80');
+            setTimeout(() => {
+                alert('Seu voto foi registrado com sucesso!');
+                btn.classList.remove('opacity-80');
+            }, 300);
+        });
+    });
+</script>
+</body></html>

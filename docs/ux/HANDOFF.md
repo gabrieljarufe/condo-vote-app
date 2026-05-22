@@ -7,7 +7,7 @@
 
 ## 1. Estado atual em uma frase
 
-Pacote **P0 (6 PRs bloqueadores)** do redesign está **mergeado** em `feat/ux-unificar-votacoes-dashboard` (HEAD `ec39b95`). Próximo passo é **PR-07 (paleta + tipografia + warm surface)** — mas **NÃO comece direto**: entre em **modo plano primeiro** para refinar identidade visual + paleta (light + dark) com o usuário (ver §5.0).
+Pacote **P0 (6 PRs)** + **PR-07 (paleta + tipografia + dark mode "Bossa Cívica")** entregues. Decisão de identidade visual está em `docs/ux/visual-identity-decision.md` (canônica); spec da direção em `docs/ux/DESIGN.md`. Próximo passo: **PR-08 — tokens de motion M3 + `prefers-reduced-motion` global** (ver §7).
 
 ---
 

@@ -1,11 +1,14 @@
 import { Component, Input } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { of } from 'rxjs';
 import { MeApiService } from '../../core/api/me-api.service';
 import { PollsApiService } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
+import { AppHeader } from '../../shared/layout/app-header';
+import { Spinner } from '../../shared/ui/spinner';
 import CondominiumDashboard from './condominium-dashboard';
 
 const mockSupabase = {
@@ -74,10 +77,7 @@ function makeTenant(roles: string[]) {
   };
 }
 
-async function setup(
-  roles: string[] = ['OWNER'],
-  pendingCount = 3,
-) {
+async function setup(roles: string[] = ['OWNER'], pendingCount = 3) {
   const meApi = makeMeApi();
   const pollsApi = makePollsApi(pendingCount);
   const tenant = makeTenant(roles);
@@ -85,6 +85,7 @@ async function setup(
   await TestBed.configureTestingModule({
     imports: [CondominiumDashboard],
     providers: [
+      provideRouter([]),
       { provide: MeApiService, useValue: meApi },
       { provide: PollsApiService, useValue: pollsApi },
       { provide: TenantService, useValue: tenant },
@@ -92,7 +93,8 @@ async function setup(
     ],
   })
     .overrideComponent(CondominiumDashboard, {
-      set: { imports: [AppHeaderStub, SpinnerStub] },
+      remove: { imports: [AppHeader, Spinner] },
+      add: { imports: [AppHeaderStub, SpinnerStub] },
     })
     .compileComponents();
 
@@ -103,53 +105,109 @@ async function setup(
   return { fixture, component, meApi, pollsApi };
 }
 
+function findCardByTitle(el: HTMLElement, title: string): HTMLAnchorElement | null {
+  return (
+    Array.from(el.querySelectorAll('a')).find((a) => {
+      const t = a.querySelector('p.font-semibold')?.textContent?.trim();
+      return t === title;
+    }) ?? null
+  );
+}
+
 describe('CondominiumDashboard', () => {
   afterEach(() => TestBed.resetTestingModule());
 
-  it('morador vê card único "Votações" com subtítulo de pendências', async () => {
-    const { fixture, component } = await setup(['OWNER'], 2);
-    expect(component.isResident()).toBe(true);
-    // 2 polls × 1 cédula = 2 cédulas pendentes.
-    expect(component.pollsSubtitle()).toBe('2 cédulas pendentes');
-    const el: HTMLElement = fixture.nativeElement;
-    // Apenas 1 card "Votações" (não dois como antes)
-    const votacoesCards = Array.from(el.querySelectorAll('a')).filter((a) =>
-      a.textContent?.includes('Votações'),
-    );
-    expect(votacoesCards).toHaveLength(1);
-    // Não deve haver mais "Minhas votações" nem "Todas as votações"
-    expect(el.textContent).not.toContain('Minhas votações');
-    expect(el.textContent).not.toContain('Todas as votações');
+  describe('layout plano (papel único)', () => {
+    it('OWNER puro: sem h2 de seção, sem card Convites, sem card Criar votação', async () => {
+      const { fixture, component } = await setup(['OWNER'], 0);
+      expect(component.isHybrid()).toBe(false);
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('section[aria-labelledby]')).toBeNull();
+      expect(findCardByTitle(el, 'Convites')).toBeNull();
+      expect(findCardByTitle(el, 'Criar votação')).toBeNull();
+      const apt = findCardByTitle(el, 'Apartamentos');
+      expect(apt?.textContent).toContain('Acesse o seu apartamento');
+      expect(el.textContent).toContain('Acompanhe e participe');
+    });
+
+    it('ADMIN puro: sem h2, com Convites, sem badge de pendentes, subtítulo de gestão em Votações', async () => {
+      const { fixture, component } = await setup(['ADMIN'], 0);
+      expect(component.isHybrid()).toBe(false);
+      const el: HTMLElement = fixture.nativeElement;
+      expect(el.querySelector('section[aria-labelledby]')).toBeNull();
+      expect(findCardByTitle(el, 'Convites')).toBeTruthy();
+      expect(findCardByTitle(el, 'Criar votação')).toBeNull();
+      const apt = findCardByTitle(el, 'Apartamentos');
+      expect(apt?.textContent).toContain('Gerencie unidades e inadimplência');
+      const polls = findCardByTitle(el, 'Votações');
+      expect(polls?.textContent).toContain('Crie e gerencie');
+      expect(polls?.querySelector('[aria-label$="de voto"]')).toBeNull();
+    });
   });
 
-  it('admin vê card "Votações" com subtítulo de gestão', async () => {
-    const { component } = await setup(['ADMIN']);
-    expect(component.isResident()).toBe(false);
-    expect(component.pollsSubtitle()).toContain('gerencie');
+  describe('layout híbrido (ADMIN + OWNER)', () => {
+    it('com 0 cédulas pendentes: ordem Gerenciar → Participar', async () => {
+      const { fixture, component } = await setup(['ADMIN', 'OWNER'], 0);
+      expect(component.isHybrid()).toBe(true);
+      const el: HTMLElement = fixture.nativeElement;
+      const sections = Array.from(el.querySelectorAll('section[aria-labelledby]'));
+      expect(sections).toHaveLength(2);
+      expect(sections[0].getAttribute('aria-labelledby')).toBe('manage-heading');
+      expect(sections[1].getAttribute('aria-labelledby')).toBe('participate-heading');
+      expect(el.querySelector('#manage-heading')?.textContent?.trim()).toBe('Gerenciar');
+      expect(el.querySelector('#participate-heading')?.textContent?.trim()).toBe('Participar');
+      expect(findCardByTitle(el, 'Criar votação')).toBeTruthy();
+      expect(findCardByTitle(el, 'Convites')).toBeTruthy();
+    });
+
+    it('com 3 cédulas pendentes: ordem invertida (Participar primeiro) e badge com aria-label', async () => {
+      const { fixture, component } = await setup(['ADMIN', 'OWNER'], 3);
+      expect(component.isHybrid()).toBe(true);
+      const el: HTMLElement = fixture.nativeElement;
+      const sections = Array.from(el.querySelectorAll('section[aria-labelledby]'));
+      expect(sections[0].getAttribute('aria-labelledby')).toBe('participate-heading');
+      expect(sections[1].getAttribute('aria-labelledby')).toBe('manage-heading');
+
+      const polls = findCardByTitle(el, 'Votações');
+      const badge = polls?.querySelector('[aria-label]');
+      expect(badge?.getAttribute('aria-label')).toBe('3 cédulas pendentes de voto');
+      expect(badge?.textContent?.trim()).toBe('3');
+      expect(polls?.textContent).toContain('3 cédulas pendentes');
+
+      const participate = sections.find(
+        (s) => s.getAttribute('aria-labelledby') === 'participate-heading',
+      ) as HTMLElement;
+      const aptParticipate = findCardByTitle(participate, 'Apartamentos');
+      expect(aptParticipate?.textContent).toContain('Acesse o seu apartamento');
+
+      const manage = sections.find(
+        (s) => s.getAttribute('aria-labelledby') === 'manage-heading',
+      ) as HTMLElement;
+      const aptManage = findCardByTitle(manage, 'Apartamentos');
+      expect(aptManage?.textContent).toContain('Gerencie unidades e inadimplência');
+    });
+
+    it('aria-label singular para 1 cédula', async () => {
+      const { fixture } = await setup(['ADMIN', 'OWNER'], 1);
+      const el: HTMLElement = fixture.nativeElement;
+      const polls = findCardByTitle(el, 'Votações');
+      const badge = polls?.querySelector('[aria-label]');
+      expect(badge?.getAttribute('aria-label')).toBe('1 cédula pendente de voto');
+    });
   });
 
-  it('badge de pendências aparece apenas para resident com count > 0', async () => {
-    const { fixture: r3 } = await setup(['OWNER'], 3);
-    expect((r3.nativeElement as HTMLElement).textContent).toContain('3');
-    TestBed.resetTestingModule();
-    const { fixture: r0 } = await setup(['OWNER'], 0);
-    const el: HTMLElement = r0.nativeElement;
-    // Sem pendências, subtítulo neutro
-    expect(el.textContent).toContain('Acompanhe e participe');
-  });
+  describe('regressão de comportamento', () => {
+    it('condoId vem do tenant service', async () => {
+      const { component } = await setup(['OWNER']);
+      expect(component.condoId()).toBe('condo-1');
+    });
 
-  it('subtítulo singular "1 cédula pendente" para 1 cédula', async () => {
-    const { component } = await setup(['OWNER'], 1);
-    expect(component.pollsSubtitle()).toBe('1 cédula pendente');
-  });
-
-  it('isAdmin é true apenas quando tem role ADMIN', async () => {
-    const { component } = await setup(['ADMIN']);
-    expect(component.isAdmin()).toBe(true);
-  });
-
-  it('condoId vem do tenant service', async () => {
-    const { component } = await setup(['OWNER']);
-    expect(component.condoId()).toBe('condo-1');
+    it('heading order: h1 do nome do condo precede qualquer h2', async () => {
+      const { fixture } = await setup(['ADMIN', 'OWNER'], 0);
+      const el: HTMLElement = fixture.nativeElement;
+      const headings = Array.from(el.querySelectorAll('h1, h2'));
+      expect(headings[0].tagName).toBe('H1');
+      expect(headings.slice(1).every((h) => h.tagName === 'H2')).toBe(true);
+    });
   });
 });

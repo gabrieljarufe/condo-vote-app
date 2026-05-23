@@ -63,14 +63,37 @@ export function isSafeRedirect(value: string | null): boolean {
               [errors]="passwordErrors"
               #passwordField
             >
-              <input
-                [id]="passwordField.fieldId"
-                type="password"
-                autocomplete="current-password"
-                formControlName="password"
-                class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
-                [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched"
-              />
+              <div class="relative">
+                <input
+                  [id]="passwordField.fieldId"
+                  [type]="showPassword() ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  formControlName="password"
+                  class="w-full pl-4 pr-11 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
+                  [attr.aria-invalid]="form.controls.password.invalid && form.controls.password.touched"
+                />
+                <button
+                  type="button"
+                  (click)="toggleShowPassword()"
+                  [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+                  [attr.aria-pressed]="showPassword()"
+                  class="absolute right-1 top-1/2 -translate-y-1/2 p-2 rounded-md text-on-surface-variant hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  @if (showPassword()) {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/>
+                      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/>
+                      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/>
+                      <line x1="2" y1="2" x2="22" y2="22"/>
+                    </svg>
+                  } @else {
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  }
+                </button>
+              </div>
             </app-form-field>
 
             @if (errorMessage()) {
@@ -122,6 +145,11 @@ export default class Login implements OnInit {
 
   protected readonly loading = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly showPassword = signal(false);
+
+  protected toggleShowPassword(): void {
+    this.showPassword.update((v) => !v);
+  }
 
   protected readonly emailErrors = {
     required: 'E-mail é obrigatório',

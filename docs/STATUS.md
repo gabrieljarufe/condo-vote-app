@@ -78,6 +78,13 @@
   - ⏳ H9 — Timeline de auditoria (stretch)
   - ⏳ H10 — Jobs residuais (RetentionPruner placeholder, stretch)
 
+### Descobertas não-óbvias da iteração UX "Síndico-morador híbrido" (2026-05-23)
+
+- **Modelo já suportava coexistência; só faltava UX.** Backend retorna `roles: UserRoleInCondo[]` por condomínio em `/api/me/condominiums` desde Fase 3, e `TenantService.activeRoles` é `Set`. Adicionar "modo de papel" no login teria contradito o modelo. Decisão: **single-view com agrupamento por intenção** (Gerenciar / Participar) somente no caso híbrido; layout plano para papel único. Detalhes em `docs/features/hybrid-role-ux.md`.
+- **Combinar dois CTAs num só card viola Hick's Law.** Plano inicial fazia o card "Votações" ter subtítulo "Crie, gerencie e participe" no caso híbrido. Refinado: card "Votações" em *Participar* (semântica morador) + card novo "Criar votação" em *Gerenciar* (CTA admin). Cada card com objetivo único.
+- **Ordem das seções por urgência (Goal-Gradient).** Quando `pendingBallotsCount > 0`, "Participar" sobe acima de "Gerenciar". Sem pendências, "Gerenciar" primeiro — identidade primária do síndico-morador é administrativa.
+- **Limitação Vitest+JIT confirmada (segunda ocorrência).** Signal inputs (`input()`) não aceitam `setInput` nem binding via template-host neste setup — gera `NG0303`. Workaround usado em `app-header.spec.ts`: testar os computeds (`roleChipLabel`, `roleChipAriaLabel`) direto na instância, sem DOM. Renderização do chip é template trivial (`{{ label }}` + `[attr.aria-label]`). Já visto em H8 (`BallotCard` migrou para `@Input` decorators) e H7 (`poll-cancel-dialog`).
+
 ### Descobertas não-óbvias da iteração UX "Unificar votações" (2026-05-18)
 
 - **Cards por papel duplicavam ponto de entrada de domínio.** Morador via 2 cards no dashboard ("Minhas votações" + "Todas as votações"); admin via 1 ("Votações"). Unificação em 1 card único com subtítulo dinâmico reduziu cliques e centralizou o badge de pendências. `/my-polls` virou redirect para `/polls?tab=pendentes` para preservar links em e-mails antigos.

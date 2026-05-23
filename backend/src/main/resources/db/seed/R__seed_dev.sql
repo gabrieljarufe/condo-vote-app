@@ -129,3 +129,25 @@ VALUES (
 UPDATE apartment
 SET eligible_voter_user_id = 'b0b0b0b0-b0b0-4b0b-8b0b-b0b0b0b0b0b0'
 WHERE id = '019dd4f8-57fa-77b1-ace2-c9fabb000104';
+
+-- ============================================================
+-- 6. Cenário híbrido — síndico que também é proprietário
+--    sindico@local.dev (já admin de ambos condos) vira OWNER de A101 no Condo 1.
+--    Permite smoke test da UX híbrida (ver docs/features/hybrid-role-ux.md):
+--    chip "Síndico · Proprietário" no header + dashboard com seções
+--    "Gerenciar" / "Participar".
+-- ============================================================
+INSERT INTO apartment_resident (id, condominium_id, apartment_id, user_id, role, joined_at)
+VALUES (
+    '019dd4f8-57fa-77b1-ace2-c9fbbb000101',
+    '019dd4f8-57fa-77b1-ace2-c9f6a3d9811e',
+    '019dd4f8-57fa-77b1-ace2-c9f78d6fc50c',
+    'faa86997-f34c-42c4-98b4-2dac8a40fa34',
+    'OWNER',
+    now()
+) ON CONFLICT (id) DO NOTHING;
+
+UPDATE apartment
+SET eligible_voter_user_id = 'faa86997-f34c-42c4-98b4-2dac8a40fa34'
+WHERE id = '019dd4f8-57fa-77b1-ace2-c9f78d6fc50c'
+  AND eligible_voter_user_id IS NULL;

@@ -1,13 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { UserRoleInCondo } from '../../core/api/me-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { ThemeToggle } from '../ui/theme-toggle';
 
-/**
- * Header da área autenticada (/app).
- * Exibe o condomínio ativo (se houver) e ações de trocar / sair.
- */
+const ROLE_LABELS_PT_BR: Record<UserRoleInCondo, string> = {
+  ADMIN: 'Síndico',
+  OWNER: 'Proprietário',
+  TENANT: 'Inquilino',
+};
+
 @Component({
   selector: 'app-app-header',
   imports: [RouterLink, RouterLinkActive, ThemeToggle],
@@ -23,6 +26,15 @@ import { ThemeToggle } from '../ui/theme-toggle';
               <span class="material-symbols-outlined text-base" aria-hidden="true">apartment</span>
               {{ condoName }}
             </span>
+            @if (roleChipLabel(); as label) {
+              <span
+                class="hidden sm:inline-flex items-center rounded-full bg-secondary-container px-2.5 py-0.5 text-xs font-medium text-on-secondary-container"
+                role="status"
+                [attr.aria-label]="roleChipAriaLabel()"
+              >
+                {{ label }}
+              </span>
+            }
             @if (apartmentsLink()) {
               <a
                 [routerLink]="apartmentsLink()"
@@ -90,6 +102,30 @@ export class AppHeader {
   protected readonly pollsLink = computed(() => {
     const condoId = this.tenant.activeCondominiumId();
     return condoId ? `/app/condominiums/${condoId}/polls` : null;
+  });
+
+  // Ordenação canônica ADMIN → OWNER → TENANT para gerar labels estáveis
+  // (ex.: "Síndico · Proprietário", nunca "Proprietário · Síndico").
+  protected readonly orderedRoles = computed<readonly UserRoleInCondo[]>(() => {
+    const roles = this.tenant.activeRoles();
+    return (['ADMIN', 'OWNER', 'TENANT'] as const).filter((r) => roles.has(r));
+  });
+
+  protected readonly roleChipLabel = computed<string | null>(() => {
+    const ordered = this.orderedRoles();
+    if (ordered.length === 0) return null;
+    return ordered.map((r) => ROLE_LABELS_PT_BR[r]).join(' · ');
+  });
+
+  protected readonly roleChipAriaLabel = computed<string | null>(() => {
+    const ordered = this.orderedRoles();
+    if (ordered.length === 0) return null;
+    const names = ordered.map((r) => ROLE_LABELS_PT_BR[r]);
+    const joined =
+      names.length === 1
+        ? names[0]
+        : `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
+    return `Seus papéis neste condomínio: ${joined}`;
   });
 
   protected switchCondo(): void {

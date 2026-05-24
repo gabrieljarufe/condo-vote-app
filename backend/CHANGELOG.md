@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.8](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.7...backend-v0.0.8) (2026-05-24)
+
+
+### Features
+
+* **ux:** UX do síndico-morador (chip de papel + dashboard agrupado) ([f0a828e](https://github.com/gabrieljarufe/condo-vote-app/commit/f0a828e372aac0b03041d4f063281d2904c95731))
+* **ux:** UX do síndico-morador (chip de papel + dashboard agrupado) ([390b82f](https://github.com/gabrieljarufe/condo-vote-app/commit/390b82fe05740ebec873c709f59d7143cacc141a))
+
 ## [0.0.7](https://github.com/gabrieljarufe/condo-vote-app/compare/backend-v0.0.6...backend-v0.0.7) (2026-05-22)
 
 

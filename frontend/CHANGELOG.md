@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.4](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.3...frontend-v0.1.4) (2026-05-24)
+
+
+### Features
+
+* **ux:** adiciona botão mostrar/ocultar senha no login ([47e3383](https://github.com/gabrieljarufe/condo-vote-app/commit/47e3383ad69b533e25b5f8f657294b00ad22480a))
+* **ux:** botão mostrar/ocultar senha no login ([aeaba9d](https://github.com/gabrieljarufe/condo-vote-app/commit/aeaba9d90baecb4de6c8d9cc81e916bf6f6cdaa7))
+* **ux:** UX do síndico-morador (chip de papel + dashboard agrupado) ([f0a828e](https://github.com/gabrieljarufe/condo-vote-app/commit/f0a828e372aac0b03041d4f063281d2904c95731))
+* **ux:** UX do síndico-morador (chip de papel + dashboard agrupado) ([390b82f](https://github.com/gabrieljarufe/condo-vote-app/commit/390b82fe05740ebec873c709f59d7143cacc141a))
+
 ## [0.1.3](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.2...frontend-v0.1.3) (2026-05-22)
 
 

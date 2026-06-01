@@ -77,7 +77,7 @@ export function toLocalDatetimeInput(iso: string): string {
             #pollForm
             [initialValue]="initialValue()"
             submitLabel="Salvar alterações"
-            (submit)="onSubmit($event)"
+            (submitted)="onSubmit($event)"
             (cancel)="onCancel()"
           />
         </section>

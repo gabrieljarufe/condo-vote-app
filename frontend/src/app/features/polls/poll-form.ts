@@ -256,7 +256,7 @@ function optionsValidator(): ValidatorFn {
 export class PollForm implements OnInit, OnDestroy {
   readonly initialValue = input<PollFormValue | null>(null);
   readonly submitLabel = input<string>('Criar rascunho');
-  readonly submit$ = output<CreatePollRequest>({ alias: 'submit' });
+  readonly submit$ = output<CreatePollRequest>({ alias: 'submitted' });
   readonly cancel = output<void>();
 
   protected readonly errorMessage = signal<string | null>(null);

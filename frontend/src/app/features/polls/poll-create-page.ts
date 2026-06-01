@@ -12,10 +12,12 @@ import { finalize } from 'rxjs';
 import { CreatePollRequest, PollsApiService } from '../../core/api/polls-api.service';
 import { AppHeader } from '../../shared/layout/app-header';
 import { PollForm } from './poll-form';
+import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
+import { SuccessPopup } from '../../shared/ui/success-popup';
 
 @Component({
   selector: 'app-poll-create-page',
-  imports: [AppHeader, RouterLink, PollForm],
+  imports: [AppHeader, RouterLink, PollForm, ConfirmDialog, SuccessPopup],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-app-header />
@@ -37,11 +39,27 @@ import { PollForm } from './poll-form';
         <app-poll-form
           #pollForm
           submitLabel="Criar rascunho"
-          (submit)="onSubmit($event)"
+          (submitted)="onSubmit($event)"
           (cancel)="onCancel()"
         />
       </section>
     </main>
+
+    <app-confirm-dialog
+      [open]="publishDialogOpen()"
+      title="Publicar esta votação agora?"
+      body="Ao publicar, a votação fica agendada para o período definido e será visível para os moradores no horário de início. Você ainda pode cancelá-la antes da abertura."
+      confirmLabel="Publicar agora"
+      cancelLabel="Manter como rascunho"
+      (confirmed)="onPublishConfirm()"
+      (cancelled)="onPublishCancel()"
+    />
+
+    <app-success-popup
+      [open]="showSuccessPopup()"
+      message="Votação publicada com sucesso!"
+      (closed)="onSuccessPopupClosed()"
+    />
   `,
 })
 export default class PollCreatePage implements OnInit {
@@ -52,6 +70,10 @@ export default class PollCreatePage implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly pollsLink = signal('');
+  protected readonly publishDialogOpen = signal(false);
+  protected readonly publishing = signal(false);
+  protected readonly showSuccessPopup = signal(false);
+  private createdPollId: string | null = null;
 
   private condoId = '';
 
@@ -66,7 +88,8 @@ export default class PollCreatePage implements OnInit {
       .pipe(finalize(() => this.pollForm?.clearSubmitting()))
       .subscribe({
         next: (response) => {
-          void this.router.navigate([`/app/condominiums/${this.condoId}/polls`, response.id]);
+          this.createdPollId = response.id;
+          this.publishDialogOpen.set(true);
         },
         error: (e: unknown) => {
           const message =
@@ -76,6 +99,45 @@ export default class PollCreatePage implements OnInit {
           this.pollForm?.setError(message);
         },
       });
+  }
+
+  protected onPublishConfirm(): void {
+    const id = this.createdPollId;
+    if (id === null || this.publishing()) return;
+    this.publishing.set(true);
+    this.pollsApi
+      .publish(id)
+      .pipe(finalize(() => this.publishing.set(false)))
+      .subscribe({
+        next: () => {
+          // Fecha o confirm e dispara o SuccessPopup; a navegação só acontece
+          // depois que o popup fechar (handler onSuccessPopupClosed).
+          this.publishDialogOpen.set(false);
+          this.showSuccessPopup.set(true);
+        },
+        error: () => {
+          // Poll foi criado; só a publicação falhou. Navegamos direto para o
+          // detail (sem popup de sucesso) onde o síndico pode revisar datas e
+          // tentar publicar manualmente.
+          this.publishDialogOpen.set(false);
+          this.goToDetail(id);
+        },
+      });
+  }
+
+  protected onPublishCancel(): void {
+    const id = this.createdPollId;
+    this.publishDialogOpen.set(false);
+    if (id !== null) this.goToDetail(id);
+  }
+
+  protected onSuccessPopupClosed(): void {
+    this.showSuccessPopup.set(false);
+    if (this.createdPollId !== null) this.goToDetail(this.createdPollId);
+  }
+
+  private goToDetail(pollId: string): void {
+    void this.router.navigate([`/app/condominiums/${this.condoId}/polls`, pollId]);
   }
 
   protected onCancel(): void {

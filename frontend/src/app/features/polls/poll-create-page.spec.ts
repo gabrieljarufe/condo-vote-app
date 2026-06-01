@@ -1,8 +1,8 @@
-import { Component, EventEmitter, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { of, throwError } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CreatePollRequest, PollsApiService, PollResponse } from '../../core/api/polls-api.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
@@ -44,7 +44,7 @@ const mockActivatedRoute = {
   standalone: true,
 })
 class PollFormStub {
-  @Output() readonly submit = new EventEmitter<CreatePollRequest>();
+  @Output('submitted') readonly submitted = new EventEmitter<CreatePollRequest>();
   @Output() readonly cancel = new EventEmitter<void>();
   setError = vi.fn();
   clearSubmitting = vi.fn();
@@ -52,6 +52,32 @@ class PollFormStub {
 
 @Component({ selector: 'app-app-header', template: '', standalone: true })
 class AppHeaderStub {}
+
+@Component({
+  selector: 'app-confirm-dialog',
+  template: '',
+  standalone: true,
+})
+class ConfirmDialogStub {
+  @Input() open = false;
+  @Input() title = '';
+  @Input() body = '';
+  @Input() confirmLabel = '';
+  @Input() cancelLabel = '';
+  @Output() readonly confirmed = new EventEmitter<void>();
+  @Output() readonly cancelled = new EventEmitter<void>();
+}
+
+@Component({
+  selector: 'app-success-popup',
+  template: '',
+  standalone: true,
+})
+class SuccessPopupStub {
+  @Input() open = false;
+  @Input() message?: string;
+  @Output() readonly closed = new EventEmitter<void>();
+}
 
 function makeApi(overrides: Partial<{ create: unknown }> = {}) {
   return {
@@ -80,7 +106,7 @@ async function setup(api = makeApi()) {
     ],
   })
     .overrideComponent(PollCreatePage, {
-      set: { imports: [PollFormStub, AppHeaderStub] },
+      set: { imports: [PollFormStub, AppHeaderStub, ConfirmDialogStub, SuccessPopupStub] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(PollCreatePage);
@@ -119,14 +145,13 @@ describe('PollCreatePage', () => {
     expect(api.create).toHaveBeenCalledWith('condo-1', mockRequest);
   });
 
-  it('em sucesso redireciona para a página de detalhe do poll', async () => {
+  it('em sucesso abre o diálogo de publicação e ainda não navega', async () => {
     mockRouter.navigate = vi.fn();
     const { component } = await setup();
     component.onSubmit(mockRequest);
-    expect(mockRouter.navigate).toHaveBeenCalledWith([
-      '/app/condominiums/condo-1/polls',
-      'poll-new-1',
-    ]);
+    expect(component.publishDialogOpen()).toBe(true);
+    expect(component.createdPollId).toBe('poll-new-1');
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
   });
 
   it('em erro de API chama setError no form', async () => {
@@ -184,5 +209,87 @@ describe('PollCreatePage', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const form = (component as any).pollForm as PollFormStub;
     expect(form.clearSubmitting).toHaveBeenCalled();
+  });
+
+  it('confirmar publicação chama publish() e abre o success popup (ainda não navega)', async () => {
+    mockRouter.navigate = vi.fn();
+    const api = makeApi({});
+    api.publish = vi.fn(() => of({ ...mockPollResponse, status: 'SCHEDULED' as const }));
+    const { component } = await setup(api);
+
+    component.onSubmit(mockRequest);
+    component.onPublishConfirm();
+
+    expect(api.publish).toHaveBeenCalledWith('poll-new-1');
+    expect(component.publishDialogOpen()).toBe(false);
+    expect(component.showSuccessPopup()).toBe(true);
+    expect(mockRouter.navigate).not.toHaveBeenCalled();
+  });
+
+  it('fechar o success popup navega para detail', async () => {
+    mockRouter.navigate = vi.fn();
+    const api = makeApi({});
+    api.publish = vi.fn(() => of({ ...mockPollResponse, status: 'SCHEDULED' as const }));
+    const { component } = await setup(api);
+
+    component.onSubmit(mockRequest);
+    component.onPublishConfirm();
+    component.onSuccessPopupClosed();
+
+    expect(component.showSuccessPopup()).toBe(false);
+    expect(mockRouter.navigate).toHaveBeenCalledWith([
+      '/app/condominiums/condo-1/polls',
+      'poll-new-1',
+    ]);
+  });
+
+  it('cancelar diálogo navega para detail sem chamar publish()', async () => {
+    mockRouter.navigate = vi.fn();
+    const api = makeApi({});
+    api.publish = vi.fn();
+    const { component } = await setup(api);
+
+    component.onSubmit(mockRequest);
+    component.onPublishCancel();
+
+    expect(api.publish).not.toHaveBeenCalled();
+    expect(component.publishDialogOpen()).toBe(false);
+    expect(mockRouter.navigate).toHaveBeenCalledWith([
+      '/app/condominiums/condo-1/polls',
+      'poll-new-1',
+    ]);
+  });
+
+  it('publish falhando navega direto para detail sem abrir o success popup', async () => {
+    mockRouter.navigate = vi.fn();
+    const err = new HttpErrorResponse({ error: { message: 'Data no passado' }, status: 422 });
+    const api = makeApi({});
+    api.publish = vi.fn(() => throwError(() => err));
+    const { component } = await setup(api);
+
+    component.onSubmit(mockRequest);
+    component.onPublishConfirm();
+
+    expect(component.publishDialogOpen()).toBe(false);
+    expect(component.showSuccessPopup()).toBe(false);
+    expect(mockRouter.navigate).toHaveBeenCalledWith([
+      '/app/condominiums/condo-1/polls',
+      'poll-new-1',
+    ]);
+  });
+
+  it('cliques duplos em "Publicar agora" não disparam dois publish()', async () => {
+    // publish nunca completa para manter publishing() em true
+    const api = makeApi({});
+    let calls = 0;
+    api.publish = vi.fn(() => {
+      calls += 1;
+      return new Observable<PollResponse>(() => {}); // never emits
+    });
+    const { component } = await setup(api);
+    component.onSubmit(mockRequest);
+    component.onPublishConfirm();
+    component.onPublishConfirm();
+    expect(calls).toBe(1);
   });
 });

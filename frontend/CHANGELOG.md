@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.5](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.4...frontend-v0.1.5) (2026-06-01)
+
+
+### Features
+
+* **ux:** diálogo "Publicar agora?" após criar rascunho de votação ([0b57d47](https://github.com/gabrieljarufe/condo-vote-app/commit/0b57d476c8d62b8e5c10ac80e89e8bdf109a74fe))
+* **ux:** diálogo "Publicar agora?" após criar rascunho de votação ([8ca2c7a](https://github.com/gabrieljarufe/condo-vote-app/commit/8ca2c7ae0d62404d6bf491c5402b324bb6928bcb))
+
+
+### Bug Fixes
+
+* **ux:** elimina duplo POST em `POST /polls` ([8ca2c7a](https://github.com/gabrieljarufe/condo-vote-app/commit/8ca2c7ae0d62404d6bf491c5402b324bb6928bcb))
+
 ## [0.1.4](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.3...frontend-v0.1.4) (2026-05-24)
 
 

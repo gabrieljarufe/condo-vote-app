@@ -66,7 +66,7 @@ function makeDetail(status: PollResponse['status'] = 'DRAFT'): PollDetailRespons
 class PollFormStub {
   @Input() initialValue: PollFormValue | null = null;
   @Input() submitLabel = '';
-  @Output() readonly submit = new EventEmitter<CreatePollRequest>();
+  @Output('submitted') readonly submitted = new EventEmitter<CreatePollRequest>();
   @Output() readonly cancel = new EventEmitter<void>();
   setError = vi.fn();
 }

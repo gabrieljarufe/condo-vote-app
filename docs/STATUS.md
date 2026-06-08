@@ -78,6 +78,14 @@
   - ⏳ H9 — Timeline de auditoria (stretch)
   - ⏳ H10 — Jobs residuais (RetentionPruner placeholder, stretch)
 
+### Descobertas não-óbvias da iteração UX "Overhaul responsivo mobile" (2026-06-08)
+
+- **Aninhar rotas sob um shell quebra silenciosamente os reads de `:condoId`.** Ao mover as rotas para baixo de um pai `condominiums/:condoId` (que renderiza o shell), o param sai do segmento de cada filho. Sem `paramsInheritanceStrategy: 'always'` em `provideRouter`, os 6 componentes de poll que leem `route.snapshot.params['condoId']` e o redirect de `my-polls` recebem `undefined`. A flag faz os filhos herdarem params do pai — correção numa linha em `app.config.ts`. Detalhes em `docs/features/ux-mobile-responsive-overhaul.md`.
+- **Nenhuma tabela tinha fallback de card.** `polls-table`, `apartment-list`, tabela inline do morador e `invitation-list` usavam `table-fixed` sem reflow. Padrão único adotado: `<table class="hidden sm:table">` + `<ul class="flex flex-col gap-3 sm:hidden">` com os mesmos dados/badges.
+- **Header renderizado por página → mover para um shell único.** Cada página autenticada renderizava seu próprio `<app-app-header>`. O `authenticated-shell` passa a renderizá-lo (+ bottom-nav) uma vez; as páginas só mantêm `<main>`. Janela transitória de "header duplicado" durante a migração foi fechada no mesmo ciclo.
+- **Chip de papel extraído para helper compartilhado.** A lógica do chip (ordem canônica, `·` vs conjunção `e`) seria duplicada entre `app-header` e `bottom-nav`; virou `shared/layout/role-chip.ts`. jscpd não pegaria (fica abaixo do limiar), mas a extração mantém uma fonte única. Specs de instância dos dois consumidores passam sem alteração → comportamento preservado.
+- **Smoke a 360px só é honesto com dados reais.** O condo de seed não tem polls, então o card-fallback de `polls-table`/`invitation-list` só foi exercido por unit test — falta validar no app rodando com votações/convites reais.
+
 ### Descobertas não-óbvias da iteração UX "Síndico-morador híbrido" (2026-05-23)
 
 - **Modelo já suportava coexistência; só faltava UX.** Backend retorna `roles: UserRoleInCondo[]` por condomínio em `/api/me/condominiums` desde Fase 3, e `TenantService.activeRoles` é `Set`. Adicionar "modo de papel" no login teria contradito o modelo. Decisão: **single-view com agrupamento por intenção** (Gerenciar / Participar) somente no caso híbrido; layout plano para papel único. Detalhes em `docs/features/hybrid-role-ux.md`.

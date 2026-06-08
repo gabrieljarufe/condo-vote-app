@@ -9,9 +9,6 @@ import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
 import ApartmentsBulkPage from './apartments-bulk-page';
 import { GeneratedApartment } from './generate-apartments';
 
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {}
-
 @Component({ selector: 'app-apartment-bulk-generator-form', template: '', standalone: true })
 class GeneratorFormStub {
   readonly generate = output<GeneratedApartment[]>();
@@ -118,7 +115,7 @@ async function setup(api = makeApi(), tenant = mockTenant) {
   })
     .overrideComponent(ApartmentsBulkPage, {
       set: {
-        imports: [AppHeaderStub, RouterLink, GeneratorFormStub, PreviewGridStub],
+        imports: [RouterLink, GeneratorFormStub, PreviewGridStub],
       },
     })
     .compileComponents();

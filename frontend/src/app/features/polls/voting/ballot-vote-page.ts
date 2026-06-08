@@ -10,7 +10,6 @@ import {
   PollsApiService,
 } from '../../../core/api/polls-api.service';
 import { extractErrorMessage } from '../../../shared/http/error-message';
-import { AppHeader } from '../../../shared/layout/app-header';
 import { Dialog } from '../../../shared/ui/dialog';
 import { Dropdown, DropdownOption } from '../../../shared/ui/dropdown';
 import { Spinner } from '../../../shared/ui/spinner';
@@ -24,12 +23,10 @@ type LoadState =
 
 @Component({
   selector: 'app-ballot-vote-page',
-  imports: [CommonModule, AppHeader, Spinner, BallotCard, RouterLink, Dialog, Dropdown, SuccessPopup],
+  imports: [CommonModule, Spinner, BallotCard, RouterLink, Dialog, Dropdown, SuccessPopup],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-2xl mx-auto px-6 py-12">
+    <main class="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <div class="flex items-center gap-3 mb-8">
         <a
           [routerLink]="['/app/condominiums', condoId, 'polls']"
@@ -178,16 +175,16 @@ type LoadState =
               />
               <span>Não perguntar novamente nesta votação</span>
             </label>
-            <div dialog-actions class="flex gap-2 justify-end">
+            <div dialog-actions class="flex flex-col sm:flex-row gap-2 sm:justify-end">
               <button
                 (click)="onVoteOneByOne()"
-                class="px-4 py-2 rounded-xl text-sm text-on-surface border border-outline-variant"
+                class="w-full sm:w-auto min-h-11 px-4 py-2 rounded-xl text-sm text-on-surface border border-outline-variant"
               >
                 Votar um a um
               </button>
               <button
                 (click)="onApplyBulk()"
-                class="px-4 py-2 rounded-xl bg-primary text-on-primary text-sm"
+                class="w-full sm:w-auto min-h-11 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm"
               >
                 Aplicar a todos
               </button>

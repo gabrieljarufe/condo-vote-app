@@ -22,7 +22,7 @@ import { MyPendingPollResponse } from '../../core/api/polls-api.service';
       <section class="flex flex-col gap-3">
         @for (p of polls; track p.pollId) {
           <article
-            class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 flex items-center justify-between gap-4"
+            class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div class="flex-1 min-w-0">
               <h3 class="font-medium text-on-surface truncate">{{ p.title }}</h3>
@@ -33,7 +33,7 @@ import { MyPendingPollResponse } from '../../core/api/polls-api.service';
             </div>
             <a
               [routerLink]="['/app/condominiums', condoId, 'polls', p.pollId, 'vote']"
-              class="shrink-0 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold"
+              class="w-full sm:w-auto sm:shrink-0 min-h-11 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm font-semibold inline-flex items-center justify-center"
             >
               Votar →
             </a>

@@ -8,7 +8,7 @@ import { PollOptionResponse } from '../../../core/api/polls-api.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div
-      class="bg-surface-container-low rounded-2xl border p-6"
+      class="bg-surface-container-low rounded-2xl border p-4 sm:p-6"
       [class.border-outline-variant]="!disabled"
       [class.border-primary]="disabled"
       [attr.aria-disabled]="disabled ? 'true' : null"
@@ -29,7 +29,7 @@ import { PollOptionResponse } from '../../../core/api/polls-api.service';
         <legend class="text-xs text-on-surface-variant mb-2">Selecione uma opção</legend>
         @for (opt of options; track opt.id) {
           <label
-            class="flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors"
+            class="flex items-start gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-colors min-h-11"
             [ngClass]="opt.id === selectedOptionId
               ? 'bg-primary/10 border-primary'
               : 'border-outline-variant ' + (!disabled ? 'hover:bg-surface-container' : '')"
@@ -37,7 +37,7 @@ import { PollOptionResponse } from '../../../core/api/polls-api.service';
           >
             <input
               type="radio"
-              class="accent-primary"
+              class="accent-primary mt-0.5 shrink-0"
               [name]="radioGroupName"
               [value]="opt.id"
               [checked]="opt.id === selectedOptionId"

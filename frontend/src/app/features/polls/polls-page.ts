@@ -13,7 +13,6 @@ import {
   PollsApiService,
 } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 import { PendingPollsList } from './pending-polls-list';
 import { PollsTable } from './polls-table';
@@ -37,12 +36,10 @@ const TAB_CONFIGS: ReadonlyArray<TabConfig> = [
 
 @Component({
   selector: 'app-polls-page',
-  imports: [AppHeader, Spinner, RouterLink, PendingPollsList, PollsTable],
+  imports: [Spinner, RouterLink, PendingPollsList, PollsTable],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-5xl mx-auto px-6 py-12">
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <div class="flex items-center gap-3 mb-8">
         <a [routerLink]="dashboardLink()" class="text-sm text-on-surface-variant hover:text-on-surface">
           ← Início

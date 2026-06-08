@@ -15,7 +15,6 @@ import {
   InvitationsApiService,
 } from '../../../core/api/invitations-api.service';
 import { TenantService } from '../../../core/tenant/tenant.service';
-import { AppHeader } from '../../../shared/layout/app-header';
 import { InvitationBulkPreviewGrid } from './invitation-bulk-preview-grid';
 import { InvitationBulkUploadForm, ParsedRow } from './invitation-bulk-upload-form';
 
@@ -23,12 +22,10 @@ type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';
 
 @Component({
   selector: 'app-invitation-bulk-page',
-  imports: [AppHeader, RouterLink, InvitationBulkUploadForm, InvitationBulkPreviewGrid],
+  imports: [RouterLink, InvitationBulkUploadForm, InvitationBulkPreviewGrid],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-5xl mx-auto px-6 py-12">
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a
@@ -43,7 +40,7 @@ type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';
 
       <!-- Step 1: Upload -->
       @if (step() === 'upload') {
-        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
           <h2 class="text-lg font-semibold text-on-surface mb-4">Passo 1 de 2 — Upload</h2>
           <app-invitation-bulk-upload-form
             (parsed)="onParsed($event)"
@@ -77,7 +74,7 @@ type SubmitStatus = 'idle' | 'loading' | 'success' | 'error';
           </div>
         }
 
-        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
           <h2 class="text-lg font-semibold text-on-surface mb-4">Passo 2 de 2 — Revisar convites</h2>
           <app-invitation-bulk-preview-grid
             [rows]="parsedRows()"

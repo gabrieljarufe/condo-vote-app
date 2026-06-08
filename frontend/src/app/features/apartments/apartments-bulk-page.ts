@@ -12,7 +12,6 @@ import {
   CreateApartmentRequest,
 } from '../../core/api/apartments-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { SuccessPopup } from '../../shared/ui/success-popup';
 import { ApartmentBulkGeneratorForm } from './apartment-bulk-generator-form';
 import { ApartmentBulkPreviewGrid } from './apartment-bulk-preview-grid';
@@ -23,7 +22,6 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
 @Component({
   selector: 'app-apartments-bulk-page',
   imports: [
-    AppHeader,
     RouterLink,
     ApartmentBulkGeneratorForm,
     ApartmentBulkPreviewGrid,
@@ -31,9 +29,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-5xl mx-auto px-6 py-12">
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a
@@ -48,7 +44,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
 
       <!-- Step 1: Configurar padrão -->
       @if (step() === 'pattern') {
-        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
           <h2 class="text-lg font-semibold text-on-surface mb-4">Configurar padrão</h2>
           <app-apartment-bulk-generator-form
             (generate)="onGenerate($event)"
@@ -106,7 +102,7 @@ type BatchStatus = 'idle' | 'loading' | 'success' | 'partial' | 'error';
           </div>
         }
 
-        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
           <h2 class="text-lg font-semibold text-on-surface mb-4">Revisar apartamentos</h2>
           <app-apartment-bulk-preview-grid
             [apartments]="generatedApartments()"

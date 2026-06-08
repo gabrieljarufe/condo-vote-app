@@ -19,7 +19,6 @@ import {
   PollsApiService,
 } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 import { PollStatusBadge } from './poll-status-badge';
 import { PollCancelDialog } from './poll-cancel-dialog';
@@ -68,12 +67,10 @@ function formatDatePtBR(iso: string | null | undefined): string {
 
 @Component({
   selector: 'app-poll-detail-page',
-  imports: [AppHeader, RouterLink, Spinner, PollStatusBadge, PollCancelDialog, ConfirmDialog],
+  imports: [RouterLink, Spinner, PollStatusBadge, PollCancelDialog, ConfirmDialog],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-4xl mx-auto px-6 py-12">
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a
@@ -93,7 +90,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
       } @else if (detail(); as d) {
         <div class="flex flex-col gap-6">
           <!-- Header card -->
-          <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+          <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
             <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
               <h1 class="text-2xl font-semibold text-on-surface">{{ d.poll.title }}</h1>
               <app-poll-status-badge [status]="d.poll.status" />
@@ -143,7 +140,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
           </section>
 
           <!-- Options -->
-          <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+          <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
             <h2 class="text-base font-semibold text-on-surface mb-3">Opções de voto</h2>
             <ul class="flex flex-col gap-2">
               @for (option of sortedOptions(d.options); track option.id) {
@@ -159,7 +156,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
 
           <!-- Painel "Sua participação" (apenas morador) -->
           @if (isResident() && myBallots(); as mb) {
-            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
               <h2 class="text-base font-semibold text-on-surface mb-3">Sua participação</h2>
               @if (mb.ballots.length === 0 && mb.excludedApartments.length === 0) {
                 <p class="text-sm text-on-surface-variant">
@@ -204,7 +201,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
 
           <!-- Result (only for CLOSED / INVALIDATED) -->
           @if (d.result) {
-            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
               <h2 class="text-base font-semibold text-on-surface mb-3">Resultado</h2>
               <dl class="flex flex-col gap-3 text-sm">
                 <div class="flex flex-col gap-0.5">
@@ -265,7 +262,7 @@ function formatDatePtBR(iso: string | null | undefined): string {
 
           <!-- Cancellation reason -->
           @if (d.poll.cancellationReason) {
-            <section class="bg-error/5 rounded-2xl border border-error/20 p-6">
+            <section class="bg-error/5 rounded-2xl border border-error/20 p-5 sm:p-6">
               <h2 class="text-base font-semibold text-error mb-2">Motivo do cancelamento</h2>
               <p class="text-sm text-on-surface">{{ d.poll.cancellationReason }}</p>
             </section>

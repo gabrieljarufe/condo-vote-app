@@ -54,14 +54,22 @@ function makePoll(overrides: Partial<PollResponse> = {}): PollResponse {
   };
 }
 
-async function setup(initial: Partial<HostComponent> = {}) {
+interface SetupOptions {
+  polls?: ReadonlyArray<PollResponse>;
+  page?: number;
+  totalElements?: number;
+  totalPages?: number;
+  emptyMessage?: string;
+}
+
+async function setup(initial: SetupOptions = {}) {
   await TestBed.configureTestingModule({
     imports: [HostComponent],
     providers: [provideRouter([])],
   }).compileComponents();
   const fixture = TestBed.createComponent(HostComponent);
   const host = fixture.componentInstance;
-  if (initial.polls) host.polls.set(initial.polls as ReadonlyArray<PollResponse>);
+  if (initial.polls) host.polls.set(initial.polls);
   if (initial.page !== undefined) host.page.set(initial.page);
   if (initial.totalElements !== undefined) host.totalElements.set(initial.totalElements);
   if (initial.totalPages !== undefined) host.totalPages.set(initial.totalPages);

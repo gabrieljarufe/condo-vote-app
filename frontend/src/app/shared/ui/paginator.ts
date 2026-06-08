@@ -34,7 +34,7 @@ import { Dropdown, DropdownOption } from './dropdown';
         <div class="flex gap-2">
           <button
             type="button"
-            class="px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface text-sm hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed"
+            class="min-h-11 px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface text-sm hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed"
             [disabled]="isFirstPage"
             (click)="goPrevious()"
             aria-label="Página anterior"
@@ -43,7 +43,7 @@ import { Dropdown, DropdownOption } from './dropdown';
           </button>
           <button
             type="button"
-            class="px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface text-sm hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed"
+            class="min-h-11 px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface text-sm hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed"
             [disabled]="isLastPage"
             (click)="goNext()"
             aria-label="Próxima página"

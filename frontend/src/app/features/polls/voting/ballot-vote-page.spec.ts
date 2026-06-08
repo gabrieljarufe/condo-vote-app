@@ -26,9 +26,6 @@ const mockSupabase = {
   },
 };
 
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {}
-
 @Component({ selector: 'app-spinner', template: '', standalone: true })
 class SpinnerStub {}
 
@@ -149,7 +146,7 @@ async function setup(apiOverrides: Parameters<typeof makeApi>[0] = {}) {
     ],
   })
     .overrideComponent(BallotVotePage, {
-      set: { imports: [AppHeaderStub, SpinnerStub, BallotCardStub, RouterLink, Dialog, Dropdown, SuccessPopup] },
+      set: { imports: [SpinnerStub, BallotCardStub, RouterLink, Dialog, Dropdown, SuccessPopup] },
     })
     .compileComponents();
 

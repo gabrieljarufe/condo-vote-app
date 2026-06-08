@@ -1,6 +1,6 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
 import { provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withRouterConfig } from '@angular/router';
 
 import { routes } from './app.routes';
 import { supabaseClientProvider } from './core/auth/supabase.client';
@@ -10,7 +10,7 @@ import { tenantInterceptor } from './core/http/tenant.interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    provideRouter(routes, withRouterConfig({ paramsInheritanceStrategy: 'always' })),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor, tenantInterceptor])),
     supabaseClientProvider,
   ],

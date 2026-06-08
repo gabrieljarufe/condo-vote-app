@@ -56,7 +56,7 @@ function expiresLabel(inv: Invitation): string {
         Nenhum convite encontrado.
       </p>
     } @else {
-      <div class="overflow-x-auto">
+      <div class="hidden sm:block overflow-x-auto">
         <table class="w-full text-sm">
           <thead>
             <tr class="border-b border-outline-variant text-left text-on-surface-variant">
@@ -147,6 +147,90 @@ function expiresLabel(inv: Invitation): string {
           </tbody>
         </table>
       </div>
+
+      <ul class="flex flex-col gap-3 sm:hidden">
+        @for (inv of invitations(); track inv.id) {
+          <li class="rounded-xl border border-outline-variant p-4 flex flex-col gap-2">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="font-medium text-on-surface truncate">{{ aptLabel(inv.apartmentId) }}</p>
+                <p class="text-xs text-on-surface-variant truncate">{{ inv.email }}</p>
+              </div>
+              <span [class]="statusClass(inv.status)">{{ statusLabel(inv.status) }}</span>
+            </div>
+
+            <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface-variant">
+              <span><span class="font-medium text-on-surface">Papel:</span> {{ roleLabel(inv.role) }}</span>
+              <span><span class="font-medium text-on-surface">Expira:</span> {{ expiresLabel(inv) }}</span>
+            </div>
+
+            <div class="flex flex-col gap-2">
+              @if (inv.status === 'PENDING' || inv.status === 'EXPIRED') {
+                <button
+                  type="button"
+                  (click)="resend.emit(inv.id)"
+                  class="w-full min-h-11 px-3 rounded-lg border border-outline-variant text-sm text-primary hover:bg-surface-container-low whitespace-nowrap"
+                >
+                  Reenviar
+                </button>
+              }
+              @if (inv.status === 'PENDING') {
+                <button
+                  type="button"
+                  (click)="revoke.emit(inv.id)"
+                  class="w-full min-h-11 px-3 rounded-lg border border-outline-variant text-sm text-error hover:bg-error/5 whitespace-nowrap"
+                >
+                  Revogar
+                </button>
+              }
+              @if (inv.status === 'BOUNCED') {
+                @if (fixEmailOpenId() === inv.id) {
+                  <div class="flex flex-col gap-2">
+                    <input
+                      type="email"
+                      [formControl]="fixEmailControl"
+                      placeholder="Novo e-mail"
+                      class="w-full min-h-11 px-3 py-1 rounded-lg border border-outline-variant text-sm bg-surface-container-lowest text-on-surface focus:border-primary"
+                    />
+                    <div class="flex gap-2">
+                      <button
+                        type="button"
+                        [disabled]="fixEmailControl.invalid"
+                        (click)="submitFixEmail(inv.id)"
+                        class="flex-1 min-h-11 px-3 rounded-lg border border-outline-variant text-sm text-primary hover:bg-surface-container-low disabled:opacity-50 whitespace-nowrap"
+                      >
+                        Reenviar
+                      </button>
+                      <button
+                        type="button"
+                        (click)="fixEmailOpenId.set(null)"
+                        class="flex-1 min-h-11 px-3 rounded-lg border border-outline-variant text-sm text-on-surface-variant hover:bg-surface-container-low whitespace-nowrap"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                } @else {
+                  <button
+                    type="button"
+                    (click)="openFixEmail(inv.id)"
+                    class="w-full min-h-11 px-3 rounded-lg border border-outline-variant text-sm text-primary hover:bg-surface-container-low whitespace-nowrap"
+                  >
+                    Corrigir e-mail
+                  </button>
+                  <button
+                    type="button"
+                    (click)="revoke.emit(inv.id)"
+                    class="w-full min-h-11 px-3 rounded-lg border border-outline-variant text-sm text-error hover:bg-error/5 whitespace-nowrap"
+                  >
+                    Revogar
+                  </button>
+                }
+              }
+            </div>
+          </li>
+        }
+      </ul>
     }
   `,
 })

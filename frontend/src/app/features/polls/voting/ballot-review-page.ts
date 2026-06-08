@@ -7,7 +7,6 @@ import {
   PollOptionResponse,
   PollsApiService,
 } from '../../../core/api/polls-api.service';
-import { AppHeader } from '../../../shared/layout/app-header';
 import { SuccessPopup } from '../../../shared/ui/success-popup';
 
 interface ReviewState {
@@ -31,12 +30,10 @@ interface SubmitResultRow {
 
 @Component({
   selector: 'app-ballot-review-page',
-  imports: [CommonModule, AppHeader, RouterLink, SuccessPopup],
+  imports: [CommonModule, RouterLink, SuccessPopup],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-2xl mx-auto px-6 py-12">
+    <main class="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <div class="flex items-center gap-3 mb-8">
         <a
           [routerLink]="['/app/condominiums', condoId, 'polls', pollId, 'vote']"
@@ -90,13 +87,13 @@ interface SubmitResultRow {
             </ul>
           </div>
 
-          <div class="flex gap-2">
+          <div class="flex flex-col sm:flex-row gap-2">
             @if (failureCount() > 0) {
-              <button (click)="onRetryFailed()" class="px-4 py-2 rounded-xl border border-outline-variant text-sm">
+              <button (click)="onRetryFailed()" class="w-full sm:w-auto min-h-11 px-4 py-2 rounded-xl border border-outline-variant text-sm">
                 Tentar novamente nas falhas
               </button>
             }
-            <button (click)="backToList()" class="px-4 py-2 rounded-xl bg-primary text-on-primary text-sm">
+            <button (click)="backToList()" class="w-full sm:w-auto min-h-11 px-4 py-2 rounded-xl bg-primary text-on-primary text-sm">
               Voltar à lista
             </button>
           </div>

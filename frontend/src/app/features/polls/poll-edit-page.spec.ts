@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -71,9 +71,6 @@ class PollFormStub {
   setError = vi.fn();
 }
 
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {}
-
 @Component({ selector: 'app-spinner', template: '', standalone: true })
 class SpinnerStub {
   @Input() label = '';
@@ -112,7 +109,7 @@ async function setup(
     ],
   })
     .overrideComponent(PollEditPage, {
-      set: { imports: [PollFormStub, AppHeaderStub, SpinnerStub] },
+      set: { imports: [PollFormStub, RouterLink, SpinnerStub] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(PollEditPage);

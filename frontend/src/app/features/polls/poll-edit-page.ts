@@ -13,7 +13,6 @@ import {
   PollDetailResponse,
   PollsApiService,
 } from '../../core/api/polls-api.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 import { PollForm, PollFormValue } from './poll-form';
 
@@ -35,12 +34,10 @@ export function toLocalDatetimeInput(iso: string): string {
 
 @Component({
   selector: 'app-poll-edit-page',
-  imports: [AppHeader, RouterLink, PollForm, Spinner],
+  imports: [RouterLink, PollForm, Spinner],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-2xl mx-auto px-6 py-12">
+    <main class="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a
@@ -60,7 +57,7 @@ export function toLocalDatetimeInput(iso: string): string {
       } @else if (pageState() === 'error') {
         <p class="text-sm text-error py-4" role="alert">{{ errorMessage() }}</p>
       } @else if (pageState() === 'blocked') {
-        <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+        <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
           <p class="text-sm text-on-surface-variant mb-4">
             Não é possível editar votação no estado <strong>{{ blockedStatus() }}</strong>.
           </p>
@@ -72,7 +69,7 @@ export function toLocalDatetimeInput(iso: string): string {
           </a>
         </div>
       } @else {
-        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
           <app-poll-form
             #pollForm
             [initialValue]="initialValue()"

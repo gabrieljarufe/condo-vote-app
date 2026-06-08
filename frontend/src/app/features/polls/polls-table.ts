@@ -21,11 +21,11 @@ const QUORUM_LABELS: Record<string, string> = {
   imports: [RouterLink, Paginator, PollStatusBadge],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+    <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
       @if (totalElements === 0) {
         <p class="text-sm text-on-surface-variant py-4 text-center">{{ emptyMessage }}</p>
       } @else {
-        <table class="w-full text-sm table-fixed">
+        <table class="hidden sm:table w-full text-sm table-fixed">
           <thead>
             <tr class="border-b border-outline-variant text-left text-on-surface-variant">
               <th class="py-2 pr-4 font-medium w-2/5">Título</th>
@@ -66,6 +66,28 @@ const QUORUM_LABELS: Record<string, string> = {
             }
           </tbody>
         </table>
+
+        <ul class="flex flex-col gap-3 sm:hidden">
+          @for (poll of polls; track poll.id) {
+            <li class="rounded-xl border border-outline-variant p-4 flex flex-col gap-2">
+              <div class="flex items-start justify-between gap-3">
+                <a
+                  [routerLink]="['./', poll.id]"
+                  class="font-medium text-on-surface hover:text-primary hover:underline"
+                >
+                  {{ poll.title }}
+                </a>
+                <app-poll-status-badge [status]="poll.status" />
+              </div>
+              <p class="text-xs text-on-surface-variant">
+                {{ convocationLabel(poll) }} · {{ quorumLabel(poll) }}
+              </p>
+              <p class="text-xs text-on-surface-variant">
+                {{ formatDate(poll.scheduledStart) }} → {{ formatDate(poll.scheduledEnd) }}
+              </p>
+            </li>
+          }
+        </ul>
 
         <app-paginator
           [page]="page"

@@ -1,4 +1,3 @@
-import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { provideLocationMocks } from '@angular/common/testing';
@@ -22,9 +21,6 @@ const mockSupabase = {
     signOut: () => Promise.resolve({ error: null }),
   },
 };
-
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {}
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
@@ -119,7 +115,7 @@ async function setup(options: {
     ],
   })
     .overrideComponent(BallotReviewPage, {
-      set: { imports: [AppHeaderStub, RouterLink, SuccessPopup] },
+      set: { imports: [RouterLink, SuccessPopup] },
     })
     .compileComponents();
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.5...frontend-v0.1.6) (2026-06-08)
+
+
+### Features
+
+* **ux:** overhaul responsivo mobile (shell + bottom nav + tabelas→cards) ([5024003](https://github.com/gabrieljarufe/condo-vote-app/commit/50240037748969e25bf74c3034fbda34e0b245bf))
+* **ux:** overhaul responsivo mobile (shell + bottom nav + tabelas→cards) ([690381c](https://github.com/gabrieljarufe/condo-vote-app/commit/690381cb6ce0add25afdfe87782d406981829c59))
+
 ## [0.1.5](https://github.com/gabrieljarufe/condo-vote-app/compare/frontend-v0.1.4...frontend-v0.1.5) (2026-06-01)
 
 

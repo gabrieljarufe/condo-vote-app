@@ -109,7 +109,7 @@ function optionsValidator(): ValidatorFn {
           type="text"
           formControlName="title"
           maxlength="200"
-          class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
+          class="w-full min-h-11 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
         />
       </app-form-field>
 
@@ -163,7 +163,7 @@ function optionsValidator(): ValidatorFn {
             [id]="startField.fieldId"
             type="datetime-local"
             formControlName="scheduledStart"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
+            class="w-full min-h-11 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
 
@@ -178,7 +178,7 @@ function optionsValidator(): ValidatorFn {
             [id]="endField.fieldId"
             type="datetime-local"
             formControlName="scheduledEnd"
-            class="w-full px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
+            class="w-full min-h-11 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
           />
         </app-form-field>
       </div>
@@ -195,13 +195,13 @@ function optionsValidator(): ValidatorFn {
                 [formControlName]="i"
                 [placeholder]="'Opção ' + (i + 1)"
                 maxlength="200"
-                class="flex-1 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
+                class="flex-1 min-h-11 px-4 py-2.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface focus:border-primary"
               />
               <button
                 type="button"
                 (click)="removeOption(i)"
                 [disabled]="options.length <= 2"
-                class="px-3 py-2.5 text-sm rounded-lg border border-outline-variant text-error hover:bg-error/10 disabled:opacity-40 disabled:cursor-not-allowed"
+                class="min-h-11 px-3 py-2.5 text-sm rounded-lg border border-outline-variant text-error hover:bg-error/10 disabled:opacity-40 disabled:cursor-not-allowed"
                 aria-label="Remover opção"
               >
                 Remover
@@ -224,7 +224,7 @@ function optionsValidator(): ValidatorFn {
           type="button"
           (click)="addOption()"
           [disabled]="options.length >= 10"
-          class="self-start px-4 py-2 text-sm rounded-lg border border-outline-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed"
+          class="self-start min-h-11 px-4 py-2 text-sm rounded-lg border border-outline-variant hover:bg-surface-container disabled:opacity-40 disabled:cursor-not-allowed"
         >
           + Adicionar opção
         </button>
@@ -234,18 +234,18 @@ function optionsValidator(): ValidatorFn {
         <p class="text-sm text-error" role="alert">{{ errorMessage() }}</p>
       }
 
-      <div class="flex justify-end gap-3 pt-2">
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
         <button
           type="button"
           (click)="cancel.emit()"
-          class="px-4 py-2 text-sm rounded-lg border border-outline-variant hover:bg-surface-container"
+          class="w-full sm:w-auto min-h-11 px-4 py-2 text-sm rounded-lg border border-outline-variant hover:bg-surface-container"
         >
           Cancelar
         </button>
         <button
           type="submit"
           [disabled]="form.invalid || submitting()"
-          class="px-5 py-2 text-sm rounded-lg bg-primary text-on-primary disabled:opacity-50"
+          class="w-full sm:w-auto min-h-11 px-5 py-2 text-sm rounded-lg bg-primary text-on-primary disabled:opacity-50"
         >
           {{ submitting() ? 'Enviando…' : submitLabel() }}
         </button>

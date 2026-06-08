@@ -18,7 +18,6 @@ import {
   InvitationsApiService,
 } from '../../core/api/invitations-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { Dropdown, DropdownOption } from '../../shared/ui/dropdown';
 import { Spinner } from '../../shared/ui/spinner';
 import { InvitationIndividualForm } from './invitation-individual-form';
@@ -29,7 +28,6 @@ type PageState = 'loading' | 'error' | 'ready';
 @Component({
   selector: 'app-invitations-page',
   imports: [
-    AppHeader,
     Spinner,
     InvitationList,
     InvitationIndividualForm,
@@ -39,9 +37,7 @@ type PageState = 'loading' | 'error' | 'ready';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-6xl mx-auto px-6 py-12">
+    <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <div class="flex items-center gap-3 mb-8">
         <a [routerLink]="dashboardLink()" class="text-sm text-on-surface-variant hover:text-on-surface">
           ← Início
@@ -82,7 +78,7 @@ type PageState = 'loading' | 'error' | 'ready';
           </section>
 
           <!-- Lista -->
-          <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+          <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
             <h2 class="text-lg font-semibold text-on-surface mb-4">Lista de convites</h2>
             <app-invitation-list
               [invitations]="invitations()"
@@ -112,7 +108,7 @@ type PageState = 'loading' | 'error' | 'ready';
               </button>
             </div>
           } @else {
-            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+            <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
               <h2 class="text-lg font-semibold text-on-surface mb-4">Novo convite</h2>
               <app-invitation-individual-form
                 #invitationForm

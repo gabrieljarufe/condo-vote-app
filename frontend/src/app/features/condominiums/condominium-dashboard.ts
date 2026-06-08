@@ -6,19 +6,16 @@ import { catchError, map, startWith } from 'rxjs';
 import { MeApiService, UserCondominium } from '../../core/api/me-api.service';
 import { PollsApiService } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 
 type State = { loading: true } | { loading: false; condos: readonly UserCondominium[] };
 
 @Component({
   selector: 'app-condominium-dashboard',
-  imports: [AppHeader, Spinner, RouterLink, NgTemplateOutlet],
+  imports: [Spinner, RouterLink, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header [condominiums]="condominiums()" />
-
-    <main class="max-w-4xl mx-auto px-6 py-12">
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       @if (state().loading) {
         <div class="flex justify-center py-12">
           <app-spinner label="Carregando…" />
@@ -72,7 +69,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
           </div>
         }
 
-        <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">
+        <div class="bg-surface-container-low rounded-2xl border border-outline-variant p-5 sm:p-8 text-center text-on-surface-variant">
           <span class="material-symbols-outlined mb-3" style="font-size: 36px;" aria-hidden="true">construction</span>
           <p class="text-sm">Mais funcionalidades em breve</p>
         </div>
@@ -82,7 +79,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
     <ng-template #apartmentsCard let-variant="variant">
       <a
         [routerLink]="['/app/condominiums', condoId(), 'apartments']"
-        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-5 sm:p-6 hover:bg-surface-container transition-colors"
       >
         <span class="material-symbols-outlined text-primary" style="font-size: 32px;" aria-hidden="true">apartment</span>
         <div>
@@ -97,7 +94,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
     <ng-template #invitationsCard>
       <a
         [routerLink]="['/app/condominiums', condoId(), 'invitations']"
-        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-5 sm:p-6 hover:bg-surface-container transition-colors"
       >
         <span class="material-symbols-outlined text-primary" style="font-size: 32px;" aria-hidden="true">mail</span>
         <div>
@@ -110,7 +107,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
     <ng-template #createPollCard>
       <a
         [routerLink]="['/app/condominiums', condoId(), 'polls', 'new']"
-        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-5 sm:p-6 hover:bg-surface-container transition-colors"
       >
         <span class="material-symbols-outlined text-primary" style="font-size: 32px;" aria-hidden="true">add_circle</span>
         <div>
@@ -123,7 +120,7 @@ type State = { loading: true } | { loading: false; condos: readonly UserCondomin
     <ng-template #pollsCard let-hybrid="hybrid">
       <a
         [routerLink]="['/app/condominiums', condoId(), 'polls']"
-        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-6 hover:bg-surface-container transition-colors"
+        class="flex items-center gap-4 bg-surface-container-low rounded-2xl border border-outline-variant p-5 sm:p-6 hover:bg-surface-container transition-colors"
       >
         <span class="material-symbols-outlined text-primary" style="font-size: 32px;" aria-hidden="true">how_to_vote</span>
         <div class="flex-1">

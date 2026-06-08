@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
@@ -7,7 +7,6 @@ import { MeApiService } from '../../core/api/me-api.service';
 import { PollsApiService } from '../../core/api/polls-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { SUPABASE_CLIENT } from '../../core/auth/supabase.client';
-import { AppHeader } from '../../shared/layout/app-header';
 import { Spinner } from '../../shared/ui/spinner';
 import CondominiumDashboard from './condominium-dashboard';
 
@@ -18,11 +17,6 @@ const mockSupabase = {
     signOut: () => Promise.resolve({ error: null }),
   },
 };
-
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {
-  @Input() condominiums: unknown[] = [];
-}
 
 @Component({ selector: 'app-spinner', template: '', standalone: true })
 class SpinnerStub {}
@@ -93,8 +87,8 @@ async function setup(roles: string[] = ['OWNER'], pendingCount = 3) {
     ],
   })
     .overrideComponent(CondominiumDashboard, {
-      remove: { imports: [AppHeader, Spinner] },
-      add: { imports: [AppHeaderStub, SpinnerStub] },
+      remove: { imports: [Spinner] },
+      add: { imports: [SpinnerStub] },
     })
     .compileComponents();
 

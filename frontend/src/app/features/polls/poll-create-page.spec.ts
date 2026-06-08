@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { Observable, of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -49,9 +49,6 @@ class PollFormStub {
   setError = vi.fn();
   clearSubmitting = vi.fn();
 }
-
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {}
 
 @Component({
   selector: 'app-confirm-dialog',
@@ -106,7 +103,7 @@ async function setup(api = makeApi()) {
     ],
   })
     .overrideComponent(PollCreatePage, {
-      set: { imports: [PollFormStub, AppHeaderStub, ConfirmDialogStub, SuccessPopupStub] },
+      set: { imports: [PollFormStub, RouterLink, ConfirmDialogStub, SuccessPopupStub] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(PollCreatePage);

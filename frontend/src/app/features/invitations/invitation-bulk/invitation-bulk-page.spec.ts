@@ -14,9 +14,6 @@ import { SUPABASE_CLIENT } from '../../../core/auth/supabase.client';
 import InvitationBulkPage from './invitation-bulk-page';
 import { ParsedRow } from './invitation-bulk-upload-form';
 
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {}
-
 @Component({ selector: 'app-invitation-bulk-upload-form', template: '', standalone: true })
 class UploadFormStub {
   readonly parsed = output<ParsedRow[]>();
@@ -107,7 +104,7 @@ async function setup(invApi = makeInvApi(), tenant = mockTenant) {
   })
     .overrideComponent(InvitationBulkPage, {
       set: {
-        imports: [AppHeaderStub, RouterLink, UploadFormStub, PreviewGridStub],
+        imports: [RouterLink, UploadFormStub, PreviewGridStub],
       },
     })
     .compileComponents();

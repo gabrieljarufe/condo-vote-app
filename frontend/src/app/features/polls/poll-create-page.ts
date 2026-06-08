@@ -10,19 +10,16 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { finalize } from 'rxjs';
 import { CreatePollRequest, PollsApiService } from '../../core/api/polls-api.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { PollForm } from './poll-form';
 import { ConfirmDialog } from '../../shared/ui/confirm-dialog';
 import { SuccessPopup } from '../../shared/ui/success-popup';
 
 @Component({
   selector: 'app-poll-create-page',
-  imports: [AppHeader, RouterLink, PollForm, ConfirmDialog, SuccessPopup],
+  imports: [RouterLink, PollForm, ConfirmDialog, SuccessPopup],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-2xl mx-auto px-6 py-12">
+    <main class="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <!-- Breadcrumb -->
       <div class="flex items-center gap-3 mb-8">
         <a
@@ -35,7 +32,7 @@ import { SuccessPopup } from '../../shared/ui/success-popup';
         <h1 class="text-2xl font-semibold text-on-surface">Nova votação</h1>
       </div>
 
-      <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+      <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
         <app-poll-form
           #pollForm
           submitLabel="Criar rascunho"

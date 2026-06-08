@@ -10,7 +10,6 @@ import {
 import { Router, RouterLink } from '@angular/router';
 import { Apartment, ApartmentsApiService, CreateApartmentRequest } from '../../core/api/apartments-api.service';
 import { TenantService } from '../../core/tenant/tenant.service';
-import { AppHeader } from '../../shared/layout/app-header';
 import { Paginator } from '../../shared/ui/paginator';
 import { Spinner } from '../../shared/ui/spinner';
 import { ApartmentCreateChooser } from './apartment-create-chooser';
@@ -22,7 +21,6 @@ type PageState = 'loading' | 'error' | 'ready';
 @Component({
   selector: 'app-apartments-page',
   imports: [
-    AppHeader,
     Spinner,
     ApartmentList,
     ApartmentForm,
@@ -32,9 +30,7 @@ type PageState = 'loading' | 'error' | 'ready';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <app-app-header />
-
-    <main class="max-w-5xl mx-auto px-6 py-12">
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-12">
       <div class="flex items-center gap-3 mb-8">
         <a [routerLink]="dashboardLink()" class="text-sm text-on-surface-variant hover:text-on-surface">
           ← Início
@@ -52,7 +48,7 @@ type PageState = 'loading' | 'error' | 'ready';
       } @else if (isAdmin()) {
         <div class="flex flex-col gap-8">
           <section
-            class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6"
+            class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6"
           >
             <h2 class="text-lg font-semibold text-on-surface mb-4">Lista de unidades</h2>
             <app-apartment-list
@@ -83,7 +79,7 @@ type PageState = 'loading' | 'error' | 'ready';
             </div>
           } @else {
             <section
-              class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6"
+              class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6"
             >
               <h2 class="text-lg font-semibold text-on-surface mb-4">Cadastrar apartamento</h2>
               <app-apartment-form
@@ -103,9 +99,9 @@ type PageState = 'loading' | 'error' | 'ready';
         }
         </div>
       } @else {
-        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-6">
+        <section class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-5 sm:p-6">
           <h2 class="text-lg font-semibold text-on-surface mb-4">Lista de unidades</h2>
-          <table class="w-full text-sm table-fixed">
+          <table class="hidden sm:table w-full text-sm table-fixed">
             <thead>
               <tr class="border-b border-outline-variant text-center text-on-surface-variant">
                 <th class="py-2 pr-4 font-medium w-1/3">Bloco</th>
@@ -129,6 +125,23 @@ type PageState = 'loading' | 'error' | 'ready';
               }
             </tbody>
           </table>
+
+          <ul class="flex flex-col gap-3 sm:hidden">
+            @for (apt of apartments(); track apt.id) {
+              <li class="rounded-xl border border-outline-variant p-4 flex flex-col gap-2">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="font-medium text-on-surface">
+                    {{ apt.block ? apt.block + ' · ' + apt.unitNumber : apt.unitNumber }}
+                  </p>
+                  <span [class]="apt.isDelinquent
+                    ? 'inline-flex items-center justify-center px-2 py-0.5 rounded text-xs bg-error/10 text-error'
+                    : 'inline-flex items-center justify-center px-2 py-0.5 rounded text-xs bg-surface-container text-on-surface-variant'">
+                    {{ apt.isDelinquent ? 'Inadimplente' : 'Adimplente' }}
+                  </span>
+                </div>
+              </li>
+            }
+          </ul>
         </section>
       }
     </main>

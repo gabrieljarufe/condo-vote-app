@@ -60,9 +60,6 @@ const mockActivatedRoute = {
   snapshot: { params: { condoId: 'condo-1', pollId: 'poll-1' } },
 };
 
-@Component({ selector: 'app-app-header', template: '', standalone: true })
-class AppHeaderStub {}
-
 @Component({ selector: 'app-poll-status-badge', template: '', standalone: true })
 class PollStatusBadgeStub {
   @Input() status = '';
@@ -140,7 +137,7 @@ async function setup(
     ],
   })
     .overrideComponent(PollDetailPage, {
-      set: { imports: [AppHeaderStub, PollStatusBadgeStub, PollCancelDialogStub, ConfirmDialogStub, RouterLink] },
+      set: { imports: [PollStatusBadgeStub, PollCancelDialogStub, ConfirmDialogStub, RouterLink] },
     })
     .compileComponents();
   const fixture = TestBed.createComponent(PollDetailPage);

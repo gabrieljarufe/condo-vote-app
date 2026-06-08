@@ -1,15 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
-import { UserRoleInCondo } from '../../core/api/me-api.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { TenantService } from '../../core/tenant/tenant.service';
 import { ThemeToggle } from '../ui/theme-toggle';
-
-const ROLE_LABELS_PT_BR: Record<UserRoleInCondo, string> = {
-  ADMIN: 'Síndico',
-  OWNER: 'Proprietário',
-  TENANT: 'Inquilino',
-};
+import { getOrderedRoles, getRoleChipAriaLabel, getRoleChipLabel } from './role-chip';
 
 @Component({
   selector: 'app-app-header',
@@ -39,7 +33,7 @@ const ROLE_LABELS_PT_BR: Record<UserRoleInCondo, string> = {
               <a
                 [routerLink]="apartmentsLink()"
                 routerLinkActive="text-primary font-semibold"
-                class="text-sm text-on-surface-variant hover:text-on-surface"
+                class="hidden sm:inline-flex text-sm text-on-surface-variant hover:text-on-surface"
               >
                 Apartamentos
               </a>
@@ -48,7 +42,7 @@ const ROLE_LABELS_PT_BR: Record<UserRoleInCondo, string> = {
               <a
                 [routerLink]="pollsLink()"
                 routerLinkActive="text-primary font-semibold"
-                class="text-sm text-on-surface-variant hover:text-on-surface"
+                class="hidden sm:inline-flex text-sm text-on-surface-variant hover:text-on-surface"
               >
                 Votações
               </a>
@@ -57,7 +51,7 @@ const ROLE_LABELS_PT_BR: Record<UserRoleInCondo, string> = {
               <button
                 type="button"
                 (click)="switchCondo()"
-                class="text-sm text-primary hover:underline"
+                class="hidden sm:inline-flex text-sm text-primary hover:underline"
               >
                 Trocar
               </button>
@@ -67,7 +61,7 @@ const ROLE_LABELS_PT_BR: Record<UserRoleInCondo, string> = {
           <button
             type="button"
             (click)="signOut()"
-            class="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface"
+            class="hidden sm:inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface"
           >
             <span class="material-symbols-outlined text-base" aria-hidden="true">logout</span>
             Sair
@@ -104,29 +98,11 @@ export class AppHeader {
     return condoId ? `/app/condominiums/${condoId}/polls` : null;
   });
 
-  // Ordenação canônica ADMIN → OWNER → TENANT para gerar labels estáveis
-  // (ex.: "Síndico · Proprietário", nunca "Proprietário · Síndico").
-  protected readonly orderedRoles = computed<readonly UserRoleInCondo[]>(() => {
-    const roles = this.tenant.activeRoles();
-    return (['ADMIN', 'OWNER', 'TENANT'] as const).filter((r) => roles.has(r));
-  });
-
-  protected readonly roleChipLabel = computed<string | null>(() => {
-    const ordered = this.orderedRoles();
-    if (ordered.length === 0) return null;
-    return ordered.map((r) => ROLE_LABELS_PT_BR[r]).join(' · ');
-  });
-
-  protected readonly roleChipAriaLabel = computed<string | null>(() => {
-    const ordered = this.orderedRoles();
-    if (ordered.length === 0) return null;
-    const names = ordered.map((r) => ROLE_LABELS_PT_BR[r]);
-    const joined =
-      names.length === 1
-        ? names[0]
-        : `${names.slice(0, -1).join(', ')} e ${names[names.length - 1]}`;
-    return `Seus papéis neste condomínio: ${joined}`;
-  });
+  protected readonly orderedRoles = computed(() => getOrderedRoles(this.tenant.activeRoles()));
+  protected readonly roleChipLabel = computed(() => getRoleChipLabel(this.tenant.activeRoles()));
+  protected readonly roleChipAriaLabel = computed(() =>
+    getRoleChipAriaLabel(this.tenant.activeRoles()),
+  );
 
   protected switchCondo(): void {
     this.tenant.clear();
